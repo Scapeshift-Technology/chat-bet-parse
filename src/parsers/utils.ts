@@ -410,7 +410,10 @@ export function detectPropType(propText: string): PropTypeInfo | null {
 
   // Check for exact matches first
   for (const [keyword, info] of Object.entries(PROP_TYPE_MAP)) {
-    if (cleanText.includes(keyword)) {
+    // Use word boundaries to ensure we match the complete phrase, not just substrings
+    // This prevents "1st inning" from matching "1st team to score"
+    const regex = new RegExp(`\\b${keyword.replace(/\s+/g, '\\s+')}\\b`);
+    if (regex.test(cleanText)) {
       return info;
     }
   }

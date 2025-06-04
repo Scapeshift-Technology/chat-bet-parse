@@ -232,6 +232,19 @@ export const validFillTestCases: TestCase[] = [
     expectedPeriod: { PeriodTypeCode: 'I', PeriodNumber: 1 }
   },
   {
+    description: 'YG Game total 1st inning over with decimal thousands',
+    input: 'YG Diamondbacks/Phillies 1st inning o0.5 @ +106 = 0.275',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: 106,
+    expectedSize: 275,
+    expectedTeam1: 'Diamondbacks',
+    expectedTeam2: 'Phillies',
+    expectedLine: 0.5,
+    expectedIsOver: true,
+    expectedPeriod: { PeriodTypeCode: 'I', PeriodNumber: 1 }
+  },
+  {
     description: 'YG Game total F5 with decimal thousands',
     input: 'YG ATH/SF F5 o4.5 @ -117 = 2.7',
     expectedChatType: 'fill',
