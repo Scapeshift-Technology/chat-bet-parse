@@ -5,7 +5,7 @@
 
 export class ChatBetParseError extends Error {
   public readonly rawInput: string;
-  public readonly position?: number;
+  public position?: number;
 
   constructor(message: string, rawInput: string, position?: number) {
     super(message);
@@ -17,10 +17,7 @@ export class ChatBetParseError extends Error {
 
 export class InvalidChatFormatError extends ChatBetParseError {
   constructor(rawInput: string, reason: string) {
-    super(
-      `Invalid chat format: ${reason}. Input: "${rawInput}"`,
-      rawInput
-    );
+    super(`Invalid chat format: ${reason}. Input: "${rawInput}"`, rawInput);
     this.name = 'InvalidChatFormatError';
   }
 }
@@ -67,10 +64,7 @@ export class InvalidLineValueError extends ChatBetParseError {
 
 export class InvalidTeamFormatError extends ChatBetParseError {
   constructor(rawInput: string, teamStr: string, reason: string) {
-    super(
-      `Invalid team format: "${teamStr}". ${reason}. Input: "${rawInput}"`,
-      rawInput
-    );
+    super(`Invalid team format: "${teamStr}". ${reason}. Input: "${rawInput}"`, rawInput);
     this.name = 'InvalidTeamFormatError';
   }
 }
@@ -165,4 +159,4 @@ export function createPositionError(
   const error = new ErrorClass(rawInput, ...args);
   error.position = position;
   return error;
-} 
+}

@@ -5,7 +5,7 @@
 
 import type {
   ParseResult,
-  ChatOrderResult, 
+  ChatOrderResult,
   ChatFillResult,
   Contract,
   ContractType,
@@ -19,7 +19,7 @@ import type {
   ContractSportCompetitionMatchHandicapContestantLine,
   ContractSportCompetitionMatchPropYN,
   ContractSportCompetitionMatchPropOU,
-  ContractSportCompetitionSeries
+  ContractSportCompetitionSeries,
 } from '../types/index';
 
 import {
@@ -29,7 +29,7 @@ import {
   InvalidContractTypeError,
   InvalidRotationNumberError,
   InvalidGameNumberError,
-  InvalidTeamFormatError
+  InvalidTeamFormatError,
 } from '../errors/index';
 
 import {
@@ -43,7 +43,7 @@ import {
   parseOverUnder,
   inferSportAndLeague,
   detectPropType,
-  validatePropFormat
+  validatePropFormat,
 } from './utils';
 
 // ==============================================================================
@@ -65,15 +65,15 @@ interface ParsedTokens {
 function tokenizeChat(message: string): ParsedTokens {
   const rawInput = message; // Preserve original input for error reporting
   const parts = message.trim().split(/\s+/);
-  
+
   if (parts.length < 2) {
     throw new InvalidChatFormatError(rawInput, 'Message too short');
   }
-  
+
   // Determine chat type
   const prefix = parts[0].toUpperCase();
   let chatType: 'order' | 'fill';
-  
+
   if (prefix === 'IW') {
     chatType = 'order';
   } else if (prefix === 'YG') {
@@ -81,11 +81,11 @@ function tokenizeChat(message: string): ParsedTokens {
   } else {
     throw new UnrecognizedChatPrefixError(rawInput, prefix);
   }
-  
+
   let currentIndex = 1;
   let rotationNumber: number | undefined;
   let price: number | undefined;
-  
+
   // Check for rotation number (must be immediately after IW/YG)
   if (currentIndex < parts.length && /^\d+$/.test(parts[currentIndex])) {
     rotationNumber = parseRotationNumber(parts[currentIndex], rawInput);
@@ -94,11 +94,11 @@ function tokenizeChat(message: string): ParsedTokens {
     // Check for specific invalid rotation number test case
     throw new InvalidRotationNumberError(rawInput, parts[currentIndex]);
   }
-  
+
   // Find price and size markers
   let priceIndex = -1;
   let sizeIndex = -1;
-  
+
   for (let i = currentIndex; i < parts.length; i++) {
     if (parts[i] === '@' && i + 1 < parts.length) {
       priceIndex = i + 1;
@@ -107,7 +107,7 @@ function tokenizeChat(message: string): ParsedTokens {
       sizeIndex = i + 1;
     }
   }
-  
+
   // Check for empty price (@ with nothing after it or only whitespace)
   for (let i = currentIndex; i < parts.length; i++) {
     if (parts[i] === '@') {
@@ -116,10 +116,10 @@ function tokenizeChat(message: string): ParsedTokens {
       }
     }
   }
-  
+
   // Extract contract text (everything between rotation number and price/@)
   let contractEndIndex = parts.length;
-  
+
   // Find the first @ or = to determine where contract text ends
   for (let i = currentIndex; i < parts.length; i++) {
     if (parts[i] === '@' || parts[i] === '=') {
@@ -127,14 +127,14 @@ function tokenizeChat(message: string): ParsedTokens {
       break;
     }
   }
-  
+
   // Handle special case where price is embedded in contract text (e.g., "Mariners -1.5 +135")
   // Look for USA odds patterns in the contract text
   for (let i = currentIndex; i < contractEndIndex; i++) {
     if (/^[+-]\d+(?:\.\d+)?$/.test(parts[i])) {
       // Check if this is a spread line (small number <= 50 or fractional) or a price (> 100)
       const value = parseFloat(parts[i].substring(1)); // Remove +/- sign
-      
+
       // If it's likely a price (> 100 or whole number between 50-100), treat as price
       if (value > 50 && (value > 100 || value % 1 === 0)) {
         // This looks like a price - split the contract text here
@@ -145,13 +145,13 @@ function tokenizeChat(message: string): ParsedTokens {
       // Otherwise, it's likely a spread line, keep it in the contract text
     }
   }
-  
+
   if (contractEndIndex <= currentIndex) {
     throw new InvalidChatFormatError(rawInput, 'No contract details found');
   }
-  
+
   const contractText = parts.slice(currentIndex, contractEndIndex).join(' ');
-  
+
   // Parse price if present and not already found
   if (price === undefined && priceIndex > 0 && priceIndex < parts.length) {
     const priceStr = parts[priceIndex];
@@ -166,7 +166,7 @@ function tokenizeChat(message: string): ParsedTokens {
       price = parsePrice(priceStr, rawInput);
     }
   }
-  
+
   // Parse size if present
   let size: number | undefined;
   if (sizeIndex > 0 && sizeIndex < parts.length) {
@@ -179,19 +179,19 @@ function tokenizeChat(message: string): ParsedTokens {
       size = parsed.value;
     }
   }
-  
+
   // Validate fill requirements
   if (chatType === 'fill' && size === undefined) {
     throw new MissingSizeForFillError(rawInput);
   }
-  
+
   return {
     chatType,
     rotationNumber,
     contractText,
     price: price ?? -110, // Default price
     size,
-    rawInput
+    rawInput,
   };
 }
 
@@ -204,33 +204,37 @@ function tokenizeChat(message: string): ParsedTokens {
  */
 function detectContractType(contractText: string, rawInput: string): ContractType {
   const text = contractText.toLowerCase().trim();
-  
+
   // Series bets: contain "series"
   if (text.includes('series')) {
     return 'Series';
   }
-  
+
   // Team totals: contain " tt " or " tt o/u" or start with "tt"
-  if (/\stt\s/i.test(contractText) || /\stt\s*[ou]/i.test(contractText) || /^tt\s/i.test(contractText)) {
+  if (
+    /\stt\s/i.test(contractText) ||
+    /\stt\s*[ou]/i.test(contractText) ||
+    /^tt\s/i.test(contractText)
+  ) {
     // Check if TT appears at the beginning (no team name before it)
     if (/^tt\s/i.test(contractText.trim())) {
       throw new InvalidTeamFormatError(rawInput, '', 'Team name cannot be empty');
     }
     return 'TotalPointsContestant';
   }
-  
+
   // Props: detect specific prop types and check for over/under lines
   const propInfo = detectPropType(text);
   if (propInfo) {
     // Check if the text contains an over/under line pattern
     const hasLine = /[ou]\d+(?:\.\d+)?/i.test(contractText);
-    
+
     // Validate the prop format
     validatePropFormat(text, hasLine, rawInput);
-    
+
     return propInfo.category; // Returns 'PropOU' or 'PropYN'
   }
-  
+
   // Check for prop-like patterns (Player/Team names followed by descriptive text)
   // This catches unsupported prop types that don't match our known patterns
   // Only apply to patterns that look like props (e.g., Player123 something, not generic text)
@@ -239,7 +243,7 @@ function detectContractType(contractText: string, rawInput: string): ContractTyp
     const hasLine = /[ou]\d+(?:\.\d+)?/i.test(contractText);
     validatePropFormat(text, hasLine, rawInput);
   }
-  
+
   // Spreads: team name followed by +/- number (but not if it's clearly a price like +145)
   if (/[a-zA-Z]+\s*[+-]\d+(?:\.\d+)?/i.test(contractText)) {
     // Check if this might be a price rather than a spread
@@ -261,17 +265,17 @@ function detectContractType(contractText: string, rawInput: string): ContractTyp
       }
     }
   }
-  
+
   // Game totals: teams with o/u
   if (/\//.test(contractText) && /[ou]\d+(?:\.\d+)?/i.test(contractText)) {
     return 'TotalPoints';
   }
-  
+
   // Moneylines: just team name (after eliminating other types)
   if (!text.includes('/') && !text.includes('o') && !text.includes('u')) {
     return 'HandicapContestantML';
   }
-  
+
   throw new InvalidContractTypeError(rawInput, contractText);
 }
 
@@ -282,25 +286,30 @@ function detectContractType(contractText: string, rawInput: string): ContractTyp
 /**
  * Parse game total: "Padres/Pirates 1st inning u0.5"
  */
-function parseGameTotal(contractText: string, rawInput: string, sport: Sport, league: League): ContractSportCompetitionMatchTotalPoints {
+function parseGameTotal(
+  contractText: string,
+  rawInput: string,
+  sport: Sport,
+  league: League
+): ContractSportCompetitionMatchTotalPoints {
   // Extract over/under and line
   const ouMatch = contractText.match(/([ou])(\d+(?:\.\d+)?)/i);
   if (!ouMatch) {
     throw new InvalidContractTypeError(rawInput, contractText);
   }
-  
+
   const { isOver, line } = parseOverUnder(ouMatch[0], rawInput);
-  
+
   // Remove the o/u part to get teams and period
   const withoutOU = contractText.replace(/\s*[ou]\d+(?:\.\d+)?/i, '').trim();
-  
+
   // Parse teams and extract game info
   const { teams, period, match } = parseMatchInfo(withoutOU, rawInput, sport, league);
-  
+
   if (!teams.team2) {
     throw new InvalidContractTypeError(rawInput, 'Game total requires two teams (Team1/Team2)');
   }
-  
+
   return {
     Sport: sport,
     League: league,
@@ -310,28 +319,36 @@ function parseGameTotal(contractText: string, rawInput: string, sport: Sport, le
     HasLine: true,
     ContractSportCompetitionMatchType: 'TotalPoints',
     Line: line,
-    IsOver: isOver
+    IsOver: isOver,
   };
 }
 
 /**
  * Parse team total: "LAA TT o3.5" or "MIA F5 TT u1.5"
  */
-function parseTeamTotal(contractText: string, rawInput: string, sport: Sport, league: League): ContractSportCompetitionMatchTotalPointsContestant {
+function parseTeamTotal(
+  contractText: string,
+  rawInput: string,
+  sport: Sport,
+  league: League
+): ContractSportCompetitionMatchTotalPointsContestant {
   // Extract over/under and line
   const ouMatch = contractText.match(/([ou])(\d+(?:\.\d+)?)/i);
   if (!ouMatch) {
     throw new InvalidContractTypeError(rawInput, contractText);
   }
-  
+
   const { isOver, line } = parseOverUnder(ouMatch[0], rawInput);
-  
+
   // Remove the o/u part and TT to get team and period
-  const withoutOU = contractText.replace(/\s*[ou]\d+(?:\.\d+)?/i, '').replace(/\s*tt\s*/i, ' ').trim();
-  
+  const withoutOU = contractText
+    .replace(/\s*[ou]\d+(?:\.\d+)?/i, '')
+    .replace(/\s*tt\s*/i, ' ')
+    .trim();
+
   // Parse team and extract match info
   const { teams, period, match } = parseMatchInfo(withoutOU, rawInput, sport, league);
-  
+
   return {
     Sport: sport,
     League: league,
@@ -342,16 +359,21 @@ function parseTeamTotal(contractText: string, rawInput: string, sport: Sport, le
     ContractSportCompetitionMatchType: 'TotalPoints',
     Line: line,
     IsOver: isOver,
-    Contestant: teams.team1
+    Contestant: teams.team1,
   };
 }
 
 /**
  * Parse moneyline: "872 Athletics"
  */
-function parseMoneyline(contractText: string, rawInput: string, sport: Sport, league: League): ContractSportCompetitionMatchHandicapContestantML {
+function parseMoneyline(
+  contractText: string,
+  rawInput: string,
+  sport: Sport,
+  league: League
+): ContractSportCompetitionMatchHandicapContestantML {
   const { teams, period, match } = parseMatchInfo(contractText, rawInput, sport, league);
-  
+
   return {
     Sport: sport,
     League: league,
@@ -361,27 +383,34 @@ function parseMoneyline(contractText: string, rawInput: string, sport: Sport, le
     HasLine: false,
     ContractSportCompetitionMatchType: 'Handicap',
     Contestant: teams.team1,
-    TiesLose: false // Default for MLB
+    TiesLose: false, // Default for MLB
   };
 }
 
 /**
  * Parse spread: "870 Mariners -1.5 +135"
  */
-function parseSpread(contractText: string, rawInput: string, sport: Sport, league: League): ContractSportCompetitionMatchHandicapContestantLine {
+function parseSpread(
+  contractText: string,
+  rawInput: string,
+  sport: Sport,
+  league: League
+): ContractSportCompetitionMatchHandicapContestantLine {
   // Extract spread line and price (if embedded)
-  const spreadMatch = contractText.match(/([a-zA-Z\s&]+)\s*([+-])(\d+(?:\.\d+)?)(?:\s*([+-]\d+(?:\.\d+)?))?/);
+  const spreadMatch = contractText.match(
+    /([a-zA-Z\s&]+)\s*([+-])(\d+(?:\.\d+)?)(?:\s*([+-]\d+(?:\.\d+)?))?/
+  );
   if (!spreadMatch) {
     throw new InvalidContractTypeError(rawInput, contractText);
   }
-  
+
   const teamPart = spreadMatch[1].trim();
   const sign = spreadMatch[2];
   const lineValue = parseFloat(spreadMatch[3]);
   const line = sign === '+' ? lineValue : -lineValue;
-  
+
   const { teams, period, match } = parseMatchInfo(teamPart, rawInput, sport, league);
-  
+
   return {
     Sport: sport,
     League: league,
@@ -391,51 +420,54 @@ function parseSpread(contractText: string, rawInput: string, sport: Sport, leagu
     HasLine: true,
     ContractSportCompetitionMatchType: 'Handicap',
     Contestant: teams.team1,
-    Line: line
+    Line: line,
   };
 }
 
 /**
  * Parse PropOU bet: "Player123 passing yards o250.5"
  */
-function parsePropOU(contractText: string, rawInput: string, sport: Sport, league: League): ContractSportCompetitionMatchPropOU {
-  const text = contractText.toLowerCase();
-  
+function parsePropOU(
+  contractText: string,
+  rawInput: string,
+  sport: Sport,
+  league: League
+): ContractSportCompetitionMatchPropOU {
   // Extract over/under and line
   const ouMatch = contractText.match(/([ou])(\d+(?:\.\d+)?)/i);
   if (!ouMatch) {
     throw new InvalidContractTypeError(rawInput, 'PropOU requires an over/under line');
   }
-  
+
   const { isOver, line } = parseOverUnder(ouMatch[0], rawInput);
-  
+
   // Remove the o/u part to get player/team and prop type
   const withoutOU = contractText.replace(/\s*[ou]\d+(?:\.\d+)?/i, '').trim();
-  
+
   // Extract player/team (first word typically) and prop type
   const parts = withoutOU.trim().split(/\s+/);
   if (parts.length < 2) {
     throw new InvalidContractTypeError(rawInput, contractText);
   }
-  
+
   const contestant = parts[0];
   const propText = parts.slice(1).join(' ').toLowerCase();
-  
+
   const propInfo = detectPropType(propText);
   if (!propInfo || propInfo.category !== 'PropOU') {
     throw new InvalidContractTypeError(rawInput, `Invalid PropOU type: ${propText}`);
   }
-  
+
   // Create basic match info
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   return {
     Sport: sport,
     League: league,
     Match: {
       Date: today,
-      Team1: contestant
+      Team1: contestant,
     },
     Period: { PeriodTypeCode: 'M', PeriodNumber: 0 },
     HasContestant: true,
@@ -445,30 +477,33 @@ function parsePropOU(contractText: string, rawInput: string, sport: Sport, leagu
     Prop: propInfo.standardName,
     Contestant: contestant,
     Line: line,
-    IsOver: isOver
+    IsOver: isOver,
   };
 }
 
 /**
  * Parse PropYN bet: "CIN 1st team to score"
  */
-function parsePropYN(contractText: string, rawInput: string, sport: Sport, league: League): ContractSportCompetitionMatchPropYN {
-  const text = contractText.toLowerCase();
-  
+function parsePropYN(
+  contractText: string,
+  rawInput: string,
+  sport: Sport,
+  league: League
+): ContractSportCompetitionMatchPropYN {
   // Extract team (first word typically)
   const parts = contractText.trim().split(/\s+/);
   if (parts.length < 2) {
     throw new InvalidContractTypeError(rawInput, contractText);
   }
-  
+
   const team = parts[0];
   const propText = parts.slice(1).join(' ').toLowerCase();
-  
+
   const propInfo = detectPropType(propText);
   if (!propInfo || propInfo.category !== 'PropYN') {
     throw new InvalidContractTypeError(rawInput, `Invalid PropYN type: ${propText}`);
   }
-  
+
   // Determine IsYes value based on prop type
   let isYes: boolean;
   if (propInfo.standardName === 'FirstToScore') {
@@ -478,17 +513,17 @@ function parsePropYN(contractText: string, rawInput: string, sport: Sport, leagu
   } else {
     isYes = true; // Default to yes for other yes/no props
   }
-  
+
   // Create basic match info (props typically don't have detailed match context)
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   return {
     Sport: sport,
     League: league,
     Match: {
       Date: today,
-      Team1: team
+      Team1: team,
     },
     Period: { PeriodTypeCode: 'M', PeriodNumber: 0 },
     HasContestant: true,
@@ -497,19 +532,24 @@ function parsePropYN(contractText: string, rawInput: string, sport: Sport, leagu
     ContestantType: 'TeamLeague',
     Prop: propInfo.standardName,
     Contestant: team,
-    IsYes: isYes
+    IsYes: isYes,
   };
 }
 
 /**
  * Parse series bet: "852 Guardians series" or "854 Yankees 4 game series"
  */
-function parseSeries(contractText: string, rawInput: string, sport: Sport, league: League): ContractSportCompetitionSeries {
+function parseSeries(
+  contractText: string,
+  rawInput: string,
+  sport: Sport,
+  league: League
+): ContractSportCompetitionSeries {
   // Extract series length if specified
   // Try "out of X" pattern first
   const outOfMatch = contractText.match(/series\s+out\s+of\s+(\d+)/i);
   let seriesLength: number;
-  
+
   if (outOfMatch) {
     seriesLength = parseInt(outOfMatch[1]);
   } else {
@@ -517,28 +557,28 @@ function parseSeries(contractText: string, rawInput: string, sport: Sport, leagu
     const lengthMatch = contractText.match(/(\d+)\s*game\s*series/i);
     seriesLength = lengthMatch ? parseInt(lengthMatch[1]) : 3; // Default to 3
   }
-  
+
   // Extract team (before "series" and any numbers/modifiers)
   const teamMatch = contractText.match(/([a-zA-Z\s&]+?)\s*(?:(?:\d+\s*game\s*)?series|series)/i);
   if (!teamMatch) {
     throw new InvalidContractTypeError(rawInput, contractText);
   }
-  
+
   const team = teamMatch[1].trim();
-  
+
   // Create basic match info
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   return {
     Sport: sport,
     League: league,
     Match: {
       Date: today,
-      Team1: team
+      Team1: team,
     },
     SeriesLength: seriesLength,
-    Contestant: team
+    Contestant: team,
   };
 }
 
@@ -549,13 +589,18 @@ function parseSeries(contractText: string, rawInput: string, sport: Sport, leagu
 /**
  * Parse match information (teams, period, game number) from text
  */
-function parseMatchInfo(text: string, rawInput: string, sport: Sport, league: League): {
+function parseMatchInfo(
+  text: string,
+  rawInput: string,
+  _sport: Sport,
+  _league: League
+): {
   teams: { team1: string; team2?: string };
   period: Period;
   match: Match;
 } {
   let workingText = text.trim();
-  
+
   // Extract game number if present
   let daySequence: number | undefined;
   const gameMatch = workingText.match(/\s+(g(?:m)?\d+|#\d+)\s*/i);
@@ -569,7 +614,7 @@ function parseMatchInfo(text: string, rawInput: string, sport: Sport, league: Le
       throw new InvalidGameNumberError(rawInput, invalidGameMatch[1]);
     }
   }
-  
+
   // Extract period if present
   let period: Period = { PeriodTypeCode: 'M', PeriodNumber: 0 }; // Default
   const periodPatterns = [
@@ -578,9 +623,9 @@ function parseMatchInfo(text: string, rawInput: string, sport: Sport, league: Le
     /\b(\d+(?:st|nd|rd|th)?\s*(?:quarter|q))\b/i,
     /\b(\d+(?:st|nd|rd|th)?\s*(?:period|p))\b/i,
     /\b(first\s*(?:half|five|5|inning|i))\b/i,
-    /\b(second\s*(?:half|h))\b/i
+    /\b(second\s*(?:half|h))\b/i,
   ];
-  
+
   for (const pattern of periodPatterns) {
     const match = workingText.match(pattern);
     if (match) {
@@ -589,21 +634,21 @@ function parseMatchInfo(text: string, rawInput: string, sport: Sport, league: Le
       break;
     }
   }
-  
+
   // Parse teams from remaining text
   const teams = parseTeams(workingText, rawInput);
-  
+
   // Create match object
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   const match: Match = {
     Date: today,
     Team1: teams.team1,
     Team2: teams.team2,
-    DaySequence: daySequence
+    DaySequence: daySequence,
   };
-  
+
   return { teams, period, match };
 }
 
@@ -616,16 +661,16 @@ function parseMatchInfo(text: string, rawInput: string, sport: Sport, league: Le
  */
 export function parseChatOrder(message: string): ChatOrderResult {
   const tokens = tokenizeChat(message);
-  
+
   if (tokens.chatType !== 'order') {
     throw new InvalidChatFormatError(tokens.rawInput, 'Expected order (IW) message');
   }
-  
+
   const contractType = detectContractType(tokens.contractText, tokens.rawInput);
   const { sport, league } = inferSportAndLeague(tokens.rotationNumber);
-  
+
   let contract: Contract;
-  
+
   switch (contractType) {
     case 'TotalPoints':
       contract = parseGameTotal(tokens.contractText, tokens.rawInput, sport, league);
@@ -651,12 +696,12 @@ export function parseChatOrder(message: string): ChatOrderResult {
     default:
       throw new InvalidContractTypeError(tokens.rawInput, tokens.contractText);
   }
-  
+
   // Add rotation number to contract if present
   if (tokens.rotationNumber && 'RotationNumber' in contract) {
     contract.RotationNumber = tokens.rotationNumber;
   }
-  
+
   return {
     chatType: 'order',
     contractType,
@@ -664,8 +709,8 @@ export function parseChatOrder(message: string): ChatOrderResult {
     rotationNumber: tokens.rotationNumber,
     bet: {
       Price: tokens.price!,
-      Size: tokens.size
-    }
+      Size: tokens.size,
+    },
   };
 }
 
@@ -674,16 +719,16 @@ export function parseChatOrder(message: string): ChatOrderResult {
  */
 export function parseChatFill(message: string): ChatFillResult {
   const tokens = tokenizeChat(message);
-  
+
   if (tokens.chatType !== 'fill') {
     throw new InvalidChatFormatError(tokens.rawInput, 'Expected fill (YG) message');
   }
-  
+
   const contractType = detectContractType(tokens.contractText, tokens.rawInput);
   const { sport, league } = inferSportAndLeague(tokens.rotationNumber);
-  
+
   let contract: Contract;
-  
+
   switch (contractType) {
     case 'TotalPoints':
       contract = parseGameTotal(tokens.contractText, tokens.rawInput, sport, league);
@@ -709,12 +754,12 @@ export function parseChatFill(message: string): ChatFillResult {
     default:
       throw new InvalidContractTypeError(tokens.rawInput, tokens.contractText);
   }
-  
+
   // Add rotation number to contract if present
   if (tokens.rotationNumber && 'RotationNumber' in contract) {
     contract.RotationNumber = tokens.rotationNumber;
   }
-  
+
   return {
     chatType: 'fill',
     contractType,
@@ -723,8 +768,8 @@ export function parseChatFill(message: string): ChatFillResult {
     bet: {
       ExecutionDtm: new Date(), // Current time for fills
       Price: tokens.price!,
-      Size: tokens.size!
-    }
+      Size: tokens.size!,
+    },
   };
 }
 
@@ -733,7 +778,7 @@ export function parseChatFill(message: string): ChatFillResult {
  */
 export function parseChat(message: string): ParseResult {
   const trimmed = message.trim();
-  
+
   if (trimmed.toUpperCase().startsWith('IW')) {
     return parseChatOrder(message);
   } else if (trimmed.toUpperCase().startsWith('YG')) {
@@ -741,4 +786,4 @@ export function parseChat(message: string): ParseResult {
   } else {
     throw new UnrecognizedChatPrefixError(message, trimmed.split(/\s+/)[0] || '');
   }
-} 
+}

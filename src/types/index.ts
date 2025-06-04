@@ -7,7 +7,7 @@
 // BASIC TYPES
 // ==============================================================================
 
-export type Sport = 
+export type Sport =
   | 'Baseball'
   | 'Basketball'
   | 'Boxing'
@@ -20,31 +20,31 @@ export type Sport =
   | 'Soccer'
   | 'Tennis';
 
-export type League = 
-  | 'MLB'     // Baseball
-  | 'WNBA'    // Basketball
-  | 'CBK'     // Basketball (NCAA)
-  | 'NBA'     // Basketball
-  | 'CFL'     // Football (Canadian)
-  | 'CFB'     // Football (NCAA)
-  | 'NFL'     // Football
-  | 'UFL'     // Football
-  | 'LPGA'    // Golf
-  | 'PGA'     // Golf
-  | 'NHL'     // Hockey
-  | 'UFC'     // MMA
-  | 'WTA'     // Tennis
-  | 'ATP';    // Tennis
+export type League =
+  | 'MLB' // Baseball
+  | 'WNBA' // Basketball
+  | 'CBK' // Basketball (NCAA)
+  | 'NBA' // Basketball
+  | 'CFL' // Football (Canadian)
+  | 'CFB' // Football (NCAA)
+  | 'NFL' // Football
+  | 'UFL' // Football
+  | 'LPGA' // Golf
+  | 'PGA' // Golf
+  | 'NHL' // Hockey
+  | 'UFC' // MMA
+  | 'WTA' // Tennis
+  | 'ATP'; // Tennis
 
 // ==============================================================================
-// PERIOD TYPES  
+// PERIOD TYPES
 // ==============================================================================
 
-export type PeriodTypeCode = 
-  | 'M'  // Match (full game)
-  | 'H'  // Half
-  | 'Q'  // Quarter  
-  | 'I'  // Inning
+export type PeriodTypeCode =
+  | 'M' // Match (full game)
+  | 'H' // Half
+  | 'Q' // Quarter
+  | 'I' // Inning
   | 'P'; // Period (hockey)
 
 export interface Period {
@@ -59,7 +59,7 @@ export interface Period {
 export interface Match {
   Date: Date;
   Team1: string;
-  Team2?: string;  // Optional for team totals, series, etc.
+  Team2?: string; // Optional for team totals, series, etc.
   DaySequence?: number; // Game number (G2, #2, etc.)
 }
 
@@ -92,7 +92,8 @@ export interface ContractSportCompetitionMatchBase {
 // ==============================================================================
 
 // HasContestant=0, HasLine=1, MatchType=TotalPoints
-export interface ContractSportCompetitionMatchTotalPoints extends ContractSportCompetitionMatchBase {
+export interface ContractSportCompetitionMatchTotalPoints
+  extends ContractSportCompetitionMatchBase {
   HasContestant: false;
   HasLine: true;
   ContractSportCompetitionMatchType: 'TotalPoints';
@@ -100,8 +101,9 @@ export interface ContractSportCompetitionMatchTotalPoints extends ContractSportC
   IsOver: boolean;
 }
 
-// HasContestant=1, HasLine=1, MatchType=TotalPoints  
-export interface ContractSportCompetitionMatchTotalPointsContestant extends ContractSportCompetitionMatchBase {
+// HasContestant=1, HasLine=1, MatchType=TotalPoints
+export interface ContractSportCompetitionMatchTotalPointsContestant
+  extends ContractSportCompetitionMatchBase {
   HasContestant: true;
   HasLine: true;
   ContractSportCompetitionMatchType: 'TotalPoints';
@@ -111,7 +113,8 @@ export interface ContractSportCompetitionMatchTotalPointsContestant extends Cont
 }
 
 // HasContestant=1, HasLine=0, MatchType=Handicap
-export interface ContractSportCompetitionMatchHandicapContestantML extends ContractSportCompetitionMatchBase {
+export interface ContractSportCompetitionMatchHandicapContestantML
+  extends ContractSportCompetitionMatchBase {
   HasContestant: true;
   HasLine: false;
   ContractSportCompetitionMatchType: 'Handicap';
@@ -120,7 +123,8 @@ export interface ContractSportCompetitionMatchHandicapContestantML extends Contr
 }
 
 // HasContestant=1, HasLine=1, MatchType=Handicap
-export interface ContractSportCompetitionMatchHandicapContestantLine extends ContractSportCompetitionMatchBase {
+export interface ContractSportCompetitionMatchHandicapContestantLine
+  extends ContractSportCompetitionMatchBase {
   HasContestant: true;
   HasLine: true;
   ContractSportCompetitionMatchType: 'Handicap';
@@ -168,7 +172,7 @@ export interface ContractSportCompetitionSeries {
 // UNION TYPES
 // ==============================================================================
 
-export type ContractSportCompetitionMatch = 
+export type ContractSportCompetitionMatch =
   | ContractSportCompetitionMatchTotalPoints
   | ContractSportCompetitionMatchTotalPointsContestant
   | ContractSportCompetitionMatchHandicapContestantML
@@ -203,9 +207,9 @@ export interface ChatFill extends BaseBet {
 
 export type ChatType = 'order' | 'fill';
 
-export type ContractType = 
+export type ContractType =
   | 'TotalPoints'
-  | 'TotalPointsContestant' 
+  | 'TotalPointsContestant'
   | 'HandicapContestantML'
   | 'HandicapContestantLine'
   | 'PropOU'
@@ -243,42 +247,66 @@ export function isFill(result: ParseResult): result is ChatFillResult {
   return result.chatType === 'fill';
 }
 
-export function isTotalPoints(contract: Contract): contract is ContractSportCompetitionMatchTotalPoints {
-  return 'ContractSportCompetitionMatchType' in contract && 
-         contract.ContractSportCompetitionMatchType === 'TotalPoints' &&
-         !contract.HasContestant;
+export function isTotalPoints(
+  contract: Contract
+): contract is ContractSportCompetitionMatchTotalPoints {
+  return (
+    'ContractSportCompetitionMatchType' in contract &&
+    contract.ContractSportCompetitionMatchType === 'TotalPoints' &&
+    !contract.HasContestant
+  );
 }
 
-export function isTotalPointsContestant(contract: Contract): contract is ContractSportCompetitionMatchTotalPointsContestant {
-  return 'ContractSportCompetitionMatchType' in contract && 
-         contract.ContractSportCompetitionMatchType === 'TotalPoints' &&
-         contract.HasContestant;
+export function isTotalPointsContestant(
+  contract: Contract
+): contract is ContractSportCompetitionMatchTotalPointsContestant {
+  return (
+    'ContractSportCompetitionMatchType' in contract &&
+    contract.ContractSportCompetitionMatchType === 'TotalPoints' &&
+    contract.HasContestant
+  );
 }
 
-export function isHandicapML(contract: Contract): contract is ContractSportCompetitionMatchHandicapContestantML {
-  return 'ContractSportCompetitionMatchType' in contract && 
-         contract.ContractSportCompetitionMatchType === 'Handicap' &&
-         contract.HasContestant && !contract.HasLine;
+export function isHandicapML(
+  contract: Contract
+): contract is ContractSportCompetitionMatchHandicapContestantML {
+  return (
+    'ContractSportCompetitionMatchType' in contract &&
+    contract.ContractSportCompetitionMatchType === 'Handicap' &&
+    contract.HasContestant &&
+    !contract.HasLine
+  );
 }
 
-export function isHandicapLine(contract: Contract): contract is ContractSportCompetitionMatchHandicapContestantLine {
-  return 'ContractSportCompetitionMatchType' in contract && 
-         contract.ContractSportCompetitionMatchType === 'Handicap' &&
-         contract.HasContestant && contract.HasLine;
+export function isHandicapLine(
+  contract: Contract
+): contract is ContractSportCompetitionMatchHandicapContestantLine {
+  return (
+    'ContractSportCompetitionMatchType' in contract &&
+    contract.ContractSportCompetitionMatchType === 'Handicap' &&
+    contract.HasContestant &&
+    contract.HasLine
+  );
 }
 
 export function isPropOU(contract: Contract): contract is ContractSportCompetitionMatchPropOU {
-  return 'ContractSportCompetitionMatchType' in contract && 
-         contract.ContractSportCompetitionMatchType === 'Prop' &&
-         contract.HasContestant && contract.HasLine;
+  return (
+    'ContractSportCompetitionMatchType' in contract &&
+    contract.ContractSportCompetitionMatchType === 'Prop' &&
+    contract.HasContestant &&
+    contract.HasLine
+  );
 }
 
 export function isPropYN(contract: Contract): contract is ContractSportCompetitionMatchPropYN {
-  return 'ContractSportCompetitionMatchType' in contract && 
-         contract.ContractSportCompetitionMatchType === 'Prop' &&
-         contract.HasContestant && !contract.HasLine;
+  return (
+    'ContractSportCompetitionMatchType' in contract &&
+    contract.ContractSportCompetitionMatchType === 'Prop' &&
+    contract.HasContestant &&
+    !contract.HasLine
+  );
 }
 
 export function isSeries(contract: Contract): contract is ContractSportCompetitionSeries {
   return 'SeriesLength' in contract;
-} 
+}
