@@ -371,10 +371,10 @@ describe('Chat Bet Parsing', () => {
       expect(result.contract.League).toBe('MLB');
     });
     
-    test('should default to MLB when no rotation number', () => {
+    test('should default to No Sport / No League when no rotation number', () => {
       const result = parseChat('IW Padres/Pirates u0.5 @ +100');
-      expect(result.contract.Sport).toBe('Baseball');
-      expect(result.contract.League).toBe('MLB');
+      expect(result.contract.Sport).toBeUndefined();
+      expect(result.contract.League).toBeUndefined();
     });
   });
   

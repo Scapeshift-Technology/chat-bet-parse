@@ -51,8 +51,8 @@ describe('README Examples', () => {
       );
 
       expect(fillResult.bet.Price).toBe(100);
-      expect(fillResult.contract.Sport).toBe('Baseball');
-      expect(fillResult.contract.League).toBe('MLB');
+      expect(fillResult.contract.Sport).toBeUndefined();
+      expect(fillResult.contract.League).toBeUndefined();
       
       // Use type assertion since we know this is a TotalPoints contract
       const totalPointsContract = fillResult.contract as ContractSportCompetitionMatchTotalPoints;
@@ -71,8 +71,8 @@ describe('README Examples', () => {
       );
 
       expect(orderResult.bet.Price).toBe(100);
-      expect(orderResult.contract.Sport).toBe('Baseball');
-      expect(orderResult.contract.League).toBe('MLB');
+      expect(orderResult.contract.Sport).toBeUndefined();
+      expect(orderResult.contract.League).toBeUndefined();
       
       // Use type assertion since we know this is a TotalPoints contract
       const orderTotalPointsContract = orderResult.contract as ContractSportCompetitionMatchTotalPoints;

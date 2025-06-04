@@ -323,9 +323,8 @@ export function parseTeams(teamsStr: string, rawInput: string): { team1: string;
  * Infer sport and league from context (rotation number, teams, etc.)
  * This is a simplified version - in practice, you might use rotation number ranges
  */
-export function inferSportAndLeague(rotationNumber?: number): { sport: Sport; league: League } {
-  // Default to MLB for now - in practice you'd use rotation number ranges
-  // and other heuristics to determine sport/league
+export function inferSportAndLeague(rotationNumber?: number): { sport?: Sport; league?: League } {
+  // use rotation number ranges and other heuristics to determine sport/league
   if (rotationNumber) {
     // Example heuristics (adjust based on your sportsbook's rotation number scheme):
     if (rotationNumber >= 500 && rotationNumber < 600) {
@@ -337,7 +336,7 @@ export function inferSportAndLeague(rotationNumber?: number): { sport: Sport; le
   }
 
   // Default
-  return { sport: 'Baseball', league: 'MLB' };
+  return { };
 }
 
 // ==============================================================================
