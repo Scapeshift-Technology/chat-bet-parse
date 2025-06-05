@@ -76,8 +76,8 @@ export type ContestantType = 'TeamLeague' | 'Individual';
 // ==============================================================================
 
 export interface ContractSportCompetitionMatchBase {
-  Sport: Sport;
-  League: League;
+  Sport?: Sport;
+  League?: League;
   Match: Match;
   Period: Period;
   RotationNumber?: number;
@@ -160,8 +160,8 @@ export interface ContractSportCompetitionMatchPropYN extends ContractSportCompet
 // ==============================================================================
 
 export interface ContractSportCompetitionSeries {
-  Sport: Sport;
-  League: League;
+  Sport?: Sport;
+  League?: League;
   Match: Match;
   RotationNumber?: number;
   SeriesLength: number; // Default 3

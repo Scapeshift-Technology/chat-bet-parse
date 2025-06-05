@@ -289,8 +289,8 @@ function detectContractType(contractText: string, rawInput: string): ContractTyp
 function parseGameTotal(
   contractText: string,
   rawInput: string,
-  sport: Sport,
-  league: League
+  sport?: Sport,
+  league?: League
 ): ContractSportCompetitionMatchTotalPoints {
   // Extract over/under and line
   const ouMatch = contractText.match(/([ou])(\d+(?:\.\d+)?)/i);
@@ -329,8 +329,8 @@ function parseGameTotal(
 function parseTeamTotal(
   contractText: string,
   rawInput: string,
-  sport: Sport,
-  league: League
+  sport?: Sport,
+  league?: League
 ): ContractSportCompetitionMatchTotalPointsContestant {
   // Extract over/under and line
   const ouMatch = contractText.match(/([ou])(\d+(?:\.\d+)?)/i);
@@ -369,8 +369,8 @@ function parseTeamTotal(
 function parseMoneyline(
   contractText: string,
   rawInput: string,
-  sport: Sport,
-  league: League
+  sport?: Sport,
+  league?: League
 ): ContractSportCompetitionMatchHandicapContestantML {
   const { teams, period, match } = parseMatchInfo(contractText, rawInput, sport, league);
 
@@ -393,8 +393,8 @@ function parseMoneyline(
 function parseSpread(
   contractText: string,
   rawInput: string,
-  sport: Sport,
-  league: League
+  sport?: Sport,
+  league?: League
 ): ContractSportCompetitionMatchHandicapContestantLine {
   // Extract spread line and price (if embedded)
   const spreadMatch = contractText.match(
@@ -430,8 +430,8 @@ function parseSpread(
 function parsePropOU(
   contractText: string,
   rawInput: string,
-  sport: Sport,
-  league: League
+  sport?: Sport,
+  league?: League
 ): ContractSportCompetitionMatchPropOU {
   // Extract over/under and line
   const ouMatch = contractText.match(/([ou])(\d+(?:\.\d+)?)/i);
@@ -487,8 +487,8 @@ function parsePropOU(
 function parsePropYN(
   contractText: string,
   rawInput: string,
-  sport: Sport,
-  league: League
+  sport?: Sport,
+  league?: League
 ): ContractSportCompetitionMatchPropYN {
   // Extract team (first word typically)
   const parts = contractText.trim().split(/\s+/);
@@ -542,8 +542,8 @@ function parsePropYN(
 function parseSeries(
   contractText: string,
   rawInput: string,
-  sport: Sport,
-  league: League
+  sport?: Sport,
+  league?: League
 ): ContractSportCompetitionSeries {
   // Extract series length if specified
   // Try "out of X" pattern first
@@ -592,8 +592,8 @@ function parseSeries(
 function parseMatchInfo(
   text: string,
   rawInput: string,
-  _sport: Sport,
-  _league: League
+  _sport?: Sport,
+  _league?: League
 ): {
   teams: { team1: string; team2?: string };
   period: Period;

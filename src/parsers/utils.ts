@@ -336,7 +336,7 @@ export function inferSportAndLeague(rotationNumber?: number): { sport?: Sport; l
   }
 
   // Default
-  return { };
+  return {};
 }
 
 // ==============================================================================
