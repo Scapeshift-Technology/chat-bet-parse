@@ -27,6 +27,7 @@ npm install chat-bet-parse
 ```
 
 Additional dependency for SQL Server connectivity:
+
 ```bash
 npm install mssql
 ```
@@ -77,24 +78,27 @@ new ChatBetGradingClient(config: string | GradingClientConfig)
 ```
 
 **Parameters:**
+
 - `config`: Either a connection string or a full configuration object
 
 **Connection String Format:**
+
 ```
 Server=server-name;Database=database-name;User Id=username;Password=password;Encrypt=true;
 ```
 
 **Configuration Object:**
+
 ```typescript
 interface GradingClientConfig {
   connectionString: string;
   pool?: {
-    max?: number;        // Max connections (default: 10)
-    min?: number;        // Min connections (default: 0)
-    idleTimeoutMillis?: number;    // Idle timeout (default: 30000)
+    max?: number; // Max connections (default: 10)
+    min?: number; // Min connections (default: 0)
+    idleTimeoutMillis?: number; // Idle timeout (default: 30000)
     acquireTimeoutMillis?: number; // Acquire timeout (default: 60000)
   };
-  requestTimeout?: number;    // Request timeout (default: 30000)
+  requestTimeout?: number; // Request timeout (default: 30000)
   connectionTimeout?: number; // Connection timeout (default: 15000)
 }
 ```
@@ -102,29 +106,36 @@ interface GradingClientConfig {
 #### Methods
 
 ##### `async testConnection(): Promise<void>`
+
 Tests the database connection. Throws `GradingConnectionError` if connection fails.
 
 ##### `async grade(result: ParseResult): Promise<GradeResult>`
+
 Grades a parsed chat result and returns the outcome.
 
 **Parameters:**
+
 - `result`: A `ParseResult` from `parseChat()`, `parseChatOrder()`, or `parseChatFill()`
 
 **Returns:**
+
 - `'W'`: Win
-- `'L'`: Loss  
+- `'L'`: Loss
 - `'P'`: Push (tie)
 - `'?'`: Unable to grade (missing data, game not finished, etc.)
 
 **Throws:**
+
 - `GradingConnectionError`: Database connection issues
 - `GradingQueryError`: SQL execution errors
 - `GradingDataError`: Invalid or insufficient contract data
 
 ##### `isConnected(): boolean`
+
 Returns current connection status.
 
 ##### `async close(): Promise<void>`
+
 Closes the database connection and cleans up resources.
 
 ### Factory Functions
@@ -137,7 +148,7 @@ const client = createGradingClient(connectionString);
 const client = createGradingClientWithConfig({
   connectionString: '...',
   pool: { max: 20 },
-  requestTimeout: 45000
+  requestTimeout: 45000,
 });
 ```
 
@@ -146,11 +157,11 @@ const client = createGradingClientWithConfig({
 The grading system provides specific error types for different failure scenarios:
 
 ```typescript
-import { 
-  GradingError, 
-  GradingConnectionError, 
-  GradingQueryError, 
-  GradingDataError 
+import {
+  GradingError,
+  GradingConnectionError,
+  GradingQueryError,
+  GradingDataError,
 } from 'chat-bet-parse';
 
 try {
@@ -169,31 +180,41 @@ try {
 ## Grading Logic
 
 ### Game Totals & Team Totals
+
 Compares actual points scored against the line:
+
 - **Win**: Actual score beats the line in the predicted direction
-- **Loss**: Actual score loses against the line  
+- **Loss**: Actual score loses against the line
 - **Push**: Actual score exactly equals the line
 
 ### Moneylines
+
 Simple win/loss based on which team scored more points:
+
 - **Win**: Selected team scores more points
 - **Loss**: Selected team scores fewer points
 - **Push/Tie**: Teams score equal points (handling depends on `TiesLose` setting)
 
 ### Spreads
+
 Team performance adjusted by the spread line:
+
 - **Win**: Team + spread > opponent's score
-- **Loss**: Team + spread < opponent's score  
+- **Loss**: Team + spread < opponent's score
 - **Push**: Team + spread = opponent's score
 
 ### Series
+
 Multi-game outcomes based on wins in a series:
+
 - **Win**: Selected team wins majority of games in series
 - **Loss**: Selected team loses majority of games in series
 - Requires all games in series to be completed
 
 ### Props
+
 Proposition bet outcomes (simplified implementation):
+
 - **PropOU**: Based on actual statistical performance vs. line
 - **PropYN**: Based on whether the event occurred
 
@@ -202,6 +223,7 @@ Proposition bet outcomes (simplified implementation):
 The grading system integrates with several SQL Server tables and functions:
 
 ### Key Tables
+
 - `SportCompetition_Match`: Match information and scheduling
 - `SportCompetition_Contestant_TeamLeague`: Team participation in matches
 - `LeagueTeam_Franchise` / `LeagueTeam_FranchiseAlias`: Team name resolution
@@ -209,11 +231,14 @@ The grading system integrates with several SQL Server tables and functions:
 - `SportCompetition_MatchSeries`: Series length and structure
 
 ### Key Functions
+
 - `LeaguePeriodShortcode_GET_BoxTotalPoints_fn`: Retrieves actual points scored
 - `SportCompetition_Match_DaySequence_Get_fn`: Handles game numbering (G2, #2, etc.)
 
 ### Master Grading Function
+
 The system uses a single SQL Server function `Contract_CALCULATE_Grade_fn` that:
+
 1. Identifies the match using date and team names
 2. Resolves team aliases and franchise names
 3. Retrieves actual scoring data for the specified period
@@ -221,6 +246,7 @@ The system uses a single SQL Server function `Contract_CALCULATE_Grade_fn` that:
 5. Returns 'W', 'L', 'P', or '?' result
 
 The function accepts these contestant types:
+
 - **Individual**: Individual competitors (e.g., tennis players, golfers)
 - **TeamAdHoc**: Teams that register to play a single event together (e.g., doubles tennis pairs)
 - **TeamLeague**: Teams that play together as a unit across multiple events (e.g., MLB teams, NBA teams)
@@ -228,17 +254,21 @@ The function accepts these contestant types:
 ## Performance Considerations
 
 ### Connection Pooling
+
 The client uses connection pooling by default to minimize connection overhead:
+
 - Pools are shared across multiple grading operations
 - Connections are automatically managed and recycled
 - Configurable pool size and timeout settings
 
 ### Query Optimization
+
 - Single SQL function call per grade operation
 - Efficient team name resolution using indexes
 - Minimal data transfer (single character result)
 
 ### Error Recovery
+
 - Automatic connection retry on transient failures
 - Graceful degradation when game data is unavailable
 - Connection state validation before each operation
@@ -246,6 +276,7 @@ The client uses connection pooling by default to minimize connection overhead:
 ## Best Practices
 
 ### Resource Management
+
 ```typescript
 // Always close connections when done
 const client = new ChatBetGradingClient(connectionString);
@@ -262,6 +293,7 @@ process.on('beforeExit', () => client.close());
 ```
 
 ### Error Handling
+
 ```typescript
 async function gradeWithRetry(client: ChatBetGradingClient, result: ParseResult, maxRetries = 3) {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -280,10 +312,11 @@ async function gradeWithRetry(client: ChatBetGradingClient, result: ParseResult,
 ```
 
 ### Batch Operations
+
 ```typescript
 async function gradeMultiple(client: ChatBetGradingClient, results: ParseResult[]) {
   const grades = await Promise.all(
-    results.map(async (result) => {
+    results.map(async result => {
       try {
         return await client.grade(result);
       } catch (error) {
@@ -309,27 +342,32 @@ async function gradeMultiple(client: ChatBetGradingClient, results: ParseResult[
 ### Common Issues
 
 **Connection Timeouts**
+
 ```typescript
 const client = new ChatBetGradingClient({
   connectionString: '...',
-  connectionTimeout: 30000,  // Increase timeout
-  requestTimeout: 60000      // Increase request timeout
+  connectionTimeout: 30000, // Increase timeout
+  requestTimeout: 60000, // Increase request timeout
 });
 ```
 
 **Grade Returns '?'**
+
 - Match not found (check team names and date)
 - Game data not yet available
 - Invalid contract parameters
 - Series not yet complete
 
 **Memory Leaks**
+
 - Always call `client.close()` when done
 - Use connection pooling appropriately
 - Monitor connection pool metrics
 
 ### Debug Information
+
 Enable SQL debugging in development:
+
 ```typescript
 // Note: This would require additional configuration in a real implementation
 const client = new ChatBetGradingClient({
@@ -340,4 +378,4 @@ const client = new ChatBetGradingClient({
 
 ## License
 
-This grading functionality is part of the chat-bet-parse package and follows the same MIT license terms. 
+This grading functionality is part of the chat-bet-parse package and follows the same MIT license terms.

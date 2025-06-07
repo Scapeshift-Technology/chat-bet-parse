@@ -447,10 +447,10 @@ function parsePropOU(
 
   // Check for individual pattern first: "B. Falter" (single letter, dot, space, name)
   const individualMatch = withoutOU.match(/^([A-Z]\.\s+[A-Za-z]+)\s+(.+)$/);
-  
+
   let contestant: string;
   let propText: string;
-  
+
   if (individualMatch) {
     // Handle individual pattern like "B. Falter Ks"
     contestant = individualMatch[1]; // "B. Falter"
@@ -595,17 +595,17 @@ function parseSeries(
   // Extract team (before "series" and any numbers/modifiers)
   // Handle different series format patterns - try most specific patterns first
   let teamMatch = contractText.match(/([a-zA-Z\s&.]+?)\s*\d+-game\s*series/i);
-  
+
   if (!teamMatch) {
     // Try pattern for "series/X" format
     teamMatch = contractText.match(/([a-zA-Z\s&.]+?)\s*series\/\d+/i);
   }
-  
+
   if (!teamMatch) {
     // Try regular patterns
     teamMatch = contractText.match(/([a-zA-Z\s&.]+?)\s*(?:(?:\d+\s*game\s*)?series|series)/i);
   }
-  
+
   if (!teamMatch) {
     throw new InvalidContractTypeError(rawInput, contractText);
   }

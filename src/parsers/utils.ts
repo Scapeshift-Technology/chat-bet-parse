@@ -305,12 +305,14 @@ export function parseTeam(teamStr: string, rawInput: string): string {
 /**
  * Detect if a contestant name is an individual (follows pattern like "B. Falter")
  */
-export function detectContestantType(contestant: string): import('../types/index').ContestantType | undefined {
+export function detectContestantType(
+  contestant: string
+): import('../types/index').ContestantType | undefined {
   // Check for individual pattern: single letter, dot, space, then name
   if (/^[A-Z]\.\s+[A-Za-z]+/.test(contestant)) {
     return 'Individual';
   }
-  
+
   return undefined;
 }
 

@@ -28,7 +28,7 @@ export type { ContestantType };
 export interface GradingClientConfig {
   /** SQL Server connection string */
   connectionString: string;
-  
+
   /** Connection pool configuration (optional) */
   pool?: {
     max?: number;
@@ -36,10 +36,10 @@ export interface GradingClientConfig {
     idleTimeoutMillis?: number;
     acquireTimeoutMillis?: number;
   };
-  
+
   /** Request timeout in milliseconds (default: 30000) */
   requestTimeout?: number;
-  
+
   /** Connection timeout in milliseconds (default: 15000) */
   connectionTimeout?: number;
 }
@@ -59,18 +59,18 @@ export interface IGradingClient {
    * @returns Promise resolving to grade ('W', 'L', 'P', or '?')
    */
   grade(result: ParseResult, options?: GradingOptions): Promise<GradeResult>;
-  
+
   /**
    * Test the database connection
    * @throws Error if connection fails
    */
   testConnection(): Promise<void>;
-  
+
   /**
    * Close the database connection and clean up resources
    */
   close(): Promise<void>;
-  
+
   /**
    * Get connection status
    */
@@ -91,23 +91,23 @@ export interface GradingSqlParameters {
   Contestant2?: string;
   DaySequence?: number;
   MatchContestantType?: ContestantType;
-  
+
   // Period specification
   PeriodTypeCode: string;
   PeriodNumber: number;
-  
+
   // Contract type and details
   ContractType: string;
   Line?: number;
   IsOver?: boolean;
   SelectedContestant?: string;
   TiesLose?: boolean;
-  
+
   // Prop-specific
   Prop?: string;
   PropContestantType?: ContestantType;
   IsYes?: boolean;
-  
+
   // Series-specific
   SeriesLength?: number;
 }
@@ -169,4 +169,4 @@ export class GradingDataError extends GradingError {
 export interface GradingOptions {
   /** The scheduled date of the match (defaults to contract date or today) */
   matchScheduledDate?: Date;
-} 
+}

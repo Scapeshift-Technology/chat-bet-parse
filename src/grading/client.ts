@@ -11,11 +11,7 @@ import type {
   GradingSqlParameters,
   GradingOptions,
 } from './types';
-import {
-  GradingError,
-  GradingConnectionError,
-  GradingQueryError,
-} from './types';
+import { GradingError, GradingConnectionError, GradingQueryError } from './types';
 import { mapParseResultToSqlParameters, validateGradingParameters } from './mappers';
 
 // ==============================================================================
@@ -86,21 +82,24 @@ export class ChatBetGradingClient implements IGradingClient {
 
       // Convert ParseResult to SQL parameters
       const sqlParams = mapParseResultToSqlParameters(result, options);
-      
+
       // Validate parameters
       validateGradingParameters(sqlParams);
 
       // Execute the grading function
       const grade = await this.executeGradingFunction(sqlParams);
-      
+
       return grade;
     } catch (error) {
       if (error instanceof GradingError) {
         throw error;
       }
-      
+
       const message = error instanceof Error ? error.message : 'Unknown grading error';
-      throw new GradingQueryError(`Failed to grade contract: ${message}`, error instanceof Error ? error : undefined);
+      throw new GradingQueryError(
+        `Failed to grade contract: ${message}`,
+        error instanceof Error ? error : undefined
+      );
     }
   }
 
@@ -179,7 +178,7 @@ export class ChatBetGradingClient implements IGradingClient {
       }
 
       const grade = result.recordset[0].Grade;
-      
+
       // Validate the grade result
       if (!['W', 'L', 'P', '?'].includes(grade)) {
         throw new GradingQueryError(`Invalid grade result: ${grade}`);
@@ -190,17 +189,21 @@ export class ChatBetGradingClient implements IGradingClient {
       if (error instanceof GradingError) {
         throw error;
       }
-      
+
       let message = error instanceof Error ? error.message : 'Unknown SQL execution error';
-      
+
       // Extract actual error message from SQL Server conversion errors
-      const conversionErrorPattern = /^Conversion failed when converting the (?:nvarchar|varchar) value '(.+?)' to data type tinyint\.?$/;
+      const conversionErrorPattern =
+        /^Conversion failed when converting the (?:nvarchar|varchar) value '(.+?)' to data type tinyint\.?$/;
       const match = message.match(conversionErrorPattern);
       if (match) {
         message = match[1].trim();
       }
-      
-      throw new GradingQueryError(`SQL execution failed: ${message}`, error instanceof Error ? error : undefined);
+
+      throw new GradingQueryError(
+        `SQL execution failed: ${message}`,
+        error instanceof Error ? error : undefined
+      );
     }
   }
 }
@@ -221,4 +224,4 @@ export function createGradingClient(connectionString: string): ChatBetGradingCli
  */
 export function createGradingClientWithConfig(config: GradingClientConfig): ChatBetGradingClient {
   return new ChatBetGradingClient(config);
-} 
+}
