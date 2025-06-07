@@ -19,6 +19,7 @@ export interface TestCase {
   expectedRotationNumber?: number;
   expectedDaySequence?: number;
   expectedPeriod?: { PeriodTypeCode: string; PeriodNumber: number };
+  expectedContestantType?: 'Individual' | 'TeamAdHoc' | 'TeamLeague';
 }
 
 export interface ErrorTestCase {
@@ -434,6 +435,27 @@ export const validFillTestCases: TestCase[] = [
     expectedTeam1: 'Red Sox',
     expectedSeriesLength: 4
   },
+  {
+    description: 'YG Series "X-Game Series" format with decimal thousands',
+    input: 'YG Lakers 7-Game Series @ +120 = 1.0',
+    expectedChatType: 'fill',
+    expectedContractType: 'Series',
+    expectedPrice: 120,
+    expectedSize: 1000,
+    expectedTeam1: 'Lakers',
+    expectedSeriesLength: 7
+  },
+  {
+    description: 'YG Series "series/X" format with decimal thousands',
+    input: 'YG 856 St. Louis Cardinals series/5 -120 = 2.0',
+    expectedChatType: 'fill',
+    expectedContractType: 'Series',
+    expectedPrice: -120,
+    expectedSize: 2000,
+    expectedRotationNumber: 856,
+    expectedTeam1: 'St. Louis Cardinals',
+    expectedSeriesLength: 5
+  },
 
   // Props (Over/Under)
   {
@@ -535,6 +557,58 @@ export const gameNumberTestCases: TestCase[] = [
     expectedTeam1: 'COL',
     expectedTeam2: 'ARI',
     expectedDaySequence: 2
+  }
+];
+
+// ==============================================================================
+// F3 PERIOD PARSING TEST CASES
+// ==============================================================================
+
+export const f3PeriodTestCases: TestCase[] = [
+  {
+    description: 'YG Game total F3 over',
+    input: 'YG Padres/Pirates F3 o3 @ +200 = 2.0',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: 200,
+    expectedSize: 2000,
+    expectedTeam1: 'Padres',
+    expectedTeam2: 'Pirates',
+    expectedLine: 3,
+    expectedIsOver: true,
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 13 }
+  },
+  {
+    description: 'YG Team total F3 over',
+    input: 'YG Padres F3 TT o3 @ -105 = 1.0',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPointsContestant',
+    expectedPrice: -105,
+    expectedSize: 1000,
+    expectedTeam1: 'Padres',
+    expectedLine: 3,
+    expectedIsOver: true,
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 13 }
+  }
+];
+
+// ==============================================================================
+// INDIVIDUAL CONTESTANT TEST CASES
+// ==============================================================================
+
+export const individualContestantTestCases: TestCase[] = [
+  {
+    description: 'YG Individual player strikeouts over',
+    input: 'YG B. Falter Ks o1.5 @ +120 = 1.0',
+    expectedChatType: 'fill',
+    expectedContractType: 'PropOU',
+    expectedPrice: 120,
+    expectedSize: 1000,
+    expectedTeam1: 'B. Falter',
+    expectedLine: 1.5,
+    expectedIsOver: true,
+    expectedProp: 'Ks',
+    expectedContestantType: 'Individual'
   }
 ];
 
@@ -678,5 +752,7 @@ export const allValidTestCases = [
   ...validOrderTestCases,
   ...validFillTestCases, 
   ...specialPriceTestCases,
-  ...gameNumberTestCases
+  ...gameNumberTestCases,
+  ...f3PeriodTestCases,
+  ...individualContestantTestCases
 ]; 

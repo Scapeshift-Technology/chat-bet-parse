@@ -44,6 +44,7 @@ import {
   inferSportAndLeague,
   detectPropType,
   validatePropFormat,
+  detectContestantType,
 } from './utils';
 
 // ==============================================================================
@@ -425,7 +426,7 @@ function parseSpread(
 }
 
 /**
- * Parse PropOU bet: "Player123 passing yards o250.5"
+ * Parse PropOU bet: "Player123 passing yards o250.5" or "B. Falter Ks o1.5"
  */
 function parsePropOU(
   contractText: string,
@@ -444,19 +445,33 @@ function parsePropOU(
   // Remove the o/u part to get player/team and prop type
   const withoutOU = contractText.replace(/\s*[ou]\d+(?:\.\d+)?/i, '').trim();
 
-  // Extract player/team (first word typically) and prop type
-  const parts = withoutOU.trim().split(/\s+/);
-  if (parts.length < 2) {
-    throw new InvalidContractTypeError(rawInput, contractText);
+  // Check for individual pattern first: "B. Falter" (single letter, dot, space, name)
+  const individualMatch = withoutOU.match(/^([A-Z]\.\s+[A-Za-z]+)\s+(.+)$/);
+  
+  let contestant: string;
+  let propText: string;
+  
+  if (individualMatch) {
+    // Handle individual pattern like "B. Falter Ks"
+    contestant = individualMatch[1]; // "B. Falter"
+    propText = individualMatch[2].toLowerCase(); // "ks"
+  } else {
+    // Handle regular pattern like "Player123 passing yards"
+    const parts = withoutOU.trim().split(/\s+/);
+    if (parts.length < 2) {
+      throw new InvalidContractTypeError(rawInput, contractText);
+    }
+    contestant = parts[0];
+    propText = parts.slice(1).join(' ').toLowerCase();
   }
-
-  const contestant = parts[0];
-  const propText = parts.slice(1).join(' ').toLowerCase();
 
   const propInfo = detectPropType(propText);
   if (!propInfo || propInfo.category !== 'PropOU') {
     throw new InvalidContractTypeError(rawInput, `Invalid PropOU type: ${propText}`);
   }
+
+  // Detect contestant type
+  const contestantType = detectContestantType(contestant);
 
   // Create basic match info
   const today = new Date();
@@ -473,7 +488,7 @@ function parsePropOU(
     HasContestant: true,
     HasLine: true,
     ContractSportCompetitionMatchType: 'Prop',
-    ContestantType: 'Individual', // Usually individual players for these props
+    ContestantType: contestantType,
     Prop: propInfo.standardName,
     Contestant: contestant,
     Line: line,
@@ -504,6 +519,9 @@ function parsePropYN(
     throw new InvalidContractTypeError(rawInput, `Invalid PropYN type: ${propText}`);
   }
 
+  // Detect contestant type
+  const contestantType = detectContestantType(team);
+
   // Determine IsYes value based on prop type
   let isYes: boolean;
   if (propInfo.standardName === 'FirstToScore') {
@@ -529,7 +547,7 @@ function parsePropYN(
     HasContestant: true,
     HasLine: false,
     ContractSportCompetitionMatchType: 'Prop',
-    ContestantType: 'TeamLeague',
+    ContestantType: contestantType,
     Prop: propInfo.standardName,
     Contestant: team,
     IsYes: isYes,
@@ -537,7 +555,7 @@ function parsePropYN(
 }
 
 /**
- * Parse series bet: "852 Guardians series" or "854 Yankees 4 game series"
+ * Parse series bet: "852 Guardians series" or "854 Yankees 4 game series" or "Lakers 7-Game Series" or "Cardinals series/5"
  */
 function parseSeries(
   contractText: string,
@@ -546,20 +564,48 @@ function parseSeries(
   league?: League
 ): ContractSportCompetitionSeries {
   // Extract series length if specified
-  // Try "out of X" pattern first
-  const outOfMatch = contractText.match(/series\s+out\s+of\s+(\d+)/i);
+  // Try "series/X" pattern first
+  const seriesSlashMatch = contractText.match(/series\/(\d+)/i);
   let seriesLength: number;
 
-  if (outOfMatch) {
-    seriesLength = parseInt(outOfMatch[1]);
+  if (seriesSlashMatch) {
+    seriesLength = parseInt(seriesSlashMatch[1]);
   } else {
-    // Try "X game series" pattern
-    const lengthMatch = contractText.match(/(\d+)\s*game\s*series/i);
-    seriesLength = lengthMatch ? parseInt(lengthMatch[1]) : 3; // Default to 3
+    // Try "out of X" pattern
+    const outOfMatch = contractText.match(/series\s+out\s+of\s+(\d+)/i);
+    if (outOfMatch) {
+      seriesLength = parseInt(outOfMatch[1]);
+    } else {
+      // Try "X game series" pattern
+      const lengthMatch = contractText.match(/(\d+)\s*game\s*series/i);
+      if (lengthMatch) {
+        seriesLength = parseInt(lengthMatch[1]);
+      } else {
+        // Try "X-Game Series" pattern (with hyphen and capital G)
+        const hyphenMatch = contractText.match(/(\d+)-game\s*series/i);
+        if (hyphenMatch) {
+          seriesLength = parseInt(hyphenMatch[1]);
+        } else {
+          seriesLength = 3; // Default to 3
+        }
+      }
+    }
   }
 
   // Extract team (before "series" and any numbers/modifiers)
-  const teamMatch = contractText.match(/([a-zA-Z\s&]+?)\s*(?:(?:\d+\s*game\s*)?series|series)/i);
+  // Handle different series format patterns - try most specific patterns first
+  let teamMatch = contractText.match(/([a-zA-Z\s&.]+?)\s*\d+-game\s*series/i);
+  
+  if (!teamMatch) {
+    // Try pattern for "series/X" format
+    teamMatch = contractText.match(/([a-zA-Z\s&.]+?)\s*series\/\d+/i);
+  }
+  
+  if (!teamMatch) {
+    // Try regular patterns
+    teamMatch = contractText.match(/([a-zA-Z\s&.]+?)\s*(?:(?:\d+\s*game\s*)?series|series)/i);
+  }
+  
   if (!teamMatch) {
     throw new InvalidContractTypeError(rawInput, contractText);
   }
@@ -619,7 +665,7 @@ function parseMatchInfo(
   let period: Period = { PeriodTypeCode: 'M', PeriodNumber: 0 }; // Default
   const periodPatterns = [
     /\b(\d+(?:st|nd|rd|th)?\s*(?:inning|i))\b/i,
-    /\b(f5|h1|1h|h2|2h)\b/i,
+    /\b(f5|f3|h1|1h|h2|2h)\b/i,
     /\b(\d+(?:st|nd|rd|th)?\s*(?:quarter|q))\b/i,
     /\b(\d+(?:st|nd|rd|th)?\s*(?:period|p))\b/i,
     /\b(first\s*(?:half|five|5|inning|i))\b/i,

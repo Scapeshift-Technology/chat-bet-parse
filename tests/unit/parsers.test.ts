@@ -21,8 +21,10 @@ import {
   allValidTestCases,
   errorTestCases,
   validOrderTestCases,
-  validFillTestCases
-} from '../fixtures/test-cases';
+  validFillTestCases,
+  f3PeriodTestCases,
+  individualContestantTestCases
+} from '../fixtures/parsers-test-cases';
 
 describe('Chat Bet Parsing', () => {
   
@@ -53,6 +55,7 @@ describe('Chat Bet Parsing', () => {
       // Rotation number
       if (testCase.expectedRotationNumber) {
         expect(result.rotationNumber).toBe(testCase.expectedRotationNumber);
+        expect('RotationNumber' in result.contract)
         if ('RotationNumber' in result.contract) {
           expect(result.contract.RotationNumber).toBe(testCase.expectedRotationNumber);
         }
@@ -65,6 +68,7 @@ describe('Chat Bet Parsing', () => {
       
       // Period info
       if (testCase.expectedPeriod) {
+        expect('Period' in result.contract)
         if ('Period' in result.contract) {
           expect(result.contract.Period.PeriodTypeCode).toBe(testCase.expectedPeriod.PeriodTypeCode);
           expect(result.contract.Period.PeriodNumber).toBe(testCase.expectedPeriod.PeriodNumber);
@@ -73,26 +77,38 @@ describe('Chat Bet Parsing', () => {
       
       // Contract-specific fields
       if (testCase.expectedLine !== undefined) {
+        expect('Line' in result.contract)
         if ('Line' in result.contract) {
           expect(result.contract.Line).toBe(testCase.expectedLine);
         }
       }
       
       if (testCase.expectedIsOver !== undefined) {
+        expect('IsOver' in result.contract)
         if ('IsOver' in result.contract) {
           expect(result.contract.IsOver).toBe(testCase.expectedIsOver);
         }
       }
       
       if (testCase.expectedProp) {
+        expect('Prop' in result.contract)
         if ('Prop' in result.contract) {
           expect(result.contract.Prop).toBe(testCase.expectedProp);
         }
       }
       
       if (testCase.expectedSeriesLength) {
+        expect('SeriesLength' in result.contract)
         if ('SeriesLength' in result.contract) {
           expect(result.contract.SeriesLength).toBe(testCase.expectedSeriesLength);
+        }
+      }
+      
+      // ContestantType field for props
+      if (testCase.expectedContestantType) {
+        expect('ContestantType' in result.contract)
+        if ('ContestantType' in result.contract) {
+          expect(result.contract.ContestantType).toBe(testCase.expectedContestantType);
         }
       }
     });
@@ -288,6 +304,8 @@ describe('Chat Bet Parsing', () => {
     
     test('should parse inning periods', () => {
       const result = parseChat('IW Padres/Pirates 1st inning u0.5 @ +100');
+
+      expect('Period' in result.contract)
       if ('Period' in result.contract) {
         expect(result.contract.Period.PeriodTypeCode).toBe('I');
         expect(result.contract.Period.PeriodNumber).toBe(1);
@@ -296,17 +314,92 @@ describe('Chat Bet Parsing', () => {
     
     test('should parse F5 as first half', () => {
       const result = parseChat('IW ATH/SF F5 o4.5 @ -117');
+
+      expect('Period' in result.contract)
       if ('Period' in result.contract) {
         expect(result.contract.Period.PeriodTypeCode).toBe('H');
         expect(result.contract.Period.PeriodNumber).toBe(1);
       }
     });
     
+    test('should parse F3 as first three innings', () => {
+      const result = parseChat('YG Padres/Pirates F3 o3 @ +200 = 2.0');
+
+      expect('Period' in result.contract)
+      if ('Period' in result.contract) {
+        expect(result.contract.Period.PeriodTypeCode).toBe('H');
+        expect(result.contract.Period.PeriodNumber).toBe(13);
+      }
+    });
+    
     test('should default to full game when no period specified', () => {
       const result = parseChat('IW Padres/Pirates u0.5 @ +100');
+
+      expect('Period' in result.contract)
       if ('Period' in result.contract) {
         expect(result.contract.Period.PeriodTypeCode).toBe('M');
         expect(result.contract.Period.PeriodNumber).toBe(0);
+      }
+    });
+  });
+  
+  // ==============================================================================
+  // F3 PERIOD PARSING TESTS
+  // ==============================================================================
+  
+  describe('F3 Period Parsing', () => {
+    test.each(f3PeriodTestCases)('$description', (testCase) => {
+      const result = parseChat(testCase.input);
+      
+      expect(result.chatType).toBe(testCase.expectedChatType);
+      expect(result.contractType).toBe(testCase.expectedContractType);
+      
+      if (testCase.expectedPeriod) {
+        expect('Period' in result.contract)
+        if ('Period' in result.contract) {
+          expect(result.contract.Period.PeriodTypeCode).toBe(testCase.expectedPeriod.PeriodTypeCode);
+          expect(result.contract.Period.PeriodNumber).toBe(testCase.expectedPeriod.PeriodNumber);
+        }
+      }
+    });
+  });
+  
+  // ==============================================================================
+  // INDIVIDUAL CONTESTANT DETECTION TESTS
+  // ==============================================================================
+  
+  describe('Individual Contestant Detection', () => {
+    test.each(individualContestantTestCases)('$description', (testCase) => {
+      const result = parseChat(testCase.input);
+      
+      expect(result.chatType).toBe(testCase.expectedChatType);
+      expect(result.contractType).toBe(testCase.expectedContractType);
+      
+      if (testCase.expectedContestantType) {
+        expect('ContestantType' in result.contract)
+        if ('ContestantType' in result.contract) {
+          expect(result.contract.ContestantType).toBe(testCase.expectedContestantType);
+        }
+      }
+    });
+    
+    test('should detect Individual contestant type for B. Name pattern', () => {
+      const result = parseChat('YG B. Falter Ks o1.5 @ +120 = 1.0');
+      
+      expect(result.contractType).toBe('PropOU');
+      expect('ContestantType' in result.contract)
+      if ('ContestantType' in result.contract) {
+        expect(result.contract.ContestantType).toBe('Individual');
+      }
+    });
+    
+    test('should not set ContestantType for regular team names', () => {
+      const result = parseChat('YG Team123 passing yards o250.5 @ -115 = 1.5');
+      
+      expect(result.contractType).toBe('PropOU');
+      expect('ContestantType' in result.contract)
+      if ('ContestantType' in result.contract) {
+        expect(result.contract.ContestantType).toBeUndefined();
       }
     });
   });
@@ -342,6 +435,8 @@ describe('Chat Bet Parsing', () => {
     test('should parse rotation numbers correctly', () => {
       const result = parseChat('IW 507 Thunder/Nuggets o213.5');
       expect(result.rotationNumber).toBe(507);
+
+      expect('RotationNumber' in result.contract)
       if ('RotationNumber' in result.contract) {
         expect(result.contract.RotationNumber).toBe(507);
       }
@@ -426,6 +521,8 @@ describe('Chat Bet Parsing', () => {
     
     test('should handle fractional lines', () => {
       const result = parseChat('IW Padres/Pirates u0.5 @ +100');
+
+      expect('Line' in result.contract)
       if ('Line' in result.contract) {
         expect(result.contract.Line).toBe(0.5);
       }
@@ -433,6 +530,8 @@ describe('Chat Bet Parsing', () => {
     
     test('should handle high NBA totals', () => {
       const result = parseChat('IW Thunder/Nuggets o240.5 @ -110');
+
+      expect('Line' in result.contract)
       if ('Line' in result.contract) {
         expect(result.contract.Line).toBe(240.5);
       }
@@ -453,6 +552,8 @@ describe('Chat Bet Parsing', () => {
     
     test('should set correct discriminator fields for TotalPoints', () => {
       const result = parseChat('IW Padres/Pirates u0.5 @ +100');
+
+      expect('HasContestant' in result.contract)
       if ('HasContestant' in result.contract) {
         expect(result.contract.HasContestant).toBe(false);
         expect(result.contract.HasLine).toBe(true);
@@ -462,6 +563,8 @@ describe('Chat Bet Parsing', () => {
     
     test('should set correct discriminator fields for TotalPointsContestant', () => {
       const result = parseChat('IW LAA TT o3.5 @ -115');
+
+      expect('HasContestant' in result.contract)
       if ('HasContestant' in result.contract) {
         expect(result.contract.HasContestant).toBe(true);
         expect(result.contract.HasLine).toBe(true);
@@ -471,6 +574,8 @@ describe('Chat Bet Parsing', () => {
     
     test('should set correct discriminator fields for HandicapContestantML', () => {
       const result = parseChat('IW 872 Athletics @ +145');
+
+      expect('HasContestant' in result.contract)
       if ('HasContestant' in result.contract) {
         expect(result.contract.HasContestant).toBe(true);
         expect(result.contract.HasLine).toBe(false);
@@ -480,6 +585,8 @@ describe('Chat Bet Parsing', () => {
     
     test('should set correct discriminator fields for HandicapContestantLine', () => {
       const result = parseChat('IW 870 Mariners -1.5 +135');
+
+      expect('HasContestant' in result.contract)
       if ('HasContestant' in result.contract) {
         expect(result.contract.HasContestant).toBe(true);
         expect(result.contract.HasLine).toBe(true);
@@ -489,6 +596,8 @@ describe('Chat Bet Parsing', () => {
     
     test('should set correct discriminator fields for PropOU', () => {
       const result = parseChat('IW Player123 passing yards o250.5 @ -115');
+
+      expect('HasContestant' in result.contract)
       if ('HasContestant' in result.contract) {
         expect(result.contract.HasContestant).toBe(true);
         expect(result.contract.HasLine).toBe(true);
@@ -498,6 +607,8 @@ describe('Chat Bet Parsing', () => {
     
     test('should set correct discriminator fields for PropYN', () => {
       const result = parseChat('IW CIN 1st team to score @ -115');
+
+      expect('HasContestant' in result.contract)
       if ('HasContestant' in result.contract) {
         expect(result.contract.HasContestant).toBe(true);
         expect(result.contract.HasLine).toBe(false);
@@ -509,13 +620,6 @@ describe('Chat Bet Parsing', () => {
       const result = parseChat('IW 872 Athletics @ +145');
       if ('TiesLose' in result.contract) {
         expect(result.contract.TiesLose).toBe(false);
-      }
-    });
-    
-    test('should set ContestantType to TeamLeague for team props', () => {
-      const result = parseChat('IW CIN 1st team to score @ -115');
-      if ('ContestantType' in result.contract) {
-        expect(result.contract.ContestantType).toBe('TeamLeague');
       }
     });
   });

@@ -1,0 +1,8 @@
+# Ignore environment files
+*.env
+
+# Additional common patterns to exclude from Cursor
+node_modules/
+dist/
+coverage/
+.git/ 

@@ -69,7 +69,7 @@ export interface Match {
 
 export type ContractSportCompetitionMatchType = 'Handicap' | 'TotalPoints' | 'Prop';
 
-export type ContestantType = 'TeamLeague' | 'Individual';
+export type ContestantType = 'Individual' | 'TeamAdHoc' | 'TeamLeague';
 
 // ==============================================================================
 // BASE CONTRACT INTERFACE
@@ -137,7 +137,7 @@ export interface ContractSportCompetitionMatchPropOU extends ContractSportCompet
   HasContestant: true;
   HasLine: true;
   ContractSportCompetitionMatchType: 'Prop';
-  ContestantType: ContestantType;
+  ContestantType?: ContestantType;
   Prop: string; // Standardized prop name
   Contestant: string;
   Line: number;
@@ -149,7 +149,7 @@ export interface ContractSportCompetitionMatchPropYN extends ContractSportCompet
   HasContestant: true;
   HasLine: false;
   ContractSportCompetitionMatchType: 'Prop';
-  ContestantType: ContestantType;
+  ContestantType?: ContestantType;
   Prop: string; // e.g., "FirstTeamToScore", "LastTeamToScore"
   Contestant: string;
   IsYes: boolean; // true for "first", false for "last" in first/last props

@@ -8,7 +8,8 @@ A TypeScript npm package for parsing sports betting chat messages into structure
 - 📝 **Rich parsing** - Handles various chat betting syntax formats for both orders and fills
 - 🔒 **Type-safe** - Full TypeScript support with discriminated unions
 - 🗃️ **SQL Server ready** - Types designed for stored procedure integration
-- ⚡ **Fast & lightweight** - Zero runtime dependencies
+- ⚡ **Fast & lightweight** - Zero runtime dependencies for parsing
+- 🏆 **Contract grading** - SQL Server integration for grading parsed contracts (optional)
 - 🧪 **Well tested** - Comprehensive test suite with 100% coverage
 
 ## Installation
@@ -17,7 +18,14 @@ A TypeScript npm package for parsing sports betting chat messages into structure
 npm install chat-bet-parse
 ```
 
+For grading functionality (optional):
+```bash
+npm install chat-bet-parse mssql
+```
+
 ## Quick Start
+
+### Parsing
 
 ```typescript
 import { parseChat } from 'chat-bet-parse';
@@ -41,6 +49,113 @@ console.log(orderResult.chatType); // 'order'
 console.log(orderResult.contractType); // 'TotalPoints'
 console.log(orderResult.bet.Size); // undefined (no size specified)
 ```
+
+### Grading (Optional)
+
+```typescript
+import { parseChat, ChatBetGradingClient } from 'chat-bet-parse';
+
+// Initialize grading client (requires Scapeshift SQL Server database)
+const gradingClient = new ChatBetGradingClient(
+  'Server=your-server;Database=your-db;User Id=user;Password=pass;'
+);
+
+// Parse and grade a bet
+const result = parseChat('YG Padres/Pirates 1st inning u0.5 @ +100 = 0.094');
+const grade = await gradingClient.grade(result);
+console.log('Bet result:', grade); // 'W', 'L', 'P', or '?'
+
+await gradingClient.close();
+```
+
+## Contract Grading
+
+The package includes optional SQL Server integration for grading parsed contracts against actual game outcomes. This functionality requires a licensed connection to Scapeshift's SQL Server database.
+
+**Supported grading types:**
+- **Game Totals**: Over/under on total points scored
+- **Team Totals**: Over/under on team-specific points  
+- **Moneylines**: Straight win/loss outcomes
+- **Spreads**: Point spread with handicap lines
+- **Series**: Multi-game series outcomes
+- **Props**: Player/team proposition bets (basic implementation)
+
+**Grade results:**
+- `'W'` - Win
+- `'L'` - Loss
+- `'P'` - Push (tie)
+- `'?'` - Unable to grade (missing data, incomplete game, etc.)
+
+### SQL Server Function
+
+The grading functionality is powered by the `dbo.Contract_CALCULATE_Grade_fn` SQL Server function which is deployed on Scapeshift's SQL Server database:
+
+```sql
+
+**Function Signature:**
+```sql
+dbo.Contract_CALCULATE_Grade_fn(
+    @MatchScheduledDate DATE,
+    @Contestant1 CHAR(50),
+    @Contestant2 CHAR(50) = NULL,
+    @DaySequence TINYINT = NULL,
+    @MatchContestantType CHAR(10) = NULL,
+    @PeriodTypeCode CHAR(2),
+    @PeriodNumber TINYINT,
+    @ContractType VARCHAR(30),
+    @Line DECIMAL(5,2) = NULL,
+    @IsOver BIT = NULL,
+    @SelectedContestant CHAR(50) = NULL,
+    @TiesLose BIT = 0,
+    @Prop VARCHAR(20) = NULL,
+    @PropContestantType CHAR(10) = NULL,
+    @IsYes BIT = NULL,
+    @SeriesLength TINYINT = NULL
+) RETURNS CHAR(1)
+```
+
+**Valid Contestant Types:**
+- **Individual**: Individual competitors (e.g., tennis players, golfers)
+- **TeamAdHoc**: Teams that register to play a single event together (e.g., doubles tennis pairs)  
+- **TeamLeague**: Teams that play together as a unit across multiple events (e.g., MLB teams, NBA teams)
+
+**Contract Types Supported:**
+- **TotalPoints**: Game total over/under bets
+- **TotalPointsContestant**: Team total over/under bets  
+- **HandicapContestantML**: Moneyline (straight win/loss) bets
+- **HandicapContestantLine**: Point spread bets
+- **PropOU**: Proposition over/under bets
+- **PropYN**: Proposition yes/no bets
+- **Series**: Multi-game series outcome bets
+
+**Example SQL Usage:**
+```sql
+SELECT dbo.Contract_CALCULATE_Grade_fn(
+    '2024-01-15',           -- MatchScheduledDate
+    'Yankees',              -- Contestant1  
+    'Red Sox',              -- Contestant2
+    NULL,                   -- DaySequence (for doubleheaders)
+    'TeamLeague',           -- MatchContestantType
+    'FG',                   -- PeriodTypeCode (Full Game)
+    1,                      -- PeriodNumber
+    'TotalPoints',          -- ContractType
+    9.5,                    -- Line
+    1,                      -- IsOver (1 for over, 0 for under)
+    NULL,                   -- SelectedContestant (for team totals)
+    0,                      -- TiesLose
+    NULL,                   -- Prop (for prop bets)
+    NULL,                   -- PropContestantType
+    NULL,                   -- IsYes (for yes/no props)
+    NULL                    -- SeriesLength (for series bets)
+) as Grade;
+```
+
+**Implementation Notes:**
+- PropYN grading may require enhancement for specific prop types
+- Series grading requires all games in the series to be completed
+- Function only accepts unambiguous contestant name matches
+
+See [src/grading/README.md](src/grading/README.md) for detailed grading documentation.
 
 ## API
 
@@ -126,7 +241,7 @@ period           = (first (inning | half | quarter | hockey_period | "five" | "5
                    (second (inning | half | quarter | hockey_period)) |
                    (third (quarter | hockey_period)) |
                    (fourth quarter) |
-                   "f5" | "h1" | "1h" | "h2" | "2h" |
+                   "f5" | "f3" | "h1" | "1h" | "h2" | "2h" |
                    "q1" | "1q" | "q2" | "2q" | "q3" | "3q" | "q4" | "4q" |
                    "p1" | "1p" | "p2" | "2p" | "p3" | "3p"
 
@@ -169,7 +284,11 @@ first_to_score   = (first ("to score" | "team to score"))
 
 (* 6. Series *)
 series           = team "series" [series_suffix]
-series_suffix    = "out of" digit+                (* defaults to "out of 3" if not specified *)
+series_suffix    = "out of" digit+ |                  (* "out of 4" *)
+                   digit+ "game series" |             (* "4 game series" *)  
+                   digit+ "-game series" |            (* "7-Game Series" *)
+                   "/" digit+                         (* "series/5" *)
+                                                      (* defaults to "out of 3" if not specified *)
 ```
 
 ### Examples by Contract Type
@@ -208,6 +327,8 @@ series_suffix    = "out of" digit+                (* defaults to "out of 3" if n
 - `YG 852 Guardians series -105 @ 3k` (k_size = $3,000, default 3-game series)
 - `YG 854 Yankees 4 game series +110 @ 1k` (k_size = $1,000)
 - `YG 856 Red Sox series out of 4 -120 @ 2.0` (decimal_thousands_size = $2,000)
+- `YG Lakers 7-Game Series @ +120 = 1.0` (decimal_thousands_size = $1,000)
+- `YG 856 St. Louis Cardinals series/5 -120 = 2.0` (decimal_thousands_size = $2,000)
 
 #### Chat Fills (Executed Bets)
 **Game Totals**

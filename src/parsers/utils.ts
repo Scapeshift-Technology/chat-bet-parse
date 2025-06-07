@@ -185,6 +185,11 @@ export function parsePeriod(periodStr: string, rawInput: string): Period {
     return { PeriodTypeCode: 'H', PeriodNumber: 1 };
   }
 
+  // First three innings pattern: f3
+  if (cleaned === 'f3') {
+    return { PeriodTypeCode: 'H', PeriodNumber: 13 };
+  }
+
   // Second half patterns: h2, 2h, second half, 2nd half
   if (
     cleaned === 'h2' ||
@@ -276,7 +281,7 @@ export function parseRotationNumber(rotationStr: string, rawInput: string): numb
 // ==============================================================================
 
 /**
- * Clean and validate team name
+ * Clean and validate team name, with detection for individual contestants
  */
 export function parseTeam(teamStr: string, rawInput: string): string {
   const cleaned = teamStr.trim();
@@ -295,6 +300,18 @@ export function parseTeam(teamStr: string, rawInput: string): string {
   }
 
   return cleaned;
+}
+
+/**
+ * Detect if a contestant name is an individual (follows pattern like "B. Falter")
+ */
+export function detectContestantType(contestant: string): import('../types/index').ContestantType | undefined {
+  // Check for individual pattern: single letter, dot, space, then name
+  if (/^[A-Z]\.\s+[A-Za-z]+/.test(contestant)) {
+    return 'Individual';
+  }
+  
+  return undefined;
 }
 
 /**
