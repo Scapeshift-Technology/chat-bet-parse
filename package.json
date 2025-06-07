@@ -39,16 +39,16 @@
     "sql-server",
     "contracts"
   ],
-  "author": "jcarr",
+  "author": "Oscar Jones",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jcarr/chat-bet-parse.git"
+    "url": "git+https://github.com/Scapeshift-Technology/chat-bet-parse.git"
   },
   "bugs": {
-    "url": "https://github.com/jcarr/chat-bet-parse/issues"
+    "url": "https://github.com/Scapeshift-Technology/chat-bet-parse/issues"
   },
-  "homepage": "https://github.com/jcarr/chat-bet-parse#readme",
+  "homepage": "https://github.com/Scapeshift-Technology/chat-bet-parse#readme",
   "dependencies": {
     "mssql": "^11.0.1"
   },

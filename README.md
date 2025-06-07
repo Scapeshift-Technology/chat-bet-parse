@@ -1,6 +1,6 @@
 # chat-bet-parse
 
-A TypeScript npm package for parsing sports betting chat messages into structured data types compatible with SQL Server stored procedures. Supports both chat orders (IW - "I want") and chat fills (YG - "You got") across multiple sports including MLB and NBA.
+A TypeScript npm package for parsing sports betting chat messages into structured data types compatible with SQL Server stored procedures. Supports both chat orders (IW - "I want") and chat fills (YG - "You got") across multiple sports including MLB and NBA, with optional auto-grading functionality against real game results.
 
 ## Features
 
