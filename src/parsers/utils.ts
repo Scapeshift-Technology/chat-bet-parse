@@ -416,8 +416,10 @@ const PROP_TYPE_MAP: Record<string, PropTypeInfo> = {
   'first team to score': { standardName: 'FirstToScore', category: 'PropYN' },
   '1st team to score': { standardName: 'FirstToScore', category: 'PropYN' },
   'first to score': { standardName: 'FirstToScore', category: 'PropYN' },
+  'to score first': { standardName: 'FirstToScore', category: 'PropYN' },
   'last team to score': { standardName: 'LastToScore', category: 'PropYN' },
   'last to score': { standardName: 'LastToScore', category: 'PropYN' },
+  'to score last': { standardName: 'LastToScore', category: 'PropYN' },
 };
 
 /**

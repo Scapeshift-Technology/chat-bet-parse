@@ -623,4 +623,45 @@ describe('Chat Bet Parsing', () => {
       }
     });
   });
+  
+  // ==============================================================================
+  // SCORE FIRST/LAST PHRASE PARSING TESTS
+  // ==============================================================================
+  
+  describe('Score First/Last Phrase Parsing', () => {
+    
+    test('should parse "to score first" and "first to score" as the same thing', () => {
+      const result1 = parseChat('IW CIN to score first @ -115');
+      const result2 = parseChat('IW CIN first to score @ -115');
+      
+      expect(result1.contractType).toBe('PropYN');
+      expect(result2.contractType).toBe('PropYN');
+      expect(result1.contract.Match.Team1).toBe('CIN');
+      expect(result2.contract.Match.Team1).toBe('CIN');
+      
+      // Both should have the same prop text
+      expect('Prop' in result1.contract)
+      expect('Prop' in result2.contract)
+      if ('Prop' in result1.contract && 'Prop' in result2.contract) {
+        expect(result1.contract.Prop).toBe(result2.contract.Prop);
+      }
+    });
+    
+    test('should parse "to score last" and "last to score" as the same thing', () => {
+      const result1 = parseChat('IW CIN to score last @ -115');
+      const result2 = parseChat('IW CIN last to score @ -115');
+      
+      expect(result1.contractType).toBe('PropYN');
+      expect(result2.contractType).toBe('PropYN');
+      expect(result1.contract.Match.Team1).toBe('CIN');
+      expect(result2.contract.Match.Team1).toBe('CIN');
+      
+      // Both should have the same prop text
+      expect('Prop' in result1.contract)
+      expect('Prop' in result2.contract)
+      if ('Prop' in result1.contract && 'Prop' in result2.contract) {
+        expect(result1.contract.Prop).toBe(result2.contract.Prop);
+      }
+    });
+  });
 }); 
