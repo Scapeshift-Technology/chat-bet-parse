@@ -1,49 +1,112 @@
-name: Release
+name: Release Pipeline
 
+# Trigger the workflow on tag pushes (e.g., v1.0.0)
 on:
   push:
-    branches:
-      - main
-
-concurrency: ${{ github.workflow }}-${{ github.ref }}
+    tags: [ 'v*.*.*' ]
 
 jobs:
-  # First run the CI workflow
-  ci:
-    uses: ./.github/workflows/ci.yml
-    secrets:
-      DATABASE_CONNECTION_STRING: ${{ secrets.DATABASE_CONNECTION_STRING }}
-
-  release:
-    name: Release
+  # Test and build job
+  test-and-build:
     runs-on: ubuntu-latest
-    needs: ci  # Only run release after CI passes
+    timeout-minutes: 20
     permissions:
-      contents: write
-      pull-requests: write
-      id-token: write
+      contents: read # Read needed for checkout
+    strategy:
+      matrix:
+        node-version: [16.x, 18.x, 20.x]
     steps:
-      - name: Checkout Repo
+      - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 18.x
+      - name: Set up Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
-          node-version: 18.x
+          node-version: ${{ matrix.node-version }}
           cache: 'npm'
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: npm ci
+
+      - name: Update package.json version from tag
+        if: matrix.node-version == '20.x' # Only update version once
+        run: |
+          TAG="${{ github.ref_name }}"
+          echo "Input version tag: $TAG"
+          VERSION=$(echo "$TAG" | sed 's/^v//')
+          echo "Setting package.json version to: $VERSION"
+          npm pkg set version="$VERSION"
+
+      - name: Run linter
+        run: npm run lint
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Run tests with coverage
+        run: npm run test:coverage
+        env:
+          DATABASE_CONNECTION_STRING: ${{ secrets.DATABASE_CONNECTION_STRING }}
 
       - name: Build package
         run: npm run build
 
-      - name: Create Release Pull Request or Publish to npm
-        id: changesets
-        uses: changesets/action@v1
+      - name: Upload build artifacts
+        if: matrix.node-version == '20.x' # Only upload artifacts once
+        uses: actions/upload-artifact@v4
         with:
-          # This expects you to have a script called release which does a build for your packages and calls changeset publish
-          publish: npm run release
+          name: dist-${{ github.sha }}
+          path: dist/
+          if-no-files-found: error
+
+  # Release job - runs only on tag pushes
+  release:
+    needs: [test-and-build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # Need write permission to create releases
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Update package.json version from tag
+        run: |
+          TAG="${{ github.ref_name }}"
+          echo "Input version tag: $TAG"
+          VERSION=$(echo "$TAG" | sed 's/^v//')
+          echo "Setting package.json version to: $VERSION"
+          npm pkg set version="$VERSION"
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-${{ github.sha }}
+          path: dist/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }} 
+
+      - name: Publish to npm
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }} 
