@@ -190,7 +190,8 @@ export class ChatBetGradingClient implements IGradingClient {
         throw error;
       }
 
-      let message = error instanceof Error ? error.message : `Unknown SQL execution error: ${error}`;
+      let message =
+        error instanceof Error ? error.message : `Unknown SQL execution error: ${error}`;
 
       // Extract actual error message from SQL Server conversion errors
       const conversionErrorPattern =

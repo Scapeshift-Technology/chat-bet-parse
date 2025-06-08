@@ -308,7 +308,7 @@ function parseGameTotal(
     finalSport = 'Baseball';
   }
 
-  // Remove the o/u part (and optional "runs") to get teams and period  
+  // Remove the o/u part (and optional "runs") to get teams and period
   const withoutOU = contractText.replace(/\s*[ou]\d+(?:\.\d+)?(\s+runs)?/i, '').trim();
 
   // Parse teams and extract game info
