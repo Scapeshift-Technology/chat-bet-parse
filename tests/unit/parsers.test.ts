@@ -52,6 +52,9 @@ describe('Chat Bet Parsing', () => {
         expect(result.contract.Match.Team2).toBe(testCase.expectedTeam2);
       }
       
+      // Match.Date should always be undefined since we don't parse dates from chat
+      expect(result.contract.Match.Date).toBeUndefined();
+      
       // Rotation number
       if (testCase.expectedRotationNumber) {
         expect(result.rotationNumber).toBe(testCase.expectedRotationNumber);
@@ -134,6 +137,9 @@ describe('Chat Bet Parsing', () => {
       
       // Orders don't have ExecutionDtm
       expect(result.bet.ExecutionDtm).toBeUndefined();
+      
+      // Match.Date should always be undefined since we don't parse dates from chat
+      expect(result.contract.Match.Date).toBeUndefined();
     });
     
     test('should reject YG message', () => {
@@ -156,6 +162,9 @@ describe('Chat Bet Parsing', () => {
       
       // Fills always have ExecutionDtm
       expect(result.bet.ExecutionDtm).toBeInstanceOf(Date);
+      
+      // Match.Date should always be undefined since we don't parse dates from chat
+      expect(result.contract.Match.Date).toBeUndefined();
     });
     
     test('should reject IW message', () => {
@@ -174,42 +183,49 @@ describe('Chat Bet Parsing', () => {
       const result = parseChat('IW Padres/Pirates u0.5 @ +100');
       expect(result.contractType).toBe('TotalPoints');
       expect(isTotalPoints(result.contract)).toBe(true);
+      expect(result.contract.Match.Date).toBeUndefined();
     });
     
     test('should detect TotalPointsContestant contracts', () => {
       const result = parseChat('IW LAA TT o3.5 @ -115');
       expect(result.contractType).toBe('TotalPointsContestant');
       expect(isTotalPointsContestant(result.contract)).toBe(true);
+      expect(result.contract.Match.Date).toBeUndefined();
     });
     
     test('should detect HandicapContestantML contracts', () => {
       const result = parseChat('IW 872 Athletics @ +145');
       expect(result.contractType).toBe('HandicapContestantML');
       expect(isHandicapML(result.contract)).toBe(true);
+      expect(result.contract.Match.Date).toBeUndefined();
     });
     
     test('should detect HandicapContestantLine contracts', () => {
       const result = parseChat('IW 870 Mariners -1.5 +135');
       expect(result.contractType).toBe('HandicapContestantLine');
       expect(isHandicapLine(result.contract)).toBe(true);
+      expect(result.contract.Match.Date).toBeUndefined();
     });
     
     test('should detect PropOU contracts', () => {
       const result = parseChat('IW Player123 passing yards o250.5 @ -115');
       expect(result.contractType).toBe('PropOU');
       expect(isPropOU(result.contract)).toBe(true);
+      expect(result.contract.Match.Date).toBeUndefined();
     });
     
     test('should detect PropYN contracts', () => {
       const result = parseChat('IW CIN 1st team to score @ -115');
       expect(result.contractType).toBe('PropYN');
       expect(isPropYN(result.contract)).toBe(true);
+      expect(result.contract.Match.Date).toBeUndefined();
     });
     
     test('should detect Series contracts', () => {
       const result = parseChat('IW 852 Guardians series -105');
       expect(result.contractType).toBe('Series');
       expect(isSeries(result.contract)).toBe(true);
+      expect(result.contract.Match.Date).toBeUndefined();
     });
   });
   
@@ -512,11 +528,13 @@ describe('Chat Bet Parsing', () => {
       const result = parseChat('IW 49ers/Patriots u45.5 @ -110');
       expect(result.contract.Match.Team1).toBe('49ers');
       expect(result.contract.Match.Team2).toBe('Patriots');
+      expect(result.contract.Match.Date).toBeUndefined();
     });
     
     test('should handle teams with ampersands', () => {
       const result = parseChat('IW A&M TT o21.5 @ -115');
       expect(result.contract.Match.Team1).toBe('A&M');
+      expect(result.contract.Match.Date).toBeUndefined();
     });
     
     test('should handle fractional lines', () => {
@@ -526,6 +544,7 @@ describe('Chat Bet Parsing', () => {
       if ('Line' in result.contract) {
         expect(result.contract.Line).toBe(0.5);
       }
+      expect(result.contract.Match.Date).toBeUndefined();
     });
     
     test('should handle high NBA totals', () => {
@@ -535,12 +554,14 @@ describe('Chat Bet Parsing', () => {
       if ('Line' in result.contract) {
         expect(result.contract.Line).toBe(240.5);
       }
+      expect(result.contract.Match.Date).toBeUndefined();
     });
     
     test('should handle case insensitive input', () => {
       const result = parseChat('iw laa tt o3.5 @ -115');
       expect(result.contractType).toBe('TotalPointsContestant');
       expect(result.contract.Match.Team1).toBe('laa');
+      expect(result.contract.Match.Date).toBeUndefined();
     });
   });
   

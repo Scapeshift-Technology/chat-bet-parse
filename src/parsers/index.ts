@@ -473,15 +473,10 @@ function parsePropOU(
   // Detect contestant type
   const contestantType = detectContestantType(contestant);
 
-  // Create basic match info
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
   return {
     Sport: sport,
     League: league,
     Match: {
-      Date: today,
       Team1: contestant,
     },
     Period: { PeriodTypeCode: 'M', PeriodNumber: 0 },
@@ -532,15 +527,10 @@ function parsePropYN(
     isYes = true; // Default to yes for other yes/no props
   }
 
-  // Create basic match info (props typically don't have detailed match context)
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
   return {
     Sport: sport,
     League: league,
     Match: {
-      Date: today,
       Team1: team,
     },
     Period: { PeriodTypeCode: 'M', PeriodNumber: 0 },
@@ -612,15 +602,10 @@ function parseSeries(
 
   const team = teamMatch[1].trim();
 
-  // Create basic match info
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
   return {
     Sport: sport,
     League: league,
     Match: {
-      Date: today,
       Team1: team,
     },
     SeriesLength: seriesLength,
@@ -685,11 +670,7 @@ function parseMatchInfo(
   const teams = parseTeams(workingText, rawInput);
 
   // Create match object
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
   const match: Match = {
-    Date: today,
     Team1: teams.team1,
     Team2: teams.team2,
     DaySequence: daySequence,

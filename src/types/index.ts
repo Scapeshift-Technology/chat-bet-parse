@@ -57,7 +57,7 @@ export interface Period {
 // ==============================================================================
 
 export interface Match {
-  Date: Date;
+  Date?: Date;
   Team1: string;
   Team2?: string; // Optional for team totals, series, etc.
   DaySequence?: number; // Game number (G2, #2, etc.)
