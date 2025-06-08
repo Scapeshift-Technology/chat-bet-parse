@@ -114,6 +114,11 @@ describe('Chat Bet Parsing', () => {
           expect(result.contract.ContestantType).toBe(testCase.expectedContestantType);
         }
       }
+      
+      // Sport field when expected
+      if (testCase.expectedSport) {
+        expect(result.contract.Sport).toBe(testCase.expectedSport);
+      }
     });
   });
   

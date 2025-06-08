@@ -20,6 +20,7 @@ export interface TestCase {
   expectedDaySequence?: number;
   expectedPeriod?: { PeriodTypeCode: string; PeriodNumber: number };
   expectedContestantType?: 'Individual' | 'TeamAdHoc' | 'TeamLeague';
+  expectedSport?: string;
 }
 
 export interface ErrorTestCase {
@@ -481,6 +482,35 @@ export const validFillTestCases: TestCase[] = [
     expectedLine: 1.5,
     expectedIsOver: false,
     expectedProp: 'RBI'
+  },
+  {
+    description: 'YG Game total with GM1 and runs suffix',
+    input: 'YG CLE/WAS GM1 1st inning o0.5 runs = 1.0',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: -110, // Default when missing
+    expectedSize: 1000, // 1.0 as decimal thousands for fills
+    expectedTeam1: 'CLE',
+    expectedTeam2: 'WAS',
+    expectedDaySequence: 1,
+    expectedLine: 0.5,
+    expectedIsOver: true,
+    expectedPeriod: { PeriodTypeCode: 'I', PeriodNumber: 1 },
+    expectedSport: 'Baseball'
+  },
+  {
+    description: 'YG Game total with runs suffix and decimal price/size',
+    input: 'YG TEX/BOS 1st inning o0.5 runs @ +102.2 = 3.099',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: 102.2,
+    expectedSize: 3099, // 3.099 as decimal thousands for fills
+    expectedTeam1: 'TEX',
+    expectedTeam2: 'BOS',
+    expectedLine: 0.5,
+    expectedIsOver: true,
+    expectedPeriod: { PeriodTypeCode: 'I', PeriodNumber: 1 },
+    expectedSport: 'Baseball'
   }
 ];
 

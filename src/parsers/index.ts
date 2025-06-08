@@ -268,7 +268,7 @@ function detectContractType(contractText: string, rawInput: string): ContractTyp
   }
 
   // Game totals: teams with o/u
-  if (/\//.test(contractText) && /[ou]\d+(?:\.\d+)?/i.test(contractText)) {
+  if (/\//.test(contractText) && /[ou]\d+(?:\.\d+)?(\s+runs)?/i.test(contractText)) {
     return 'TotalPoints';
   }
 
@@ -293,26 +293,33 @@ function parseGameTotal(
   sport?: Sport,
   league?: League
 ): ContractSportCompetitionMatchTotalPoints {
-  // Extract over/under and line
-  const ouMatch = contractText.match(/([ou])(\d+(?:\.\d+)?)/i);
+  // Extract over/under and line, with optional "runs" suffix
+  const ouMatch = contractText.match(/([ou])(\d+(?:\.\d+)?)(\s+runs)?/i);
   if (!ouMatch) {
     throw new InvalidContractTypeError(rawInput, contractText);
   }
 
-  const { isOver, line } = parseOverUnder(ouMatch[0], rawInput);
+  const { isOver, line } = parseOverUnder(ouMatch[1] + ouMatch[2], rawInput);
+  const hasRunsSuffix = !!ouMatch[3];
 
-  // Remove the o/u part to get teams and period
-  const withoutOU = contractText.replace(/\s*[ou]\d+(?:\.\d+)?/i, '').trim();
+  // If "runs" suffix was detected, set sport to Baseball
+  let finalSport = sport;
+  if (hasRunsSuffix && !sport) {
+    finalSport = 'Baseball';
+  }
+
+  // Remove the o/u part (and optional "runs") to get teams and period  
+  const withoutOU = contractText.replace(/\s*[ou]\d+(?:\.\d+)?(\s+runs)?/i, '').trim();
 
   // Parse teams and extract game info
-  const { teams, period, match } = parseMatchInfo(withoutOU, rawInput, sport, league);
+  const { teams, period, match } = parseMatchInfo(withoutOU, rawInput, finalSport, league);
 
   if (!teams.team2) {
     throw new InvalidContractTypeError(rawInput, 'Game total requires two teams (Team1/Team2)');
   }
 
   return {
-    Sport: sport,
+    Sport: finalSport,
     League: league,
     Match: match,
     Period: period,
@@ -333,25 +340,32 @@ function parseTeamTotal(
   sport?: Sport,
   league?: League
 ): ContractSportCompetitionMatchTotalPointsContestant {
-  // Extract over/under and line
-  const ouMatch = contractText.match(/([ou])(\d+(?:\.\d+)?)/i);
+  // Extract over/under and line, with optional "runs" suffix
+  const ouMatch = contractText.match(/([ou])(\d+(?:\.\d+)?)(\s+runs)?/i);
   if (!ouMatch) {
     throw new InvalidContractTypeError(rawInput, contractText);
   }
 
-  const { isOver, line } = parseOverUnder(ouMatch[0], rawInput);
+  const { isOver, line } = parseOverUnder(ouMatch[1] + ouMatch[2], rawInput);
+  const hasRunsSuffix = !!ouMatch[3];
 
-  // Remove the o/u part and TT to get team and period
+  // If "runs" suffix was detected, set sport to Baseball
+  let finalSport = sport;
+  if (hasRunsSuffix && !sport) {
+    finalSport = 'Baseball';
+  }
+
+  // Remove the o/u part (and optional "runs") and TT to get team and period
   const withoutOU = contractText
-    .replace(/\s*[ou]\d+(?:\.\d+)?/i, '')
+    .replace(/\s*[ou]\d+(?:\.\d+)?(\s+runs)?/i, '')
     .replace(/\s*tt\s*/i, ' ')
     .trim();
 
   // Parse team and extract match info
-  const { teams, period, match } = parseMatchInfo(withoutOU, rawInput, sport, league);
+  const { teams, period, match } = parseMatchInfo(withoutOU, rawInput, finalSport, league);
 
   return {
-    Sport: sport,
+    Sport: finalSport,
     League: league,
     Match: match,
     Period: period,
@@ -434,16 +448,23 @@ function parsePropOU(
   sport?: Sport,
   league?: League
 ): ContractSportCompetitionMatchPropOU {
-  // Extract over/under and line
-  const ouMatch = contractText.match(/([ou])(\d+(?:\.\d+)?)/i);
+  // Extract over/under and line, with optional "runs" suffix
+  const ouMatch = contractText.match(/([ou])(\d+(?:\.\d+)?)(\s+runs)?/i);
   if (!ouMatch) {
     throw new InvalidContractTypeError(rawInput, 'PropOU requires an over/under line');
   }
 
-  const { isOver, line } = parseOverUnder(ouMatch[0], rawInput);
+  const { isOver, line } = parseOverUnder(ouMatch[1] + ouMatch[2], rawInput);
+  const hasRunsSuffix = !!ouMatch[3];
 
-  // Remove the o/u part to get player/team and prop type
-  const withoutOU = contractText.replace(/\s*[ou]\d+(?:\.\d+)?/i, '').trim();
+  // If "runs" suffix was detected, set sport to Baseball
+  let finalSport = sport;
+  if (hasRunsSuffix && !sport) {
+    finalSport = 'Baseball';
+  }
+
+  // Remove the o/u part (and optional "runs") to get player/team and prop type
+  const withoutOU = contractText.replace(/\s*[ou]\d+(?:\.\d+)?(\s+runs)?/i, '').trim();
 
   // Check for individual pattern first: "B. Falter" (single letter, dot, space, name)
   const individualMatch = withoutOU.match(/^([A-Z]\.\s+[A-Za-z]+)\s+(.+)$/);
@@ -474,7 +495,7 @@ function parsePropOU(
   const contestantType = detectContestantType(contestant);
 
   return {
-    Sport: sport,
+    Sport: finalSport,
     League: league,
     Match: {
       Team1: contestant,

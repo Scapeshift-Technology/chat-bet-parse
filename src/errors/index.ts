@@ -8,7 +8,7 @@ export class ChatBetParseError extends Error {
   public position?: number;
 
   constructor(message: string, rawInput: string, position?: number) {
-    super(message);
+    super(message.trimEnd());
     this.name = 'ChatBetParseError';
     this.rawInput = rawInput;
     this.position = position;
