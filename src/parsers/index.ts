@@ -350,7 +350,7 @@ function parseGameTotal(
   const withoutOU = contractText.replace(/\s*[ou]\d+(?:\.\d+)?(\s+runs)?/i, '').trim();
 
   // Parse teams and extract game info
-  const { teams, period, match } = parseMatchInfo(withoutOU, rawInput, sport, league);
+  const { period, match } = parseMatchInfo(withoutOU, rawInput, sport, league);
 
   // If "runs" suffix was detected OR inning period detected, set sport to Baseball
   let finalSport = sport;
