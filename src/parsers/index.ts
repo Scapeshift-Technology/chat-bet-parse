@@ -99,13 +99,32 @@ function tokenizeChat(message: string): ParsedTokens {
   // Find price and size markers
   let priceIndex = -1;
   let sizeIndex = -1;
+  let atSymbolCount = 0;
 
   for (let i = currentIndex; i < parts.length; i++) {
-    if (parts[i] === '@' && i + 1 < parts.length) {
-      priceIndex = i + 1;
+    if (parts[i] === '@') {
+      atSymbolCount++;
+      if (i + 1 < parts.length) {
+        priceIndex = i + 1;
+      }
     }
     if (parts[i] === '=' && i + 1 < parts.length) {
       sizeIndex = i + 1;
+    }
+  }
+
+  // Check for multiple @ symbols
+  if (atSymbolCount > 1) {
+    if (chatType === 'fill') {
+      throw new InvalidChatFormatError(
+        rawInput,
+        'Expected format for fills is: "YG" [rotation_number] contract ["@" usa_price] "=" fill_size'
+      );
+    } else {
+      throw new InvalidChatFormatError(
+        rawInput,
+        'Expected format for orders is: "IW" [rotation_number] contract ["@" usa_price] ["=" unit_size]'
+      );
     }
   }
 
@@ -136,9 +155,9 @@ function tokenizeChat(message: string): ParsedTokens {
       // Check if this is a spread line (small number <= 50 or fractional) or a price (> 100)
       const value = parseFloat(parts[i].substring(1)); // Remove +/- sign
 
-      // Special case: +0 or -0 is always a moneyline, treat as price
+      // Special case: +0 or -0 is always a moneyline - keep it in contract text for type detection
       if (value === 0) {
-        contractEndIndex = i;
+        // Don't change contractEndIndex - keep +0/-0 in contract text
         // Don't set price here, let the @ price be used instead
         break;
       }
@@ -252,12 +271,15 @@ function detectContractType(contractText: string, rawInput: string): ContractTyp
   }
 
   // Spreads: team name followed by +/- number (but not if it's clearly a price like +145)
-  if (/[a-zA-Z]+\s*[+-]\d+(?:\.\d+)?/i.test(contractText)) {
+  // Can include periods like F5 between team and line
+  if (/[a-zA-Z]+(?:\s+[a-zA-Z0-9]+)*\s*[+-]\d+(?:\.\d+)?/i.test(contractText)) {
     // Check if this might be a price rather than a spread
     // Prices are typically > 100 or have decimals like +145, -110.5
-    const spreadMatch = contractText.match(/[a-zA-Z]+\s*([+-])(\d+(?:\.\d+)?)/i);
+    const spreadMatch = contractText.match(
+      /([a-zA-Z]+(?:\s+[a-zA-Z0-9]+)*)\s*([+-])(\d+(?:\.\d+)?)/i
+    );
     if (spreadMatch) {
-      const value = parseFloat(spreadMatch[2]);
+      const value = parseFloat(spreadMatch[3]);
       // Special case: +0 or -0 is always a moneyline
       if (value === 0) {
         return 'HandicapContestantML';
@@ -277,13 +299,25 @@ function detectContractType(contractText: string, rawInput: string): ContractTyp
     }
   }
 
-  // Game totals: teams with o/u
+  // Game totals: teams with o/u OR single team with period and o/u
   if (/\//.test(contractText) && /[ou]\d+(?:\.\d+)?(\s+runs)?/i.test(contractText)) {
     return 'TotalPoints';
   }
 
-  // Moneylines: just team name (after eliminating other types)
-  if (!text.includes('/') && !text.includes('o') && !text.includes('u')) {
+  // Single team game totals: team with period and over/under (e.g., "Pirates F5 u4.5")
+  if (
+    /^[a-zA-Z\s&.-]+\s+(f5|f3|h1|1h|h2|2h|\d+(?:st|nd|rd|th)?\s*(?:inning|i|quarter|q|period|p))\s+[ou]\d+(?:\.\d+)?/i.test(
+      contractText
+    )
+  ) {
+    return 'TotalPoints';
+  }
+
+  // Moneylines: just team name (after eliminating other types), or team name with +0/-0
+  if (
+    (!text.includes('/') && !text.includes('o') && !text.includes('u')) ||
+    /[a-zA-Z]+\s*[+-]0(?:\s|$)/i.test(contractText)
+  ) {
     return 'HandicapContestantML';
   }
 
@@ -295,7 +329,7 @@ function detectContractType(contractText: string, rawInput: string): ContractTyp
 // ==============================================================================
 
 /**
- * Parse game total: "Padres/Pirates 1st inning u0.5"
+ * Parse game total: "Padres/Pirates 1st inning u0.5" or single team game total: "Pirates F5 u4.5"
  */
 function parseGameTotal(
   contractText: string,
@@ -312,21 +346,20 @@ function parseGameTotal(
   const { isOver, line } = parseOverUnder(ouMatch[1] + ouMatch[2], rawInput);
   const hasRunsSuffix = !!ouMatch[3];
 
-  // If "runs" suffix was detected, set sport to Baseball
-  let finalSport = sport;
-  if (hasRunsSuffix && !sport) {
-    finalSport = 'Baseball';
-  }
-
   // Remove the o/u part (and optional "runs") to get teams and period
   const withoutOU = contractText.replace(/\s*[ou]\d+(?:\.\d+)?(\s+runs)?/i, '').trim();
 
   // Parse teams and extract game info
-  const { teams, period, match } = parseMatchInfo(withoutOU, rawInput, finalSport, league);
+  const { teams, period, match } = parseMatchInfo(withoutOU, rawInput, sport, league);
 
-  if (!teams.team2) {
-    throw new InvalidContractTypeError(rawInput, 'Game total requires two teams (Team1/Team2)');
+  // If "runs" suffix was detected OR inning period detected, set sport to Baseball
+  let finalSport = sport;
+  if ((hasRunsSuffix || period.PeriodTypeCode === 'I') && !sport) {
+    finalSport = 'Baseball';
   }
+
+  // For game totals, we can have either two teams (traditional game total) or one team (single team game total)
+  // Single team game totals are still considered TotalPoints, not TotalPointsContestant
 
   return {
     Sport: finalSport,
@@ -389,7 +422,7 @@ function parseTeamTotal(
 }
 
 /**
- * Parse moneyline: "872 Athletics"
+ * Parse moneyline: "872 Athletics" or "COL +0"
  */
 function parseMoneyline(
   contractText: string,
@@ -397,7 +430,10 @@ function parseMoneyline(
   sport?: Sport,
   league?: League
 ): ContractSportCompetitionMatchHandicapContestantML {
-  const { teams, period, match } = parseMatchInfo(contractText, rawInput, sport, league);
+  // Remove +0/-0 from contract text if present (it's just a moneyline indicator)
+  const cleanedContractText = contractText.replace(/\s*[+-]0(?:\s|$)/i, '').trim();
+
+  const { teams, period, match } = parseMatchInfo(cleanedContractText, rawInput, sport, league);
 
   return {
     Sport: sport,
@@ -413,7 +449,7 @@ function parseMoneyline(
 }
 
 /**
- * Parse spread: "870 Mariners -1.5 +135"
+ * Parse spread: "870 Mariners -1.5 +135" or "SD F5 +0.5"
  */
 function parseSpread(
   contractText: string,
@@ -421,7 +457,7 @@ function parseSpread(
   sport?: Sport,
   league?: League
 ): ContractSportCompetitionMatchHandicapContestantLine {
-  // Extract spread line and price (if embedded)
+  // Extract spread line and price (if embedded) - handle periods like F5 between team and line
   const spreadMatch = contractText.match(/^(.*?)\s*([+-]\d+(?:\.\d+)?)$/);
   if (!spreadMatch) {
     throw new InvalidContractTypeError(rawInput, contractText);

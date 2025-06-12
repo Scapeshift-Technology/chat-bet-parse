@@ -132,7 +132,7 @@ export class MissingSizeForFillError extends ChatBetParseError {
 export class UnrecognizedChatPrefixError extends ChatBetParseError {
   constructor(rawInput: string, prefix: string) {
     super(
-      `Unrecognized chat prefix: "${prefix}". Expected "IW" (order) or "YG" (fill). Input: "${rawInput}"`,
+      `Unrecognized chat prefix: "${prefix}". Chat must be either a chat order (start with "IW" for "i want") or a chat fill (start with "YG", for "you got"). Input: "${rawInput}"`,
       rawInput
     );
     this.name = 'UnrecognizedChatPrefixError';

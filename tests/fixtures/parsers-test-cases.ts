@@ -260,6 +260,18 @@ export const validFillTestCases: TestCase[] = [
     expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 }
   },
   {
+    description: 'YG Team F5 total under with k-notation',
+    input: 'YG Pirates F5 u4.5 @ -115 = 3.5k',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: -115,
+    expectedSize: 3500,
+    expectedTeam1: 'Pirates',
+    expectedLine: 4.5,
+    expectedIsOver: false,
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 }
+  },
+  {
     description: 'YG NBA total with k-notation',
     input: 'YG 507 Thunder/Nuggets o213.5 @ 2k',
     expectedChatType: 'fill',
@@ -284,7 +296,8 @@ export const validFillTestCases: TestCase[] = [
     expectedDaySequence: 2,
     expectedLine: 0.5,
     expectedIsOver: false,
-    expectedPeriod: { PeriodTypeCode: 'I', PeriodNumber: 1 }
+    expectedPeriod: { PeriodTypeCode: 'I', PeriodNumber: 1 },
+    expectedSport: 'Baseball'
   },
   
   // Team Totals  
@@ -536,6 +549,30 @@ export const validFillTestCases: TestCase[] = [
     expectedPeriod: { PeriodTypeCode: 'I', PeriodNumber: 1 },
     expectedSport: 'Baseball'
   },
+
+  // Additional valid cases from user feedback
+  {
+    description: 'YG Moneyline with +0 line (interpreted as ML)',
+    input: 'YG 960 COL +0 @ +100 = 5.0',
+    expectedChatType: 'fill',
+    expectedContractType: 'HandicapContestantML',
+    expectedPrice: 100,
+    expectedSize: 5000,
+    expectedRotationNumber: 960,
+    expectedTeam1: 'COL'
+  },
+  {
+    description: 'YG First five handicap line bet',
+    input: 'YG 9909 SD F5 +0.5 @ -105 = 10.714',
+    expectedChatType: 'fill',
+    expectedContractType: 'HandicapContestantLine',
+    expectedPrice: -105,
+    expectedSize: 10714,
+    expectedRotationNumber: 9909,
+    expectedTeam1: 'SD',
+    expectedLine: 0.5,
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 }
+  }
 ];
 
 // ==============================================================================
@@ -795,6 +832,26 @@ export const errorTestCases: ErrorTestCase[] = [
     input: 'IW Player123 some unknown prop @ -115',
     expectedErrorType: 'InvalidContractTypeError',
     expectedErrorMessage: 'Unsupported prop type'
+  },
+
+  // Format error cases with helpful messages
+  {
+    description: 'Invalid fill format with double @ symbol',
+    input: 'YG Pirates F5 u4.5 @ -115 @ 3.5k',
+    expectedErrorType: 'InvalidChatFormatError',
+    expectedErrorMessage: 'Expected format for fills is: "YG" [rotation_number] contract ["@" usa_price] "=" fill_size'
+  },
+  {
+    description: 'Invalid order format with double @ symbol',
+    input: 'IW Pirates F5 u4.5 @ -115 @ 3.5k',
+    expectedErrorType: 'InvalidChatFormatError',
+    expectedErrorMessage: 'Expected format for orders is: "IW" [rotation_number] contract ["@" usa_price] ["=" unit_size]'
+  },
+  {
+    description: 'Invalid chat prefix - neither IW nor YG',
+    input: 'XX Pirates F5 u4.5 @ -115 = 3.5k',
+    expectedErrorType: 'UnrecognizedChatPrefixError',
+    expectedErrorMessage: 'Chat must be either a chat order (start with "IW" for "i want") or a chat fill (start with "YG", for "you got")'
   }
 ];
 
