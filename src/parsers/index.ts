@@ -422,9 +422,7 @@ function parseSpread(
   league?: League
 ): ContractSportCompetitionMatchHandicapContestantLine {
   // Extract spread line and price (if embedded)
-  const spreadMatch = contractText.match(
-    /^(.*?)\s*([+-]\d+(?:\.\d+)?)$/
-  );
+  const spreadMatch = contractText.match(/^(.*?)\s*([+-]\d+(?:\.\d+)?)$/);
   if (!spreadMatch) {
     throw new InvalidContractTypeError(rawInput, contractText);
   }
