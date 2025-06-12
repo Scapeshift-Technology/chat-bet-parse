@@ -349,7 +349,7 @@ export function inferSportAndLeague(rotationNumber?: number): { sport?: Sport; l
     if (rotationNumber >= 500 && rotationNumber < 600) {
       return { sport: 'Basketball', league: 'NBA' };
     }
-    if (rotationNumber >= 800 && rotationNumber < 900) {
+    if ((rotationNumber >= 800 && rotationNumber < 900) || (rotationNumber >= 9900 && rotationNumber < 10000)) {
       return { sport: 'Baseball', league: 'MLB' };
     }
   }

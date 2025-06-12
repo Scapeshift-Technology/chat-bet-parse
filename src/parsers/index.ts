@@ -136,8 +136,14 @@ function tokenizeChat(message: string): ParsedTokens {
       // Check if this is a spread line (small number <= 50 or fractional) or a price (> 100)
       const value = parseFloat(parts[i].substring(1)); // Remove +/- sign
 
+      // Special case: +0 or -0 is always a moneyline, treat as price
+      if (value === 0) {
+        contractEndIndex = i;
+        // Don't set price here, let the @ price be used instead
+        break;
+      }
       // If it's likely a price (> 100 or whole number between 50-100), treat as price
-      if (value > 50 && (value > 100 || value % 1 === 0)) {
+      else if (value > 50 && (value > 100 || value % 1 === 0)) {
         // This looks like a price - split the contract text here
         contractEndIndex = i;
         price = parsePrice(parts[i], rawInput);
@@ -252,6 +258,10 @@ function detectContractType(contractText: string, rawInput: string): ContractTyp
     const spreadMatch = contractText.match(/[a-zA-Z]+\s*([+-])(\d+(?:\.\d+)?)/i);
     if (spreadMatch) {
       const value = parseFloat(spreadMatch[2]);
+      // Special case: +0 or -0 is always a moneyline
+      if (value === 0) {
+        return 'HandicapContestantML';
+      }
       // If it's a decimal number <= 50, it's likely a spread line
       // If it's a whole number > 100, it's likely a price
       if (value <= 50 || value % 1 !== 0) {
@@ -413,15 +423,16 @@ function parseSpread(
 ): ContractSportCompetitionMatchHandicapContestantLine {
   // Extract spread line and price (if embedded)
   const spreadMatch = contractText.match(
-    /([a-zA-Z\s&]+)\s*([+-])(\d+(?:\.\d+)?)(?:\s*([+-]\d+(?:\.\d+)?))?/
+    /^(.*?)\s*([+-]\d+(?:\.\d+)?)$/
   );
   if (!spreadMatch) {
     throw new InvalidContractTypeError(rawInput, contractText);
   }
 
   const teamPart = spreadMatch[1].trim();
-  const sign = spreadMatch[2];
-  const lineValue = parseFloat(spreadMatch[3]);
+  const lineStr = spreadMatch[2];
+  const sign = lineStr.startsWith('+') ? '+' : '-';
+  const lineValue = parseFloat(lineStr.substring(1));
   const line = sign === '+' ? lineValue : -lineValue;
 
   const { teams, period, match } = parseMatchInfo(teamPart, rawInput, sport, league);

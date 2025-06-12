@@ -369,6 +369,30 @@ export const validFillTestCases: TestCase[] = [
     expectedTeam1: 'Rangers',
     expectedLine: 1.5
   },
+  {
+    description: 'YG Spread +0 line F5',
+    input: 'YG 9921 SEA F5 +0 @ -250 = 12.0',
+    expectedChatType: 'fill',
+    expectedContractType: 'HandicapContestantML',
+    expectedPrice: -250,
+    expectedSize: 12000,
+    expectedRotationNumber: 9921,
+    expectedTeam1: 'SEA',
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 },
+    expectedSport: 'Baseball',
+  },
+  {
+    description: 'YG Spread +0 line F5 variant',
+    input: 'YG 9909 SD F5 +0 @ -250 = 12.0',
+    expectedChatType: 'fill',
+    expectedContractType: 'HandicapContestantML',
+    expectedPrice: -250,
+    expectedSize: 12000,
+    expectedRotationNumber: 9909,
+    expectedTeam1: 'SD',
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 },
+    expectedSport: 'Baseball',
+  },
   
   // Props
   {
@@ -511,7 +535,7 @@ export const validFillTestCases: TestCase[] = [
     expectedIsOver: true,
     expectedPeriod: { PeriodTypeCode: 'I', PeriodNumber: 1 },
     expectedSport: 'Baseball'
-  }
+  },
 ];
 
 // ==============================================================================
