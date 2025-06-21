@@ -149,6 +149,36 @@ export class AmbiguousContractError extends ChatBetParseError {
   }
 }
 
+export class InvalidWriteinDateError extends ChatBetParseError {
+  constructor(rawInput: string, dateStr: string, reason: string) {
+    super(
+      `Invalid writein date: "${dateStr}". ${reason}. Expected formats: YYYY-MM-DD, MM/DD/YYYY, YYYY/MM/DD, MM-DD-YYYY, or equivalents without year. Input: "${rawInput}"`,
+      rawInput
+    );
+    this.name = 'InvalidWriteinDateError';
+  }
+}
+
+export class InvalidWriteinDescriptionError extends ChatBetParseError {
+  constructor(rawInput: string, description: string, reason: string) {
+    super(
+      `Invalid writein description: "${description}". ${reason}. Input: "${rawInput}"`,
+      rawInput
+    );
+    this.name = 'InvalidWriteinDescriptionError';
+  }
+}
+
+export class InvalidWriteinFormatError extends ChatBetParseError {
+  constructor(rawInput: string, reason: string) {
+    super(
+      `Invalid writein format: ${reason}. Expected format: "IW/YG writein DATE DESCRIPTION [@ price] [= size]". Input: "${rawInput}"`,
+      rawInput
+    );
+    this.name = 'InvalidWriteinFormatError';
+  }
+}
+
 // Utility function to create position-aware error messages
 export function createPositionError(
   ErrorClass: new (rawInput: string, ...args: any[]) => ChatBetParseError,

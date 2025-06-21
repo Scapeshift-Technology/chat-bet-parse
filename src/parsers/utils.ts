@@ -13,6 +13,8 @@ import {
   InvalidRotationNumberError,
   InvalidTeamFormatError,
   InvalidContractTypeError,
+  InvalidWriteinDateError,
+  InvalidWriteinDescriptionError,
 } from '../errors/index';
 
 // ==============================================================================
@@ -467,4 +469,138 @@ export function validatePropFormat(propText: string, hasLine: boolean, rawInput:
       `${propInfo.standardName} props cannot have a line - they are yes/no bets only`
     );
   }
+}
+
+// ==============================================================================
+// WRITEIN CONTRACT UTILITIES
+// ==============================================================================
+
+/**
+ * Parse writein date with multiple format support and smart year inference
+ */
+export function parseWriteinDate(dateString: string, rawInput: string): Date {
+  const cleaned = dateString.trim();
+
+  if (!cleaned) {
+    throw new InvalidWriteinDateError(rawInput, dateString, 'Date cannot be empty');
+  }
+
+  // Try parsing various date formats
+  let parsedDate: Date | null = null;
+  const currentYear = new Date().getFullYear();
+  const today = new Date();
+
+  // Format patterns to try
+  const patterns = [
+    // Full date patterns with year
+    /^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/, // YYYY/MM/DD or YYYY-MM-DD
+    /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/, // MM/DD/YYYY or MM-DD-YYYY
+
+    // Date patterns without year
+    /^(\d{1,2})[\/\-](\d{1,2})$/, // MM/DD or MM-DD
+  ];
+
+  for (const pattern of patterns) {
+    const match = cleaned.match(pattern);
+    if (match) {
+      let year: number, month: number, day: number;
+
+      if (match.length === 4) {
+        // Full date with year
+        if (pattern.source.startsWith('^(\\d{4})')) {
+          // YYYY/MM/DD format
+          year = parseInt(match[1]);
+          month = parseInt(match[2]);
+          day = parseInt(match[3]);
+        } else {
+          // MM/DD/YYYY format
+          month = parseInt(match[1]);
+          day = parseInt(match[2]);
+          year = parseInt(match[3]);
+        }
+      } else {
+        // Date without year - smart year inference
+        month = parseInt(match[1]);
+        day = parseInt(match[2]);
+
+        // Create a date with current year first
+        const dateThisYear = new Date(currentYear, month - 1, day);
+
+        if (dateThisYear >= today) {
+          // If date is today or in the future, use current year
+          year = currentYear;
+        } else {
+          // If date is in the past, use next year
+          year = currentYear + 1;
+        }
+      }
+
+      // Create and validate the date
+      const testDate = new Date(year, month - 1, day);
+
+      // Check if the date is valid (handles invalid dates like Feb 30)
+      if (
+        testDate.getFullYear() === year &&
+        testDate.getMonth() === month - 1 &&
+        testDate.getDate() === day
+      ) {
+        parsedDate = testDate;
+        break;
+      } else {
+        throw new InvalidWriteinDateError(
+          rawInput,
+          dateString,
+          `Invalid calendar date (e.g., February 30th doesn't exist)`
+        );
+      }
+    }
+  }
+
+  if (!parsedDate) {
+    throw new InvalidWriteinDateError(
+      rawInput,
+      dateString,
+      'Unable to parse date. Supported formats: YYYY-MM-DD, MM/DD/YYYY, YYYY/MM/DD, MM-DD-YYYY, MM/DD, MM-DD'
+    );
+  }
+
+  return parsedDate;
+}
+
+/**
+ * Validate writein description
+ */
+export function validateWriteinDescription(description: string, rawInput: string): string {
+  const trimmed = description.trim();
+
+  if (!trimmed) {
+    throw new InvalidWriteinDescriptionError(rawInput, description, 'Description cannot be empty');
+  }
+
+  if (trimmed.length < 10) {
+    throw new InvalidWriteinDescriptionError(
+      rawInput,
+      description,
+      `Description must be at least 10 characters long (currently ${trimmed.length})`
+    );
+  }
+
+  if (trimmed.length > 255) {
+    throw new InvalidWriteinDescriptionError(
+      rawInput,
+      description,
+      `Description cannot exceed 255 characters (currently ${trimmed.length})`
+    );
+  }
+
+  // Check for newlines
+  if (trimmed.includes('\n') || trimmed.includes('\r')) {
+    throw new InvalidWriteinDescriptionError(
+      rawInput,
+      description,
+      'Description cannot contain newlines'
+    );
+  }
+
+  return trimmed;
 }

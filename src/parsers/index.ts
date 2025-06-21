@@ -20,6 +20,7 @@ import type {
   ContractSportCompetitionMatchPropYN,
   ContractSportCompetitionMatchPropOU,
   ContractSportCompetitionSeries,
+  ContractWritein,
 } from '../types/index';
 
 import {
@@ -30,6 +31,7 @@ import {
   InvalidRotationNumberError,
   InvalidGameNumberError,
   InvalidTeamFormatError,
+  InvalidWriteinFormatError,
 } from '../errors/index';
 
 import {
@@ -45,6 +47,8 @@ import {
   detectPropType,
   validatePropFormat,
   detectContestantType,
+  parseWriteinDate,
+  validateWriteinDescription,
 } from './utils';
 
 // ==============================================================================
@@ -60,10 +64,135 @@ interface ParsedTokens {
   rawInput: string;
 }
 
+interface WriteInTokens {
+  chatType: 'order' | 'fill';
+  isWritein: true;
+  dateString: string;
+  description: string;
+  price?: number;
+  size?: number;
+  rawInput: string;
+}
+
+type TokenResult = ParsedTokens | WriteInTokens;
+
+/**
+ * Type guard to check if tokens are writein
+ */
+function isWriteinTokens(tokens: TokenResult): tokens is WriteInTokens {
+  return 'isWritein' in tokens;
+}
+
+/**
+ * Tokenize writein contracts
+ */
+function tokenizeWritein(
+  parts: string[],
+  chatType: 'order' | 'fill',
+  rawInput: string
+): WriteInTokens {
+  // Expected format: IW/YG writein DATE DESCRIPTION [@ price] [= size]
+
+  if (parts.length < 4) {
+    throw new InvalidWriteinFormatError(
+      rawInput,
+      'Writein contracts require at least a date and description'
+    );
+  }
+
+  // Check that there's a space between writein and the date
+  if (parts[1].toLowerCase() !== 'writein') {
+    throw new InvalidWriteinFormatError(
+      rawInput,
+      'Writein must be separated from date by whitespace'
+    );
+  }
+
+  let currentIndex = 2; // Start after "writein"
+
+  // Extract date (next token)
+  const dateString = parts[currentIndex];
+  currentIndex++;
+
+  // Find price and size markers
+  let priceIndex = -1;
+  let sizeIndex = -1;
+
+  for (let i = currentIndex; i < parts.length; i++) {
+    if (parts[i] === '@' && i + 1 < parts.length) {
+      priceIndex = i + 1;
+    }
+    if (parts[i] === '=' && i + 1 < parts.length) {
+      sizeIndex = i + 1;
+    }
+  }
+
+  // Extract description (everything between date and price/size markers)
+  let descriptionEndIndex = parts.length;
+
+  // Find the first @ or = to determine where description ends
+  for (let i = currentIndex; i < parts.length; i++) {
+    if (parts[i] === '@' || parts[i] === '=') {
+      descriptionEndIndex = i;
+      break;
+    }
+  }
+
+  if (descriptionEndIndex <= currentIndex) {
+    throw new InvalidWriteinFormatError(rawInput, 'Writein contracts must include a description');
+  }
+
+  const description = parts.slice(currentIndex, descriptionEndIndex).join(' ');
+
+  // Parse price if present
+  let price: number | undefined;
+  if (priceIndex > 0 && priceIndex < parts.length) {
+    const priceStr = parts[priceIndex];
+    // Handle k-notation where price might be missing (default to -110)
+    if (priceStr.toLowerCase().endsWith('k') || priceStr.startsWith('$')) {
+      price = -110; // Default price for k-notation
+      // Adjust sizeIndex since this is actually the size
+      if (sizeIndex === -1) {
+        sizeIndex = priceIndex;
+      }
+    } else {
+      price = parsePrice(priceStr, rawInput);
+    }
+  }
+
+  // Parse size if present
+  let size: number | undefined;
+  if (sizeIndex > 0 && sizeIndex < parts.length) {
+    const sizeStr = parts[sizeIndex];
+    if (chatType === 'order') {
+      const parsed = parseOrderSize(sizeStr, rawInput);
+      size = parsed.value;
+    } else {
+      const parsed = parseFillSize(sizeStr, rawInput);
+      size = parsed.value;
+    }
+  }
+
+  // Validate fill requirements
+  if (chatType === 'fill' && size === undefined) {
+    throw new MissingSizeForFillError(rawInput);
+  }
+
+  return {
+    chatType,
+    isWritein: true,
+    dateString,
+    description,
+    price: price ?? -110, // Default price
+    size,
+    rawInput,
+  };
+}
+
 /**
  * Break down the chat message into tokens according to EBNF grammar
  */
-function tokenizeChat(message: string): ParsedTokens {
+function tokenizeChat(message: string): TokenResult {
   const rawInput = message; // Preserve original input for error reporting
   const parts = message.trim().split(/\s+/);
 
@@ -81,6 +210,11 @@ function tokenizeChat(message: string): ParsedTokens {
     chatType = 'fill';
   } else {
     throw new UnrecognizedChatPrefixError(rawInput, prefix);
+  }
+
+  // Early detection of writein contracts
+  if (parts.length >= 2 && parts[1].toLowerCase() === 'writein') {
+    return tokenizeWritein(parts, chatType, rawInput);
   }
 
   let currentIndex = 1;
@@ -679,6 +813,22 @@ function parseSeries(
   };
 }
 
+/**
+ * Parse writein contract: "IW/YG writein 2024/11/5 Trump to win presidency"
+ */
+function parseWritein(dateString: string, description: string, rawInput: string): ContractWritein {
+  // Parse and validate the event date
+  const eventDate = parseWriteinDate(dateString, rawInput);
+
+  // Validate and clean the description
+  const validatedDescription = validateWriteinDescription(description, rawInput);
+
+  return {
+    EventDate: eventDate,
+    Description: validatedDescription,
+  };
+}
+
 // ==============================================================================
 // HELPER FUNCTIONS
 // ==============================================================================
@@ -759,6 +909,23 @@ export function parseChatOrder(message: string): ChatOrderResult {
     throw new InvalidChatFormatError(tokens.rawInput, 'Expected order (IW) message');
   }
 
+  // Handle writein contracts
+  if (isWriteinTokens(tokens)) {
+    const contract = parseWritein(tokens.dateString, tokens.description, tokens.rawInput);
+
+    return {
+      chatType: 'order',
+      contractType: 'Writein',
+      contract,
+      rotationNumber: undefined,
+      bet: {
+        Price: tokens.price!,
+        Size: tokens.size,
+      },
+    };
+  }
+
+  // Handle regular contracts
   const contractType = detectContractType(tokens.contractText, tokens.rawInput);
   const { sport, league } = inferSportAndLeague(tokens.rotationNumber);
 
@@ -786,6 +953,11 @@ export function parseChatOrder(message: string): ChatOrderResult {
     case 'Series':
       contract = parseSeries(tokens.contractText, tokens.rawInput, sport, league);
       break;
+    case 'Writein':
+      throw new InvalidContractTypeError(
+        tokens.rawInput,
+        'Writein contracts should have been handled earlier'
+      );
     default:
       throw new InvalidContractTypeError(tokens.rawInput, tokens.contractText);
   }
@@ -817,6 +989,24 @@ export function parseChatFill(message: string): ChatFillResult {
     throw new InvalidChatFormatError(tokens.rawInput, 'Expected fill (YG) message');
   }
 
+  // Handle writein contracts
+  if (isWriteinTokens(tokens)) {
+    const contract = parseWritein(tokens.dateString, tokens.description, tokens.rawInput);
+
+    return {
+      chatType: 'fill',
+      contractType: 'Writein',
+      contract,
+      rotationNumber: undefined,
+      bet: {
+        ExecutionDtm: new Date(), // Current time for fills
+        Price: tokens.price!,
+        Size: tokens.size!,
+      },
+    };
+  }
+
+  // Handle regular contracts
   const contractType = detectContractType(tokens.contractText, tokens.rawInput);
   const { sport, league } = inferSportAndLeague(tokens.rotationNumber);
 
@@ -844,6 +1034,11 @@ export function parseChatFill(message: string): ChatFillResult {
     case 'Series':
       contract = parseSeries(tokens.contractText, tokens.rawInput, sport, league);
       break;
+    case 'Writein':
+      throw new InvalidContractTypeError(
+        tokens.rawInput,
+        'Writein contracts should have been handled earlier'
+      );
     default:
       throw new InvalidContractTypeError(tokens.rawInput, tokens.contractText);
   }

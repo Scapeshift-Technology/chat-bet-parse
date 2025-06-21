@@ -1,5 +1,29 @@
 # chat-bet-parse
 
+## 0.3.7
+
+### Minor Changes
+
+- Add Writein contract support for custom betting events
+
+  ### 🏗️ New Features
+
+  - **Writein Contracts**: New contract type for custom betting events not tied to specific sports matches
+    - Support for format: `IW/YG writein DATE DESCRIPTION [@ price] [= size]`
+    - Multiple date format support: YYYY-MM-DD, MM/DD/YYYY, YYYY/MM/DD, MM-DD-YYYY, and equivalents without year
+    - Smart year inference (current year if future/today, next year if past)
+    - Calendar date validation (rejects invalid dates like Feb 30th)
+    - Description validation (10-255 characters, no newlines)
+    - Full price and size parsing support (@ +150, = 3.0, k-notation, etc.)
+    - Case-insensitive "writein" detection
+  - **Enhanced Type System**: New `ContractWritein` interface with `EventDate` and `Description` properties
+  - **Comprehensive Error Handling**: 
+    - `InvalidWriteinFormatError` for format issues
+    - `InvalidWriteinDateError` for date parsing failures  
+    - `InvalidWriteinDescriptionError` for description validation
+  - **Grading System Integration**: Updated SQL Server grading support for Writein contracts
+  - **Extensive Testing**: 18 new tests covering positive and error scenarios
+
 ## 0.3.0
 
 ### Minor Changes

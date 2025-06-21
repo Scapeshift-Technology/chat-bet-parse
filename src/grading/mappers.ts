@@ -8,6 +8,7 @@ import type {
   ContractSportCompetitionMatch,
   ContractSportCompetitionSeries,
 } from '../types/index';
+import { isWritein } from '../types/index';
 import type { GradingSqlParameters, GradingOptions } from './types';
 import { GradingDataError } from './types';
 
@@ -34,21 +35,27 @@ export function mapParseResultToSqlParameters(
   }
 
   // Extract match info from contract
-  const matchInfo = extractMatchInfo(contract);
+  const contractType = result.contractType;
+  const matchInfo = contractType !== 'Writein' ? extractMatchInfo(contract) : null;
   const periodInfo = extractPeriodInfo(contract);
 
   // Common parameters for all contract types
-  const baseParams: Partial<GradingSqlParameters> = {
+  let baseParams: Partial<GradingSqlParameters> = {
     MatchScheduledDate: matchScheduledDate,
-    Contestant1: matchInfo.Contestant1,
-    Contestant2: matchInfo.Contestant2,
-    DaySequence: matchInfo.DaySequence,
     PeriodTypeCode: periodInfo.PeriodTypeCode,
     PeriodNumber: periodInfo.PeriodNumber,
     TiesLose: false, // Default assumption
   };
 
-  const { contractType } = result;
+  // Add match info only for non-Writein contracts
+  if (contractType !== 'Writein' && matchInfo) {
+    baseParams = {
+      ...baseParams,
+      Contestant1: matchInfo.Contestant1,
+      Contestant2: matchInfo.Contestant2,
+      DaySequence: matchInfo.DaySequence,
+    };
+  }
 
   // Contract-specific parameters
   let contractParams: Partial<GradingSqlParameters> = {};
@@ -75,6 +82,9 @@ export function mapParseResultToSqlParameters(
     case 'Series':
       contractParams = mapSeries(contract);
       break;
+    case 'Writein':
+      contractParams = mapWritein(contract);
+      break;
     default:
       throw new GradingDataError(`Unsupported contract type: ${contractType}`);
   }
@@ -96,6 +106,15 @@ export function mapParseResultToSqlParameters(
 function extractMatchInfo(
   contract: Contract
 ): Pick<GradingSqlParameters, 'Contestant1' | 'Contestant2' | 'DaySequence'> {
+  // Writein contracts don't have Match property
+  if (isWritein(contract)) {
+    return {
+      Contestant1: '',
+      Contestant2: undefined,
+      DaySequence: undefined,
+    };
+  }
+
   // Both match and series contracts have a Match property
   return {
     Contestant1: contract.Match.Team1,
@@ -272,6 +291,20 @@ function mapSeries(contract: Contract): Partial<GradingSqlParameters> {
   };
 }
 
+/**
+ * Map Writein contract
+ */
+function mapWritein(contract: Contract): Partial<GradingSqlParameters> {
+  if (!isWritein(contract)) {
+    throw new GradingDataError('Invalid Writein contract structure');
+  }
+
+  return {
+    EventDate: contract.EventDate,
+    WriteInDescription: contract.Description,
+  };
+}
+
 // ==============================================================================
 // VALIDATION HELPERS
 // ==============================================================================
@@ -337,6 +370,12 @@ export function validateGradingParameters(params: GradingSqlParameters): void {
     case 'Series':
       if (!params.SelectedContestant || !params.SeriesLength) {
         throw new GradingDataError('Series requires SelectedContestant and SeriesLength');
+      }
+      break;
+
+    case 'Writein':
+      if (!params.EventDate || !params.WriteInDescription) {
+        throw new GradingDataError('Writein contracts require EventDate and WriteInDescription');
       }
       break;
 

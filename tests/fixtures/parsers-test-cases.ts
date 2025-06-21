@@ -10,7 +10,7 @@ export interface TestCase {
   expectedContractType: string;
   expectedPrice: number;
   expectedSize?: number;
-  expectedTeam1: string;
+  expectedTeam1?: string;
   expectedTeam2?: string;
   expectedLine?: number;
   expectedIsOver?: boolean;
@@ -21,6 +21,9 @@ export interface TestCase {
   expectedPeriod?: { PeriodTypeCode: string; PeriodNumber: number };
   expectedContestantType?: 'Individual' | 'TeamAdHoc' | 'TeamLeague';
   expectedSport?: string;
+  // Writein-specific fields
+  expectedEventDate?: Date;
+  expectedDescription?: string;
 }
 
 export interface ErrorTestCase {
@@ -211,6 +214,46 @@ export const validOrderTestCases: TestCase[] = [
     expectedRotationNumber: 854,
     expectedTeam1: 'Yankees',
     expectedSeriesLength: 4
+  },
+
+  // Writein Contracts
+  {
+    description: 'IW Writein basic with full date',
+    input: 'IW writein 2024/11/5 Trump to win presidency @ +150',
+    expectedChatType: 'order',
+    expectedContractType: 'Writein',
+    expectedPrice: 150,
+    expectedEventDate: new Date(2024, 10, 5), // JavaScript months are 0-indexed
+    expectedDescription: 'Trump to win presidency',
+  },
+  {
+    description: 'IW Writein with date and size',
+    input: 'IW writein 2024-11-05 Stock market to close above 40000 @ -120 = 5.0',
+    expectedChatType: 'order',
+    expectedContractType: 'Writein',
+    expectedPrice: -120,
+    expectedSize: 5.0,
+    expectedEventDate: new Date(2024, 10, 5),
+    expectedDescription: 'Stock market to close above 40000',
+  },
+  {
+    description: 'IW Writein with MM/DD/YYYY format',
+    input: 'IW writein 11/05/2024 Bitcoin to reach 100k by end of year @ +200',
+    expectedChatType: 'order',
+    expectedContractType: 'Writein',
+    expectedPrice: 200,
+    expectedEventDate: new Date(2024, 10, 5),
+    expectedDescription: 'Bitcoin to reach 100k by end of year',
+  },
+  {
+    description: 'IW Writein with MM/DD format (no year)',
+    input: 'IW writein 12/25 Christmas Day snow in NYC @ +300 = 2.5',
+    expectedChatType: 'order',
+    expectedContractType: 'Writein',
+    expectedPrice: 300,
+    expectedSize: 2.5,
+    expectedEventDate: new Date(new Date().getFullYear(), 11, 25), // Current year, December 25
+    expectedDescription: 'Christmas Day snow in NYC',
   }
 ];
 
@@ -572,6 +615,48 @@ export const validFillTestCases: TestCase[] = [
     expectedTeam1: 'SD',
     expectedLine: 0.5,
     expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 }
+  },
+
+  // Writein Contracts
+  {
+    description: 'YG Writein basic with decimal thousands',
+    input: 'YG writein 2024/11/5 Trump to win presidency @ +150 = 3.0',
+    expectedChatType: 'fill',
+    expectedContractType: 'Writein',
+    expectedPrice: 150,
+    expectedSize: 3000, // 3.0 as decimal thousands for fills
+    expectedEventDate: new Date(2024, 10, 5),
+    expectedDescription: 'Trump to win presidency',
+  },
+  {
+    description: 'YG Writein with k-notation',
+    input: 'YG writein 2024-11-05 Stock market to close above 40000 @ -120 = 2k',
+    expectedChatType: 'fill',
+    expectedContractType: 'Writein',
+    expectedPrice: -120,
+    expectedSize: 2000,
+    expectedEventDate: new Date(2024, 10, 5),
+    expectedDescription: 'Stock market to close above 40000',
+  },
+  {
+    description: 'YG Writein with dollar amount',
+    input: 'YG writein 11/05/2024 Bitcoin to reach 100k by end of year @ +200 = $500',
+    expectedChatType: 'fill',
+    expectedContractType: 'Writein',
+    expectedPrice: 200,
+    expectedSize: 500, // Dollar amounts are literal
+    expectedEventDate: new Date(2024, 10, 5),
+    expectedDescription: 'Bitcoin to reach 100k by end of year',
+  },
+  {
+    description: 'YG Writein with MM-DD format and default price',
+    input: 'YG writein 12-25 Christmas Day snow in NYC = 1.5',
+    expectedChatType: 'fill',
+    expectedContractType: 'Writein',
+    expectedPrice: -110, // Default price
+    expectedSize: 1500, // 1.5 as decimal thousands
+    expectedEventDate: new Date(new Date().getFullYear(), 11, 25),
+    expectedDescription: 'Christmas Day snow in NYC',
   }
 ];
 
@@ -852,6 +937,80 @@ export const errorTestCases: ErrorTestCase[] = [
     input: 'XX Pirates F5 u4.5 @ -115 = 3.5k',
     expectedErrorType: 'UnrecognizedChatPrefixError',
     expectedErrorMessage: 'Chat must be either a chat order (start with "IW" for "i want") or a chat fill (start with "YG", for "you got")'
+  }
+];
+
+// ==============================================================================
+// WRITEIN ERROR TEST CASES
+// ==============================================================================
+
+export const writeinErrorTestCases: ErrorTestCase[] = [
+  // Invalid writein format
+  {
+    description: 'No space between writein and date',
+    input: 'YG writein2024/11/5 Trump to win presidency @ +150 = 3.0',
+    expectedErrorType: 'InvalidContractTypeError',
+    expectedErrorMessage: 'Unable to determine contract type'
+  },
+  {
+    description: 'Missing date in writein',
+    input: 'IW writein Trump to win presidency @ +150',
+    expectedErrorType: 'InvalidWriteinDateError',
+    expectedErrorMessage: 'Unable to parse date'
+  },
+  {
+    description: 'Missing description in writein',
+    input: 'IW writein 2024/11/5 @ +150',
+    expectedErrorType: 'InvalidWriteinFormatError',
+    expectedErrorMessage: 'Writein contracts must include a description'
+  },
+  
+  // Invalid dates
+  {
+    description: 'Invalid date format',
+    input: 'IW writein invalid-date Trump to win presidency @ +150',
+    expectedErrorType: 'InvalidWriteinDateError',
+    expectedErrorMessage: 'Unable to parse date'
+  },
+  {
+    description: 'Invalid calendar date (Feb 30)',
+    input: 'IW writein 02/30/2024 Invalid date test @ +150',
+    expectedErrorType: 'InvalidWriteinDateError',
+    expectedErrorMessage: 'Invalid calendar date'
+  },
+  {
+    description: 'Empty date',
+    input: 'IW writein  Trump to win presidency @ +150',
+    expectedErrorType: 'InvalidWriteinDateError',
+    expectedErrorMessage: 'Unable to parse date'
+  },
+  
+  // Invalid descriptions
+  {
+    description: 'Description too short (less than 10 characters)',
+    input: 'IW writein 2024/11/5 Short @ +150',
+    expectedErrorType: 'InvalidWriteinDescriptionError',
+    expectedErrorMessage: 'Description must be at least 10 characters long'
+  },
+  {
+    description: 'Description too long (over 255 characters)',
+    input: `IW writein 2024/11/5 ${'A'.repeat(260)} @ +150`,
+    expectedErrorType: 'InvalidWriteinDescriptionError',
+    expectedErrorMessage: 'Description cannot exceed 255 characters'
+  },
+  {
+    description: 'Empty description after trimming',
+    input: 'IW writein 2024/11/5    @ +150',
+    expectedErrorType: 'InvalidWriteinFormatError',
+    expectedErrorMessage: 'Writein contracts must include a description'
+  },
+  
+  // Missing size for fills
+  {
+    description: 'Missing size for YG writein bet',
+    input: 'YG writein 2024/11/5 Trump to win presidency @ +150',
+    expectedErrorType: 'MissingSizeForFillError',
+    expectedErrorMessage: 'Missing size for fill (YG) bet'
   }
 ];
 

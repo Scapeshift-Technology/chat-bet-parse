@@ -14,7 +14,11 @@ import {
   isPropYN,
   isSeries,
   isPropOU,
-  ChatBetParseError
+  isWritein,
+  ChatBetParseError,
+  InvalidWriteinFormatError,
+  InvalidWriteinDateError,
+  InvalidWriteinDescriptionError
 } from '../../src/index';
 
 import {
@@ -23,7 +27,8 @@ import {
   validOrderTestCases,
   validFillTestCases,
   f3PeriodTestCases,
-  individualContestantTestCases
+  individualContestantTestCases,
+  writeinErrorTestCases
 } from '../fixtures/parsers-test-cases';
 
 describe('Chat Bet Parsing', () => {
@@ -46,14 +51,32 @@ describe('Chat Bet Parsing', () => {
         expect(result.bet.Size).toBe(testCase.expectedSize);
       }
       
-      // Contract details
-      expect(result.contract.Match.Team1).toBe(testCase.expectedTeam1);
-      if (testCase.expectedTeam2) {
-        expect(result.contract.Match.Team2).toBe(testCase.expectedTeam2);
+      // Contract details - different handling for different contract types
+      if (isWritein(result.contract)) {
+        // Writein-specific validations
+        if (testCase.expectedEventDate) {
+          expect(result.contract.EventDate).toEqual(testCase.expectedEventDate);
+        }
+        if (testCase.expectedDescription) {
+          expect(result.contract.Description).toBe(testCase.expectedDescription);
+        }
+      } else {
+        // Regular contracts with Match property
+        if (testCase.expectedTeam1) {
+          expect(result.contract.Match.Team1).toBe(testCase.expectedTeam1);
+        }
+        if (testCase.expectedTeam2) {
+          expect(result.contract.Match.Team2).toBe(testCase.expectedTeam2);
+        }
+        
+        // Match.Date should always be undefined since we don't parse dates from chat
+        expect(result.contract.Match.Date).toBeUndefined();
+        
+        // Day sequence
+        if (testCase.expectedDaySequence) {
+          expect(result.contract.Match.DaySequence).toBe(testCase.expectedDaySequence);
+        }
       }
-      
-      // Match.Date should always be undefined since we don't parse dates from chat
-      expect(result.contract.Match.Date).toBeUndefined();
       
       // Rotation number
       if (testCase.expectedRotationNumber) {
@@ -62,11 +85,6 @@ describe('Chat Bet Parsing', () => {
         if ('RotationNumber' in result.contract) {
           expect(result.contract.RotationNumber).toBe(testCase.expectedRotationNumber);
         }
-      }
-      
-      // Day sequence
-      if (testCase.expectedDaySequence) {
-        expect(result.contract.Match.DaySequence).toBe(testCase.expectedDaySequence);
       }
       
       // Period info
@@ -115,8 +133,8 @@ describe('Chat Bet Parsing', () => {
         }
       }
       
-      // Sport field when expected
-      if (testCase.expectedSport) {
+      // Sport field when expected (not applicable to Writein contracts)
+      if (testCase.expectedSport && !isWritein(result.contract)) {
         expect(result.contract.Sport).toBe(testCase.expectedSport);
       }
     });
@@ -144,7 +162,10 @@ describe('Chat Bet Parsing', () => {
       expect(result.bet.ExecutionDtm).toBeUndefined();
       
       // Match.Date should always be undefined since we don't parse dates from chat
-      expect(result.contract.Match.Date).toBeUndefined();
+      // Only check for non-Writein contracts
+      if (!isWritein(result.contract)) {
+        expect(result.contract.Match.Date).toBeUndefined();
+      }
     });
     
     test('should reject YG message', () => {
@@ -169,7 +190,10 @@ describe('Chat Bet Parsing', () => {
       expect(result.bet.ExecutionDtm).toBeInstanceOf(Date);
       
       // Match.Date should always be undefined since we don't parse dates from chat
-      expect(result.contract.Match.Date).toBeUndefined();
+      // Only check for non-Writein contracts
+      if (!isWritein(result.contract)) {
+        expect(result.contract.Match.Date).toBeUndefined();
+      }
     });
     
     test('should reject IW message', () => {
@@ -687,6 +711,25 @@ describe('Chat Bet Parsing', () => {
       expect('Prop' in result2.contract)
       if ('Prop' in result1.contract && 'Prop' in result2.contract) {
         expect(result1.contract.Prop).toBe(result2.contract.Prop);
+      }
+    });
+  });
+
+  // ==============================================================================
+  // WRITEIN ERROR HANDLING TESTS
+  // ==============================================================================
+  
+  describe('Writein Error Handling', () => {
+    test.each(writeinErrorTestCases)('$description', (testCase) => {
+      expect(() => parseChat(testCase.input)).toThrow();
+      
+      try {
+        parseChat(testCase.input);
+      } catch (error) {
+        expect(error).toBeInstanceOf(ChatBetParseError);
+        expect(error.name).toBe(testCase.expectedErrorType);
+        expect(error.message).toContain(testCase.expectedErrorMessage);
+        expect(error.rawInput).toBe(testCase.input);
       }
     });
   });

@@ -110,6 +110,10 @@ export interface GradingSqlParameters {
 
   // Series-specific
   SeriesLength?: number;
+
+  // Writein-specific
+  EventDate?: Date;
+  WriteInDescription?: string;
 }
 
 // ==============================================================================

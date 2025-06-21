@@ -169,6 +169,15 @@ export interface ContractSportCompetitionSeries {
 }
 
 // ==============================================================================
+// WRITEIN CONTRACT TYPE (separate table)
+// ==============================================================================
+
+export interface ContractWritein {
+  EventDate: Date;
+  Description: string;
+}
+
+// ==============================================================================
 // UNION TYPES
 // ==============================================================================
 
@@ -180,7 +189,10 @@ export type ContractSportCompetitionMatch =
   | ContractSportCompetitionMatchPropOU
   | ContractSportCompetitionMatchPropYN;
 
-export type Contract = ContractSportCompetitionMatch | ContractSportCompetitionSeries;
+export type Contract =
+  | ContractSportCompetitionMatch
+  | ContractSportCompetitionSeries
+  | ContractWritein;
 
 // ==============================================================================
 // BET TYPES
@@ -214,7 +226,8 @@ export type ContractType =
   | 'HandicapContestantLine'
   | 'PropOU'
   | 'PropYN'
-  | 'Series';
+  | 'Series'
+  | 'Writein';
 
 export interface ParseResultBase {
   chatType: ChatType;
@@ -309,4 +322,8 @@ export function isPropYN(contract: Contract): contract is ContractSportCompetiti
 
 export function isSeries(contract: Contract): contract is ContractSportCompetitionSeries {
   return 'SeriesLength' in contract;
+}
+
+export function isWritein(contract: Contract): contract is ContractWritein {
+  return 'EventDate' in contract && 'Description' in contract;
 }
