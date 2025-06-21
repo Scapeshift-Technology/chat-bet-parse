@@ -56,4 +56,7 @@ Thumbs.db
 
 # Temporary folders
 tmp/
-temp/ 
+temp/
+
+# Linked projects (symlinks)
+linked_projects/ 
