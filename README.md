@@ -48,6 +48,17 @@ const orderResult = parseChat(
 console.log(orderResult.chatType); // 'order'
 console.log(orderResult.contractType); // 'TotalPoints'
 console.log(orderResult.bet.Size); // undefined (no size specified)
+
+// Parse a writein contract
+const writeinResult = parseChat(
+  'YG writein 2024-12-25 Christmas Day game will go to overtime @ +200 = 1.5'
+);
+
+console.log(writeinResult.chatType); // 'fill'
+console.log(writeinResult.contractType); // 'Writein'
+console.log(writeinResult.contract.EventDate); // Date object for 2024-12-25
+console.log(writeinResult.contract.Description); // 'Christmas Day game will go to overtime'
+console.log(writeinResult.bet.Size); // 1500
 ```
 
 ### Grading (Optional)
@@ -79,6 +90,7 @@ The package includes optional SQL Server integration for grading parsed contract
 - **Spreads**: Point spread with handicap lines
 - **Series**: Multi-game series outcomes
 - **Props**: Player/team proposition bets (basic implementation)
+- **Writeins**: Custom event contracts with user-defined descriptions
 
 **Grade results:**
 - `'W'` - Win
@@ -110,7 +122,9 @@ dbo.Contract_CALCULATE_Grade_fn(
     @Prop VARCHAR(20) = NULL,
     @PropContestantType CHAR(10) = NULL,
     @IsYes BIT = NULL,
-    @SeriesLength TINYINT = NULL
+    @SeriesLength TINYINT = NULL,
+    @EventDate DATE = NULL,
+    @WriteInDescription VARCHAR(255) = NULL
 ) RETURNS CHAR(1)
 ```
 
@@ -127,6 +141,7 @@ dbo.Contract_CALCULATE_Grade_fn(
 - **PropOU**: Proposition over/under bets
 - **PropYN**: Proposition yes/no bets
 - **Series**: Multi-game series outcome bets
+- **Writein**: Custom event contracts with user-defined descriptions
 
 **Example SQL Usage:**
 ```sql
@@ -146,7 +161,31 @@ SELECT dbo.Contract_CALCULATE_Grade_fn(
     NULL,                   -- Prop (for prop bets)
     NULL,                   -- PropContestantType
     NULL,                   -- IsYes (for yes/no props)
-    NULL                    -- SeriesLength (for series bets)
+    NULL,                   -- SeriesLength (for series bets)
+    NULL,                   -- EventDate (for writein contracts)
+    NULL                    -- WriteInDescription (for writein contracts)
+) as Grade;
+
+-- Example: Writein contract grading
+SELECT dbo.Contract_CALCULATE_Grade_fn(
+    NULL,                   -- MatchScheduledDate (not used for writeins)
+    NULL,                   -- Contestant1 (not used for writeins)
+    NULL,                   -- Contestant2 (not used for writeins)
+    NULL,                   -- DaySequence
+    NULL,                   -- MatchContestantType
+    'M',                    -- PeriodTypeCode (default)
+    0,                      -- PeriodNumber (default)
+    'Writein',              -- ContractType
+    NULL,                   -- Line (not used for writeins)
+    NULL,                   -- IsOver (not used for writeins)
+    NULL,                   -- SelectedContestant (not used for writeins)
+    0,                      -- TiesLose
+    NULL,                   -- Prop (not used for writeins)
+    NULL,                   -- PropContestantType
+    NULL,                   -- IsYes (not used for writeins)
+    NULL,                   -- SeriesLength (not used for writeins)
+    '2024-12-25',           -- EventDate
+    'Christmas Day game will go to overtime'  -- WriteInDescription
 ) as Grade;
 ```
 
@@ -194,7 +233,7 @@ yg_details       = "YG" [rotation_number] chat_fill   (* Fills *)
 chat_order       = contract [bet_price] ["=" unit_size]          (* Orders: price and size optional *)
 chat_fill        = contract [bet_price] "=" fill_size            (* Fills: price optional, size required *)
 
-contract         = game_total | team_total | moneyline | spread | prop | series
+contract         = game_total | team_total | moneyline | spread | prop | series | writein
 ```
 
 ### Core Patterns
@@ -289,6 +328,19 @@ series_suffix    = "out of" digit+ |                  (* "out of 4" *)
                    digit+ "-game series" |            (* "7-Game Series" *)
                    "/" digit+                         (* "series/5" *)
                                                       (* defaults to "out of 3" if not specified *)
+
+(* 7. Writeins *)
+writein          = "writein" writein_date writein_description
+writein_date     = yyyy_mm_dd | mm_dd_yyyy | yyyy_mm_dd_alt | mm_dd_yyyy_alt | mm_dd | mm_dd_alt
+writein_description = (letter | digit | " " | punctuation)+    (* 10-255 characters, no newlines *)
+
+(* Date formats with smart year inference *)
+yyyy_mm_dd       = digit digit digit digit "/" digit+ "/" digit+     (* YYYY/MM/DD *)
+mm_dd_yyyy       = digit+ "/" digit+ "/" digit digit digit digit     (* MM/DD/YYYY *)
+yyyy_mm_dd_alt   = digit digit digit digit "-" digit+ "-" digit+     (* YYYY-MM-DD *)
+mm_dd_yyyy_alt   = digit+ "-" digit+ "-" digit digit digit digit     (* MM-DD-YYYY *)
+mm_dd            = digit+ "/" digit+                                 (* MM/DD - infers year *)
+mm_dd_alt        = digit+ "-" digit+                                 (* MM-DD - infers year *)
 ```
 
 ### Examples by Contract Type
@@ -324,11 +376,17 @@ series_suffix    = "out of" digit+ |                  (* "out of 4" *)
 - `YG CIN first team to score @ -109.8 = $265` (dollar_size = $265 literal)
 
 **Series Bets**
-- `YG 852 Guardians series -105 @ 3k` (k_size = $3,000, default 3-game series)
-- `YG 854 Yankees 4 game series +110 @ 1k` (k_size = $1,000)
-- `YG 856 Red Sox series out of 4 -120 @ 2.0` (decimal_thousands_size = $2,000)
-- `YG Lakers 7-Game Series @ +120 = 1.0` (decimal_thousands_size = $1,000)
-- `YG 856 St. Louis Cardinals series/5 -120 = 2.0` (decimal_thousands_size = $2,000)
+- `IW 852 Guardians series @ -105` (no size - order only, default 3-game series)
+- `IW 854 Yankees 4 game series @ +110 = 1.0` (with unit_size = $1.00 literal)
+- `IW 856 Red Sox series out of 4 @ -120 = 2.0` (with unit_size = $2.00 literal)
+- `IW Lakers 7-Game Series @ +120 = 1.0` (with unit_size = $1.00 literal)
+- `IW 856 St. Louis Cardinals series/5 @ -120 = 2.0` (with unit_size = $2.00 literal)
+
+**Writein Contracts**
+- `IW writein 2024-12-25 Christmas Day game will go to overtime @ +200` (no size - order only)
+- `IW writein 12/31/2024 New Year's Eve total points over 250 @ -110 = 5.0` (with unit_size = $5.00 literal)
+- `IW writein 03/15 March Madness upset in first round @ +300 = 2.5` (MM/DD format, infers year)
+- `IW writein 6-1 June trade deadline blockbuster deal @ +150 = 1.0` (MM-DD format, infers year)
 
 #### Chat Fills (Executed Bets)
 **Game Totals**
@@ -354,9 +412,23 @@ series_suffix    = "out of" digit+ |                  (* "out of 4" *)
 - `YG Player123 passing yards o250.5 @ -115` (no size - order only)
 - `YG Player456 rebounds o12.5 @ -110` (no size - order only)
 
+**Series Bets**
+- `YG 852 Guardians series @ -105 = 3k` (k_size = $3,000, default 3-game series)
+- `YG 854 Yankees 4 game series @ +110 = 1k` (k_size = $1,000)
+- `YG 856 Red Sox series out of 4 @ -120 = 2.0` (decimal_thousands_size = $2,000)
+- `YG Lakers 7-Game Series @ +120 = 1.0` (decimal_thousands_size = $1,000)
+- `YG 856 St. Louis Cardinals series/5 @ -120 = 2.0` (decimal_thousands_size = $2,000)
+
 **Props (Yes/No)**
-- `YG CIN 1st team to score @ -115` (no size - order only)
-- `YG CHC last to score @ -139` (no size - order only)
+- `YG CIN 1st team to score @ -115 = 0.563` (decimal_thousands_size = $563)
+- `YG CHC last to score @ -139 = 0.35` (decimal_thousands_size = $350)
+- `YG CIN first team to score @ -109.8 = $265` (dollar_size = $265 literal)
+
+**Writein Contracts**
+- `YG writein 2024-12-25 Christmas Day game will go to overtime @ +200 = 1.5` (decimal_thousands_size = $1,500)
+- `YG writein 12/31/2024 New Year's Eve total points over 250 @ -110 = 5.0` (decimal_thousands_size = $5,000)
+- `YG writein 03/15 March Madness upset in first round @ +300 = 2.5k` (k_size = $2,500)
+- `YG writein 6-1 June trade deadline blockbuster deal @ +150 = $1000` (dollar_size = $1,000 literal)
 
 ### Size Interpretation Rules
 
@@ -387,6 +459,15 @@ series_suffix    = "out of" digit+ |                  (* "out of 4" *)
 - **Prop Distinction**: 
   - **PropOU** (PassingYards, RBI, Rebounds, ReceivingYards, Ks): MUST have over/under line
   - **PropYN** (FirstToScore, LastToScore): MAY NOT have line, Yes/No outcome only
+- **Writein Rules**:
+  - **Date Requirement**: Date must be the first token after "writein"
+  - **Date Formats**: Supports YYYY-MM-DD, MM/DD/YYYY, YYYY/MM/DD, MM-DD-YYYY, MM/DD, MM-DD
+  - **Smart Year Inference**: For dates without year (MM/DD, MM-DD):
+    - If date is today or future: uses current year
+    - If date is in the past: uses next year
+  - **Date Validation**: Rejects invalid calendar dates (e.g., February 30th)
+  - **Description Length**: Must be 10-255 characters, no newlines allowed
+  - **Case Insensitive**: "writein", "WRITEIN", "WriteIn" all accepted
 - **Period Mapping**: 
   - `first inning`, `1st inning`, `first i`, `1st i` → `I1`
   - `first half`, `1st half`, `first h`, `1st h` → `H1`
