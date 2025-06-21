@@ -493,11 +493,11 @@ export function parseWriteinDate(dateString: string, rawInput: string): Date {
   // Format patterns to try
   const patterns = [
     // Full date patterns with year
-    /^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/, // YYYY/MM/DD or YYYY-MM-DD
-    /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/, // MM/DD/YYYY or MM-DD-YYYY
+    /^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/, // YYYY/MM/DD or YYYY-MM-DD
+    /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/, // MM/DD/YYYY or MM-DD-YYYY
 
     // Date patterns without year
-    /^(\d{1,2})[\/\-](\d{1,2})$/, // MM/DD or MM-DD
+    /^(\d{1,2})[/-](\d{1,2})$/, // MM/DD or MM-DD
   ];
 
   for (const pattern of patterns) {
