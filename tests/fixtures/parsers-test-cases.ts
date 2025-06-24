@@ -657,6 +657,30 @@ export const validFillTestCases: TestCase[] = [
     expectedSize: 1500, // 1.5 as decimal thousands
     expectedEventDate: new Date(new Date().getFullYear(), 11, 25),
     expectedDescription: 'Christmas Day snow in NYC',
+  },
+
+  // Additional edge cases with price format variations
+  {
+    description: 'YG Team total F5 with price immediately after line (no @ symbol)',
+    input: 'YG TOR F5 TT u2.5-125 = $500',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPointsContestant',
+    expectedPrice: -125,
+    expectedSize: 500, // Dollar amounts are literal
+    expectedTeam1: 'TOR',
+    expectedLine: 2.5,
+    expectedIsOver: false,
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 }
+  },
+  {
+    description: 'YG Moneyline F5 with decimal thousands',
+    input: 'YG ARI F5 ML @ -120 = 0.75',
+    expectedChatType: 'fill',
+    expectedContractType: 'HandicapContestantML',
+    expectedPrice: -120,
+    expectedSize: 750, // 0.75 as decimal thousands for fills
+    expectedTeam1: 'ARI',
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 }
   }
 ];
 

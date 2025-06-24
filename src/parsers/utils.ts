@@ -376,16 +376,35 @@ export function matchesIgnoreCase(text: string, pattern: string): boolean {
 
 /**
  * Extract over/under from text: "o4.5" -> { isOver: true, line: 4.5 }
+ * Also handles attached prices: "u2.5-125" -> { isOver: false, line: 2.5, attachedPrice: -125 }
  */
-export function parseOverUnder(ouStr: string, rawInput: string): { isOver: boolean; line: number } {
+export function parseOverUnder(
+  ouStr: string,
+  rawInput: string
+): {
+  isOver: boolean;
+  line: number;
+  attachedPrice?: number;
+} {
   const match = ouStr.toLowerCase().match(/^([ou])(.+)$/);
   if (!match) {
     throw new InvalidLineValueError(rawInput, parseFloat(ouStr));
   }
 
   const isOver = match[1] === 'o';
-  const line = parseLine(match[2], rawInput);
+  const lineAndPrice = match[2];
 
+  // Check if there's a price attached directly to the line (e.g., "2.5-125" or "2.5+125")
+  const attachedPriceMatch = lineAndPrice.match(/^(\d+(?:\.\d+)?)([+-]\d+(?:\.\d+)?)$/);
+  if (attachedPriceMatch) {
+    const line = parseLine(attachedPriceMatch[1], rawInput);
+    const priceStr = attachedPriceMatch[2];
+    const attachedPrice = parsePrice(priceStr, rawInput);
+    return { isOver, line, attachedPrice };
+  }
+
+  // No attached price, parse normally
+  const line = parseLine(lineAndPrice, rawInput);
   return { isOver, line };
 }
 

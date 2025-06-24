@@ -310,7 +310,22 @@ function tokenizeChat(message: string): TokenResult {
     throw new InvalidChatFormatError(rawInput, 'No contract details found');
   }
 
-  const contractText = parts.slice(currentIndex, contractEndIndex).join(' ');
+  let contractText = parts.slice(currentIndex, contractEndIndex).join(' ');
+
+  // Check for attached prices in over/under patterns (e.g., "u2.5-125", "o2.5+125")
+  if (price === undefined) {
+    const attachedPriceMatch = contractText.match(/([ou])(\d+(?:\.\d+)?)([+-]\d+(?:\.\d+)?)/i);
+    if (attachedPriceMatch) {
+      // Extract the attached price and clean the contract text
+      const attachedPriceStr = attachedPriceMatch[3];
+      price = parsePrice(attachedPriceStr, rawInput);
+      // Remove the attached price from contract text
+      contractText = contractText.replace(
+        attachedPriceMatch[0],
+        attachedPriceMatch[1] + attachedPriceMatch[2]
+      );
+    }
+  }
 
   // Parse price if present and not already found
   if (price === undefined && priceIndex > 0 && priceIndex < parts.length) {
@@ -373,7 +388,7 @@ function detectContractType(contractText: string, rawInput: string): ContractTyp
   // Team totals: contain " tt " or " tt o/u" or start with "tt"
   if (
     /\stt\s/i.test(contractText) ||
-    /\stt\s*[ou]/i.test(contractText) ||
+    /\stt\s*[ou]\d+(?:\.\d+)?(?:[+-]\d+(?:\.\d+)?)?/i.test(contractText) ||
     /^tt\s/i.test(contractText)
   ) {
     // Check if TT appears at the beginning (no team name before it)
@@ -386,8 +401,8 @@ function detectContractType(contractText: string, rawInput: string): ContractTyp
   // Props: detect specific prop types and check for over/under lines
   const propInfo = detectPropType(text);
   if (propInfo) {
-    // Check if the text contains an over/under line pattern
-    const hasLine = /[ou]\d+(?:\.\d+)?/i.test(contractText);
+    // Check if the text contains an over/under line pattern (with or without attached prices)
+    const hasLine = /[ou]\d+(?:\.\d+)?(?:[+-]\d+(?:\.\d+)?)?/i.test(contractText);
 
     // Validate the prop format
     validatePropFormat(text, hasLine, rawInput);
@@ -400,7 +415,7 @@ function detectContractType(contractText: string, rawInput: string): ContractTyp
   // Only apply to patterns that look like props (e.g., Player123 something, not generic text)
   if (/^[a-zA-Z0-9]+\s+[a-zA-Z\s]+(yards|rbi|rebounds|score|strikeouts|prop)/i.test(contractText)) {
     // This looks like a prop but isn't in our known types - validate it to get proper error
-    const hasLine = /[ou]\d+(?:\.\d+)?/i.test(contractText);
+    const hasLine = /[ou]\d+(?:\.\d+)?(?:[+-]\d+(?:\.\d+)?)?/i.test(contractText);
     validatePropFormat(text, hasLine, rawInput);
   }
 
@@ -434,23 +449,28 @@ function detectContractType(contractText: string, rawInput: string): ContractTyp
   }
 
   // Game totals: teams with o/u OR single team with period and o/u
-  if (/\//.test(contractText) && /[ou]\d+(?:\.\d+)?(\s+runs)?/i.test(contractText)) {
+  if (
+    /\//.test(contractText) &&
+    /[ou]\d+(?:\.\d+)?(?:[+-]\d+(?:\.\d+)?)?(\s+runs)?/i.test(contractText)
+  ) {
     return 'TotalPoints';
   }
 
   // Single team game totals: team with period and over/under (e.g., "Pirates F5 u4.5")
   if (
-    /^[a-zA-Z\s&.-]+\s+(f5|f3|h1|1h|h2|2h|\d+(?:st|nd|rd|th)?\s*(?:inning|i|quarter|q|period|p))\s+[ou]\d+(?:\.\d+)?/i.test(
+    /^[a-zA-Z\s&.-]+\s+(f5|f3|h1|1h|h2|2h|\d+(?:st|nd|rd|th)?\s*(?:inning|i|quarter|q|period|p))\s+[ou]\d+(?:\.\d+)?(?:[+-]\d+(?:\.\d+)?)?/i.test(
       contractText
     )
   ) {
     return 'TotalPoints';
   }
 
-  // Moneylines: just team name (after eliminating other types), or team name with +0/-0
+  // Moneylines: just team name (after eliminating other types), team name with +0/-0, or team name with "ML"
   if (
     (!text.includes('/') && !text.includes('o') && !text.includes('u')) ||
-    /[a-zA-Z]+\s*[+-]0(?:\s|$)/i.test(contractText)
+    /[a-zA-Z]+\s*[+-]0(?:\s|$)/i.test(contractText) ||
+    /\sml\s*$/i.test(contractText) ||
+    /\sml\s+/i.test(contractText)
   ) {
     return 'HandicapContestantML';
   }
@@ -481,7 +501,9 @@ function parseGameTotal(
   const hasRunsSuffix = !!ouMatch[3];
 
   // Remove the o/u part (and optional "runs") to get teams and period
-  const withoutOU = contractText.replace(/\s*[ou]\d+(?:\.\d+)?(\s+runs)?/i, '').trim();
+  const withoutOU = contractText
+    .replace(/\s*[ou]\d+(?:\.\d+)?(?:[+-]\d+(?:\.\d+)?)?(\s+runs)?/i, '')
+    .trim();
 
   // Parse teams and extract game info
   const { period, match } = parseMatchInfo(withoutOU, rawInput, sport, league);
@@ -534,7 +556,7 @@ function parseTeamTotal(
 
   // Remove the o/u part (and optional "runs") and TT to get team and period
   const withoutOU = contractText
-    .replace(/\s*[ou]\d+(?:\.\d+)?(\s+runs)?/i, '')
+    .replace(/\s*[ou]\d+(?:\.\d+)?(?:[+-]\d+(?:\.\d+)?)?(\s+runs)?/i, '')
     .replace(/\s*tt\s*/i, ' ')
     .trim();
 
@@ -564,8 +586,12 @@ function parseMoneyline(
   sport?: Sport,
   league?: League
 ): ContractSportCompetitionMatchHandicapContestantML {
-  // Remove +0/-0 from contract text if present (it's just a moneyline indicator)
-  const cleanedContractText = contractText.replace(/\s*[+-]0(?:\s|$)/i, '').trim();
+  // Remove +0/-0 or ML from contract text if present (they're just moneyline indicators)
+  const cleanedContractText = contractText
+    .replace(/\s*[+-]0(?:\s|$)/i, '') // Remove +0/-0 patterns
+    .replace(/\s+ml\s*$/i, '') // Remove trailing " ML"
+    .replace(/\s+ml\s+/i, ' ') // Remove " ML " in middle
+    .trim();
 
   const { teams, period, match } = parseMatchInfo(cleanedContractText, rawInput, sport, league);
 
@@ -643,7 +669,9 @@ function parsePropOU(
   }
 
   // Remove the o/u part (and optional "runs") to get player/team and prop type
-  const withoutOU = contractText.replace(/\s*[ou]\d+(?:\.\d+)?(\s+runs)?/i, '').trim();
+  const withoutOU = contractText
+    .replace(/\s*[ou]\d+(?:\.\d+)?(?:[+-]\d+(?:\.\d+)?)?(\s+runs)?/i, '')
+    .trim();
 
   // Check for individual pattern first: "B. Falter" (single letter, dot, space, name)
   const individualMatch = withoutOU.match(/^([A-Z]\.\s+[A-Za-z]+)\s+(.+)$/);
