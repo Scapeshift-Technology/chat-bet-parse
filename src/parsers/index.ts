@@ -194,7 +194,15 @@ function tokenizeWritein(
  */
 function tokenizeChat(message: string): TokenResult {
   const rawInput = message; // Preserve original input for error reporting
-  const parts = message.trim().split(/\s+/);
+
+  // Pre-process to handle spacing around = sign
+  let processedMessage = message.trim();
+  // Add spaces around = if they're missing
+  processedMessage = processedMessage.replace(/([^=\s])=([^=\s])/g, '$1 = $2'); // no space before or after
+  processedMessage = processedMessage.replace(/([^=\s])=(\s)/g, '$1 = $2'); // no space before
+  processedMessage = processedMessage.replace(/(\s)=([^=\s])/g, '$1 = $2'); // no space after
+
+  const parts = processedMessage.split(/\s+/);
 
   if (parts.length < 2) {
     throw new InvalidChatFormatError(rawInput, 'Message too short');
@@ -466,11 +474,18 @@ function detectContractType(contractText: string, rawInput: string): ContractTyp
   }
 
   // Moneylines: just team name (after eliminating other types), team name with +0/-0, or team name with "ML"
+  // Also handles cases where only team and period remain (e.g., "COL F5" after price extraction)
+  // Or just team name alone (e.g., "COL" after price extraction)
   if (
-    (!text.includes('/') && !text.includes('o') && !text.includes('u')) ||
+    (!contractText.includes('/') &&
+      !/\s[ou]\d/i.test(contractText) &&
+      !/^[ou]\d/i.test(contractText)) ||
     /[a-zA-Z]+\s*[+-]0(?:\s|$)/i.test(contractText) ||
     /\sml\s*$/i.test(contractText) ||
-    /\sml\s+/i.test(contractText)
+    /\sml\s+/i.test(contractText) ||
+    /^[a-zA-Z]+\s+(f5|f3|h1|1h|h2|2h|\d+(?:st|nd|rd|th)?\s*(?:inning|i|quarter|q|period|p))\s*$/i.test(
+      contractText
+    )
   ) {
     return 'HandicapContestantML';
   }

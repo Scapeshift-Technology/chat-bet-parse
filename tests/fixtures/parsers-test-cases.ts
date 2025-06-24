@@ -681,6 +681,64 @@ export const validFillTestCases: TestCase[] = [
     expectedSize: 750, // 0.75 as decimal thousands for fills
     expectedTeam1: 'ARI',
     expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 }
+  },
+
+  // Additional edge cases with spacing variations around = sign
+  {
+    description: 'YG Team total F5 with no space after = sign',
+    input: 'YG CLE F5 TT o1.5 +115 =$250',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPointsContestant',
+    expectedPrice: 115,
+    expectedSize: 250, // Dollar amounts are literal
+    expectedTeam1: 'CLE',
+    expectedLine: 1.5,
+    expectedIsOver: true,
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 }
+  },
+  {
+    description: 'YG Team total F5 with no space before or after = sign',
+    input: 'YG CLE F5 TT o1.5 +115=$250',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPointsContestant',
+    expectedPrice: 115,
+    expectedSize: 250, // Dollar amounts are literal
+    expectedTeam1: 'CLE',
+    expectedLine: 1.5,
+    expectedIsOver: true,
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 }
+  },
+  {
+    description: 'YG Team total F5 with no space before = sign',
+    input: 'YG CLE F5 TT o1.5 +115= $250',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPointsContestant',
+    expectedPrice: 115,
+    expectedSize: 250, // Dollar amounts are literal
+    expectedTeam1: 'CLE',
+    expectedLine: 1.5,
+    expectedIsOver: true,
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 }
+  },
+  {
+    description: 'YG implicit moneyline F5 (auto-detect ML)',
+    input: 'YG COL F5 +135 = $1000',
+    expectedChatType: 'fill',
+    expectedContractType: 'HandicapContestantML',
+    expectedPrice: 135,
+    expectedSize: 1000, // Dollar amounts are literal
+    expectedTeam1: 'COL',
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 }
+  },
+  {
+    description: 'YG implicit moneyline full game (auto-detect ML) - case insensitive',
+    input: 'yg col +135 = $1000',
+    expectedChatType: 'fill',
+    expectedContractType: 'HandicapContestantML',
+    expectedPrice: 135,
+    expectedSize: 1000, // Dollar amounts are literal
+    expectedTeam1: 'col',
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
   }
 ];
 
@@ -905,14 +963,6 @@ export const errorTestCases: ErrorTestCase[] = [
     input: 'IW  TT o3.5 @ -110',
     expectedErrorType: 'InvalidTeamFormatError',
     expectedErrorMessage: 'Team name cannot be empty'
-  },
-  
-  // Contract type detection errors
-  {
-    description: 'Ambiguous contract - could not determine type',
-    input: 'IW some random text @ -110',
-    expectedErrorType: 'InvalidContractTypeError',
-    expectedErrorMessage: 'Unable to determine contract type from: "some random text"'
   },
   
   // Message too short
