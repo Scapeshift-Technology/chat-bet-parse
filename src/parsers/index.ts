@@ -735,7 +735,7 @@ function parsePropOU(
 }
 
 /**
- * Parse PropYN bet: "CIN 1st team to score"
+ * Parse PropYN bet: "CIN 1st team to score" or "DET #1 first team to score"
  */
 function parsePropYN(
   contractText: string,
@@ -743,22 +743,35 @@ function parsePropYN(
   sport?: Sport,
   league?: League
 ): ContractSportCompetitionMatchPropYN {
-  // Extract team (first word typically)
-  const parts = contractText.trim().split(/\s+/);
-  if (parts.length < 2) {
+  // Find the prop type first to know where it starts
+  const propInfo = detectPropType(contractText.toLowerCase());
+  if (!propInfo || propInfo.category !== 'PropYN') {
+    throw new InvalidContractTypeError(rawInput, `Invalid PropYN type: ${contractText}`);
+  }
+
+  // Extract the team/game info by removing the prop text from the end
+  const propPatterns = [
+    /\s+(1st team to score|first team to score|to score first|first to score)$/i,
+    /\s+(last team to score|to score last|last to score)$/i,
+  ];
+
+  let teamAndGameInfo = contractText;
+  for (const pattern of propPatterns) {
+    if (pattern.test(contractText)) {
+      teamAndGameInfo = contractText.replace(pattern, '').trim();
+      break;
+    }
+  }
+
+  if (!teamAndGameInfo) {
     throw new InvalidContractTypeError(rawInput, contractText);
   }
 
-  const team = parts[0];
-  const propText = parts.slice(1).join(' ').toLowerCase();
-
-  const propInfo = detectPropType(propText);
-  if (!propInfo || propInfo.category !== 'PropYN') {
-    throw new InvalidContractTypeError(rawInput, `Invalid PropYN type: ${propText}`);
-  }
+  // Use parseMatchInfo to extract team and game number
+  const { teams, match } = parseMatchInfo(teamAndGameInfo, rawInput, sport, league);
 
   // Detect contestant type
-  const contestantType = detectContestantType(team);
+  const contestantType = detectContestantType(teams.team1);
 
   // Determine IsYes value based on prop type
   let isYes: boolean;
@@ -773,16 +786,14 @@ function parsePropYN(
   return {
     Sport: sport,
     League: league,
-    Match: {
-      Team1: team,
-    },
+    Match: match,
     Period: { PeriodTypeCode: 'M', PeriodNumber: 0 },
     HasContestant: true,
     HasLine: false,
     ContractSportCompetitionMatchType: 'Prop',
     ContestantType: contestantType,
     Prop: propInfo.standardName,
-    Contestant: team,
+    Contestant: teams.team1,
     IsYes: isYes,
   };
 }
