@@ -192,6 +192,11 @@ export function parsePeriod(periodStr: string, rawInput: string): Period {
     return { PeriodTypeCode: 'H', PeriodNumber: 13 };
   }
 
+  // First seven innings pattern: f7
+  if (cleaned === 'f7') {
+    return { PeriodTypeCode: 'H', PeriodNumber: 17 };
+  }
+
   // Second half patterns: h2, 2h, second half, 2nd half
   if (
     cleaned === 'h2' ||

@@ -27,6 +27,7 @@ import {
   validOrderTestCases,
   validFillTestCases,
   f3PeriodTestCases,
+  f7PeriodTestCases,
   individualContestantTestCases,
   writeinErrorTestCases
 } from '../fixtures/parsers-test-cases';
@@ -394,6 +395,27 @@ describe('Chat Bet Parsing', () => {
   
   describe('F3 Period Parsing', () => {
     test.each(f3PeriodTestCases)('$description', (testCase) => {
+      const result = parseChat(testCase.input);
+      
+      expect(result.chatType).toBe(testCase.expectedChatType);
+      expect(result.contractType).toBe(testCase.expectedContractType);
+      
+      if (testCase.expectedPeriod) {
+        expect('Period' in result.contract)
+        if ('Period' in result.contract) {
+          expect(result.contract.Period.PeriodTypeCode).toBe(testCase.expectedPeriod.PeriodTypeCode);
+          expect(result.contract.Period.PeriodNumber).toBe(testCase.expectedPeriod.PeriodNumber);
+        }
+      }
+    });
+  });
+  
+  // ==============================================================================
+  // F7 PERIOD PARSING TESTS
+  // ==============================================================================
+  
+  describe('F7 Period Parsing', () => {
+    test.each(f7PeriodTestCases)('$description', (testCase) => {
       const result = parseChat(testCase.input);
       
       expect(result.chatType).toBe(testCase.expectedChatType);

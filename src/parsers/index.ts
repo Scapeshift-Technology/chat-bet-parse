@@ -909,7 +909,7 @@ function parseMatchInfo(
   let period: Period = { PeriodTypeCode: 'M', PeriodNumber: 0 }; // Default
   const periodPatterns = [
     /\b(\d+(?:st|nd|rd|th)?\s*(?:inning|i))\b/i,
-    /\b(f5|f3|h1|1h|h2|2h)\b/i,
+    /\b(f5|f3|f7|h1|1h|h2|2h)\b/i,
     /\b(\d+(?:st|nd|rd|th)?\s*(?:quarter|q))\b/i,
     /\b(\d+(?:st|nd|rd|th)?\s*(?:period|p))\b/i,
     /\b(first\s*(?:half|five|5|inning|i))\b/i,

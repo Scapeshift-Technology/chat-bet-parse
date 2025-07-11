@@ -851,6 +851,33 @@ export const f3PeriodTestCases: TestCase[] = [
 ];
 
 // ==============================================================================
+// F7 PERIOD PARSING TEST CASES
+// ==============================================================================
+
+export const f7PeriodTestCases: TestCase[] = [
+  {
+    description: 'YG Team F7 moneyline positive line',
+    input: 'YG KC F7 +0 @ +125 = 2.0',
+    expectedChatType: 'fill',
+    expectedContractType: 'HandicapContestantML',
+    expectedPrice: 125,
+    expectedSize: 2000,
+    expectedTeam1: 'KC',
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 17 }
+  },
+  {
+    description: 'YG Team F7 moneyline default price',
+    input: 'YG LAA F7 @ +125 = 2.0',
+    expectedChatType: 'fill',
+    expectedContractType: 'HandicapContestantML',
+    expectedPrice: 125,
+    expectedSize: 2000,
+    expectedTeam1: 'LAA',
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 17 }
+  }
+];
+
+// ==============================================================================
 // INDIVIDUAL CONTESTANT TEST CASES
 // ==============================================================================
 
@@ -1098,5 +1125,6 @@ export const allValidTestCases = [
   ...specialPriceTestCases,
   ...gameNumberTestCases,
   ...f3PeriodTestCases,
+  ...f7PeriodTestCases,
   ...individualContestantTestCases
 ]; 

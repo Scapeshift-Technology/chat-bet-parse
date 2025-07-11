@@ -280,7 +280,7 @@ period           = (first (inning | half | quarter | hockey_period | "five" | "5
                    (second (inning | half | quarter | hockey_period)) |
                    (third (quarter | hockey_period)) |
                    (fourth quarter) |
-                   "f5" | "f3" | "h1" | "1h" | "h2" | "2h" |
+                   "f5" | "f3" | "f7" | "h1" | "1h" | "h2" | "2h" |
                    "q1" | "1q" | "q2" | "2q" | "q3" | "3q" | "q4" | "4q" |
                    "p1" | "1p" | "p2" | "2p" | "p3" | "3p"
 
@@ -349,6 +349,7 @@ mm_dd_alt        = digit+ "-" digit+                                 (* MM-DD - 
 **Game Totals**
 - `IW Padres/Pirates 1st inning u0.5 @ +100` (no size - order only)
 - `IW ATH/SF F5 o4.5 @ -117 = 2.7` (with unit_size = $2.70 literal)
+- `IW KC F7 o6.5 @ -115 = 1.0` (first seven innings with unit_size = $1.00 literal)
 - `IW 507 Thunder/Nuggets o213.5` (no price, no size)
 
 **Team Totals**
@@ -392,6 +393,7 @@ mm_dd_alt        = digit+ "-" digit+                                 (* MM-DD - 
 **Game Totals**
 - `YG Padres/Pirates 1st inning u0.5 @ +100 = 0.094` (decimal_thousands_size = $94)
 - `YG ATH/SF F5 o4.5 @ -117 = 2.7` (decimal_thousands_size = $2,700)
+- `YG KC F7 o6.5 @ -115 = 1.5` (first seven innings, decimal_thousands_size = $1,500)
 - `YG 507 Thunder/Nuggets o213.5 @ 2k` (k_size = $2,000)
 - `YG COL/ARI #2 1st inning u0.5 @ +120 = $200` (dollar_size = $200 literal)
 
@@ -402,6 +404,7 @@ mm_dd_alt        = digit+ "-" digit+                                 (* MM-DD - 
 
 **Moneylines**
 - `YG 872 Athletics @ 4k` (k_size = $4,000, default price -110)
+- `YG KC F7 @ +125 = 2.0` (first seven innings moneyline, decimal_thousands_size = $2,000)
 - `YG 872 Athletics +145 @ $500` (dollar_size = $500 literal)
 
 **Spreads**
@@ -472,6 +475,7 @@ mm_dd_alt        = digit+ "-" digit+                                 (* MM-DD - 
   - `first inning`, `1st inning`, `first i`, `1st i` → `I1`
   - `first half`, `1st half`, `first h`, `1st h` → `H1`
   - `first five`, `1st five`, `first 5`, `1st 5`, `f5`, `h1`, `1h` → `H1` 
+  - `first seven`, `f7` → `H17` (first seven innings)
   - `second half`, `2nd half`, `second h`, `2nd h`, `2h` → `H2`
   - Default (no period) → `M0`
 
