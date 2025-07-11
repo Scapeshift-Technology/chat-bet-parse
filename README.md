@@ -272,7 +272,7 @@ hockey_period    = "period" | "p"
 
 (* Team and period patterns *)
 team             = [("49" | "76")] (letter | "&" | " ")+ 
-teams            = team "/" team
+teams            = team "/" team                              (* Both teams must be different *)
 match            = (teams | team) [game_number]
 
 (* Period patterns - flexible combinations *)
@@ -459,6 +459,7 @@ mm_dd_alt        = digit+ "-" digit+                                 (* MM-DD - 
 - **Game Numbers**: Patterns `g1`, `gm2`, `#2` (case insensitive)
 - **Default Price**: `-110` when price omitted in k-notation bets
 - **Line Validation**: Must be divisible by 0.5
+- **Team Validation**: In team matchups (Team1/Team2 format), both teams must be different
 - **Prop Distinction**: 
   - **PropOU** (PassingYards, RBI, Rebounds, ReceivingYards, Ks): MUST have over/under line
   - **PropYN** (FirstToScore, LastToScore): MAY NOT have line, Yes/No outcome only

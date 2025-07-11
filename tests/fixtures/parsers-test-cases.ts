@@ -991,6 +991,12 @@ export const errorTestCases: ErrorTestCase[] = [
     expectedErrorType: 'InvalidTeamFormatError',
     expectedErrorMessage: 'Team name cannot be empty'
   },
+  {
+    description: 'Duplicate teams in Team1/Team2 format',
+    input: 'YG MIN/MIN 1st inning o0.5 @ +130 = 3.75',
+    expectedErrorType: 'InvalidTeamFormatError',
+    expectedErrorMessage: 'Team1 and Team2 cannot be the same: "MIN"'
+  },
   
   // Message too short
   {

@@ -332,9 +332,21 @@ export function parseTeams(teamsStr: string, rawInput: string): { team1: string;
   if (parts.length === 1) {
     return { team1: parseTeam(parts[0], rawInput) };
   } else if (parts.length === 2) {
+    const team1 = parseTeam(parts[0], rawInput);
+    const team2 = parseTeam(parts[1], rawInput);
+
+    // Check for duplicate teams
+    if (team1 === team2) {
+      throw new InvalidTeamFormatError(
+        rawInput,
+        teamsStr,
+        `Team1 and Team2 cannot be the same: "${team1}"`
+      );
+    }
+
     return {
-      team1: parseTeam(parts[0], rawInput),
-      team2: parseTeam(parts[1], rawInput),
+      team1,
+      team2,
     };
   } else {
     throw new InvalidTeamFormatError(rawInput, teamsStr, 'Too many "/" separators');
