@@ -229,6 +229,7 @@ Parses chat fills (YG messages) where size is required and decimal values are in
 message          = iw_details | yg_details
 iw_details       = "IW" [rotation_number] [game_number] chat_order    (* Orders *)
 yg_details       = "YG" [rotation_number] [game_number] chat_fill   (* Fills *)
+                   (* "IWW" and "YGW" are shorthands for "IW writein" and "YG writein" *)
 
 chat_order       = contract [bet_price] ["=" unit_size]          (* Orders: price and size optional *)
 chat_fill        = contract [bet_price] "=" fill_size            (* Fills: price optional, size required *)
@@ -389,6 +390,7 @@ mm_dd_alt        = digit+ "-" digit+                                 (* MM-DD - 
 
 **Writein Contracts**
 - `IW writein 2024-12-25 Christmas Day game will go to overtime @ +200` (no size - order only)
+- `IWW 2024-12-25 Christmas Day game will go to overtime @ +200` (shorthand for "IW writein")
 - `IW writein 12/31/2024 New Year's Eve total points over 250 @ -110 = 5.0` (with unit_size = $5.00 literal)
 - `IW writein 03/15 March Madness upset in first round @ +300 = 2.5` (MM/DD format, infers year)
 - `IW writein 6-1 June trade deadline blockbuster deal @ +150 = 1.0` (MM-DD format, infers year)
@@ -436,6 +438,7 @@ mm_dd_alt        = digit+ "-" digit+                                 (* MM-DD - 
 
 **Writein Contracts**
 - `YG writein 2024-12-25 Christmas Day game will go to overtime @ +200 = 1.5` (decimal_thousands_size = $1,500)
+- `YGW 2024-12-25 Christmas Day game will go to overtime @ +200 = 1.5` (shorthand for "YG writein")
 - `YG writein 12/31/2024 New Year's Eve total points over 250 @ -110 = 5.0` (decimal_thousands_size = $5,000)
 - `YG writein 03/15 March Madness upset in first round @ +300 = 2.5k` (k_size = $2,500)
 - `YG writein 6-1 June trade deadline blockbuster deal @ +150 = $1000` (dollar_size = $1,000 literal)

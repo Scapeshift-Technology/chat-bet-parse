@@ -254,6 +254,15 @@ export const validOrderTestCases: TestCase[] = [
     expectedSize: 2.5,
     expectedEventDate: new Date(new Date().getFullYear(), 11, 25), // Current year, December 25
     expectedDescription: 'Christmas Day snow in NYC',
+  },
+  {
+    description: 'IWW shorthand for writein order',
+    input: 'IWW 2024/11/5 Trump to win presidency @ +150',
+    expectedChatType: 'order',
+    expectedContractType: 'Writein',
+    expectedPrice: 150,
+    expectedEventDate: new Date(2024, 10, 5),
+    expectedDescription: 'Trump to win presidency',
   }
 ];
 
@@ -657,6 +666,16 @@ export const validFillTestCases: TestCase[] = [
     expectedSize: 1500, // 1.5 as decimal thousands
     expectedEventDate: new Date(new Date().getFullYear(), 11, 25),
     expectedDescription: 'Christmas Day snow in NYC',
+  },
+  {
+    description: 'YGW shorthand for writein fill',
+    input: 'YGW 2024/11/5 Trump to win presidency @ +150 = 3.0',
+    expectedChatType: 'fill',
+    expectedContractType: 'Writein',
+    expectedPrice: 150,
+    expectedSize: 3000,
+    expectedEventDate: new Date(2024, 10, 5),
+    expectedDescription: 'Trump to win presidency',
   },
 
   // Additional edge cases with price format variations

@@ -198,6 +198,14 @@ function tokenizeChat(message: string): TokenResult {
 
   // Pre-process to handle spacing around = sign
   let processedMessage = message.trim();
+
+  // Handle IWW/YGW shorthand for writeins
+  if (processedMessage.toUpperCase().startsWith('IWW ')) {
+    processedMessage = 'IW writein ' + processedMessage.substring(4);
+  } else if (processedMessage.toUpperCase().startsWith('YGW ')) {
+    processedMessage = 'YG writein ' + processedMessage.substring(4);
+  }
+
   // Add spaces around = if they're missing
   processedMessage = processedMessage.replace(/([^=\s])=([^=\s])/g, '$1 = $2'); // no space before or after
   processedMessage = processedMessage.replace(/([^=\s])=(\s)/g, '$1 = $2'); // no space before
@@ -1251,10 +1259,11 @@ export function parseChatFill(message: string): ChatFillResult {
  */
 export function parseChat(message: string): ParseResult {
   const trimmed = message.trim();
+  const upperTrimmed = trimmed.toUpperCase();
 
-  if (trimmed.toUpperCase().startsWith('IW')) {
+  if (upperTrimmed.startsWith('IW') || upperTrimmed.startsWith('IWW')) {
     return parseChatOrder(message);
-  } else if (trimmed.toUpperCase().startsWith('YG')) {
+  } else if (upperTrimmed.startsWith('YG') || upperTrimmed.startsWith('YGW')) {
     return parseChatFill(message);
   } else {
     throw new UnrecognizedChatPrefixError(message, trimmed.split(/\s+/)[0] || '');
