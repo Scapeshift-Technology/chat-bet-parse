@@ -58,6 +58,7 @@ import {
 interface ParsedTokens {
   chatType: 'order' | 'fill';
   rotationNumber?: number;
+  gameNumber?: number;
   contractText: string;
   price?: number;
   size?: number;
@@ -319,6 +320,23 @@ function tokenizeChat(message: string): TokenResult {
   }
 
   let contractText = parts.slice(currentIndex, contractEndIndex).join(' ');
+  let gameNumber: number | undefined;
+
+  // Check for game number at the beginning of contract text (after rotation number)
+  // Patterns: G2, GM1, #2, G 2, GM 1, # 2
+  const gameNumberAtBeginningMatch = contractText.match(/^(g(?:m)?\s*\d+|#\s*\d+)\s+(.+)$/i);
+  if (gameNumberAtBeginningMatch) {
+    const gameNumberStr = gameNumberAtBeginningMatch[1];
+    const remainingContractText = gameNumberAtBeginningMatch[2];
+
+    try {
+      gameNumber = parseGameNumber(gameNumberStr, rawInput);
+      contractText = remainingContractText; // Remove game number from contract text
+    } catch (error) {
+      // If parsing fails, treat it as part of the contract text (not a game number)
+      // This handles edge cases where something looks like a game number but isn't
+    }
+  }
 
   // Check for attached prices in over/under patterns (e.g., "u2.5-125", "o2.5+125")
   if (price === undefined) {
@@ -371,6 +389,7 @@ function tokenizeChat(message: string): TokenResult {
   return {
     chatType,
     rotationNumber,
+    gameNumber,
     contractText,
     price: price ?? -110, // Default price
     size,
@@ -504,7 +523,8 @@ function parseGameTotal(
   contractText: string,
   rawInput: string,
   sport?: Sport,
-  league?: League
+  league?: League,
+  gameNumber?: number
 ): ContractSportCompetitionMatchTotalPoints {
   // Extract over/under and line, with optional "runs" suffix
   const ouMatch = contractText.match(/([ou])(\d+(?:\.\d+)?)(\s+runs)?/i);
@@ -521,7 +541,7 @@ function parseGameTotal(
     .trim();
 
   // Parse teams and extract game info
-  const { period, match } = parseMatchInfo(withoutOU, rawInput, sport, league);
+  const { period, match } = parseMatchInfo(withoutOU, rawInput, sport, league, gameNumber);
 
   // If "runs" suffix was detected OR inning period detected, set sport to Baseball
   let finalSport = sport;
@@ -552,7 +572,8 @@ function parseTeamTotal(
   contractText: string,
   rawInput: string,
   sport?: Sport,
-  league?: League
+  league?: League,
+  gameNumber?: number
 ): ContractSportCompetitionMatchTotalPointsContestant {
   // Extract over/under and line, with optional "runs" suffix
   const ouMatch = contractText.match(/([ou])(\d+(?:\.\d+)?)(\s+runs)?/i);
@@ -576,7 +597,13 @@ function parseTeamTotal(
     .trim();
 
   // Parse team and extract match info
-  const { teams, period, match } = parseMatchInfo(withoutOU, rawInput, finalSport, league);
+  const { teams, period, match } = parseMatchInfo(
+    withoutOU,
+    rawInput,
+    finalSport,
+    league,
+    gameNumber
+  );
 
   return {
     Sport: finalSport,
@@ -599,7 +626,8 @@ function parseMoneyline(
   contractText: string,
   rawInput: string,
   sport?: Sport,
-  league?: League
+  league?: League,
+  gameNumber?: number
 ): ContractSportCompetitionMatchHandicapContestantML {
   // Remove +0/-0 or ML from contract text if present (they're just moneyline indicators)
   const cleanedContractText = contractText
@@ -608,7 +636,13 @@ function parseMoneyline(
     .replace(/\s+ml\s+/i, ' ') // Remove " ML " in middle
     .trim();
 
-  const { teams, period, match } = parseMatchInfo(cleanedContractText, rawInput, sport, league);
+  const { teams, period, match } = parseMatchInfo(
+    cleanedContractText,
+    rawInput,
+    sport,
+    league,
+    gameNumber
+  );
 
   return {
     Sport: sport,
@@ -630,7 +664,8 @@ function parseSpread(
   contractText: string,
   rawInput: string,
   sport?: Sport,
-  league?: League
+  league?: League,
+  gameNumber?: number
 ): ContractSportCompetitionMatchHandicapContestantLine {
   // Extract spread line and price (if embedded) - handle periods like F5 between team and line
   const spreadMatch = contractText.match(/^(.*?)\s*([+-]\d+(?:\.\d+)?)$/);
@@ -644,7 +679,7 @@ function parseSpread(
   const lineValue = parseFloat(lineStr.substring(1));
   const line = sign === '+' ? lineValue : -lineValue;
 
-  const { teams, period, match } = parseMatchInfo(teamPart, rawInput, sport, league);
+  const { teams, period, match } = parseMatchInfo(teamPart, rawInput, sport, league, gameNumber);
 
   return {
     Sport: sport,
@@ -666,7 +701,8 @@ function parsePropOU(
   contractText: string,
   rawInput: string,
   sport?: Sport,
-  league?: League
+  league?: League,
+  gameNumber?: number
 ): ContractSportCompetitionMatchPropOU {
   // Extract over/under and line, with optional "runs" suffix
   const ouMatch = contractText.match(/([ou])(\d+(?:\.\d+)?)(\s+runs)?/i);
@@ -721,6 +757,7 @@ function parsePropOU(
     League: league,
     Match: {
       Team1: contestant,
+      DaySequence: gameNumber,
     },
     Period: { PeriodTypeCode: 'M', PeriodNumber: 0 },
     HasContestant: true,
@@ -741,7 +778,8 @@ function parsePropYN(
   contractText: string,
   rawInput: string,
   sport?: Sport,
-  league?: League
+  league?: League,
+  gameNumber?: number
 ): ContractSportCompetitionMatchPropYN {
   // Find the prop type first to know where it starts
   const propInfo = detectPropType(contractText.toLowerCase());
@@ -768,7 +806,7 @@ function parsePropYN(
   }
 
   // Use parseMatchInfo to extract team and game number
-  const { teams, match } = parseMatchInfo(teamAndGameInfo, rawInput, sport, league);
+  const { teams, match } = parseMatchInfo(teamAndGameInfo, rawInput, sport, league, gameNumber);
 
   // Detect contestant type
   const contestantType = detectContestantType(teams.team1);
@@ -805,7 +843,8 @@ function parseSeries(
   contractText: string,
   rawInput: string,
   sport?: Sport,
-  league?: League
+  league?: League,
+  gameNumber?: number
 ): ContractSportCompetitionSeries {
   // Extract series length if specified
   // Try "series/X" pattern first
@@ -861,6 +900,7 @@ function parseSeries(
     League: league,
     Match: {
       Team1: team,
+      DaySequence: gameNumber,
     },
     SeriesLength: seriesLength,
     Contestant: team,
@@ -894,7 +934,8 @@ function parseMatchInfo(
   text: string,
   rawInput: string,
   _sport?: Sport,
-  _league?: League
+  _league?: League,
+  gameNumberFromTokens?: number
 ): {
   teams: { team1: string; team2?: string };
   period: Period;
@@ -902,17 +943,23 @@ function parseMatchInfo(
 } {
   let workingText = text.trim();
 
-  // Extract game number if present
-  let daySequence: number | undefined;
-  const gameMatch = workingText.match(/\s+(g(?:m)?\d+|#\d+)\s*/i);
-  if (gameMatch) {
-    daySequence = parseGameNumber(gameMatch[1], rawInput);
-    workingText = workingText.replace(gameMatch[0], ' ').trim();
-  } else {
-    // Check for invalid game number patterns like "Gx", "G", "#x", etc.
-    const invalidGameMatch = workingText.match(/\s+(g(?:m)?[a-zA-Z]+|#[a-zA-Z]+|g(?:m)?$|#$)\s*/i);
-    if (invalidGameMatch) {
-      throw new InvalidGameNumberError(rawInput, invalidGameMatch[1]);
+  // Use game number from tokens if available, otherwise try to extract from text
+  let daySequence: number | undefined = gameNumberFromTokens;
+
+  // Only try to extract game number from text if we don't already have one from tokens
+  if (daySequence === undefined) {
+    const gameMatch = workingText.match(/\s+(g(?:m)?\s*\d+|#\s*\d+)\s*/i);
+    if (gameMatch) {
+      daySequence = parseGameNumber(gameMatch[1], rawInput);
+      workingText = workingText.replace(gameMatch[0], ' ').trim();
+    } else {
+      // Check for invalid game number patterns like "Gx", "G", "#x", etc.
+      const invalidGameMatch = workingText.match(
+        /\s+(g(?:m)?\s*[a-zA-Z]+|#\s*[a-zA-Z]+|g(?:m)?\s*$|#\s*$)\s*/i
+      );
+      if (invalidGameMatch) {
+        throw new InvalidGameNumberError(rawInput, invalidGameMatch[1]);
+      }
     }
   }
 
@@ -987,25 +1034,67 @@ export function parseChatOrder(message: string): ChatOrderResult {
 
   switch (contractType) {
     case 'TotalPoints':
-      contract = parseGameTotal(tokens.contractText, tokens.rawInput, sport, league);
+      contract = parseGameTotal(
+        tokens.contractText,
+        tokens.rawInput,
+        sport,
+        league,
+        tokens.gameNumber
+      );
       break;
     case 'TotalPointsContestant':
-      contract = parseTeamTotal(tokens.contractText, tokens.rawInput, sport, league);
+      contract = parseTeamTotal(
+        tokens.contractText,
+        tokens.rawInput,
+        sport,
+        league,
+        tokens.gameNumber
+      );
       break;
     case 'HandicapContestantML':
-      contract = parseMoneyline(tokens.contractText, tokens.rawInput, sport, league);
+      contract = parseMoneyline(
+        tokens.contractText,
+        tokens.rawInput,
+        sport,
+        league,
+        tokens.gameNumber
+      );
       break;
     case 'HandicapContestantLine':
-      contract = parseSpread(tokens.contractText, tokens.rawInput, sport, league);
+      contract = parseSpread(
+        tokens.contractText,
+        tokens.rawInput,
+        sport,
+        league,
+        tokens.gameNumber
+      );
       break;
     case 'PropOU':
-      contract = parsePropOU(tokens.contractText, tokens.rawInput, sport, league);
+      contract = parsePropOU(
+        tokens.contractText,
+        tokens.rawInput,
+        sport,
+        league,
+        tokens.gameNumber
+      );
       break;
     case 'PropYN':
-      contract = parsePropYN(tokens.contractText, tokens.rawInput, sport, league);
+      contract = parsePropYN(
+        tokens.contractText,
+        tokens.rawInput,
+        sport,
+        league,
+        tokens.gameNumber
+      );
       break;
     case 'Series':
-      contract = parseSeries(tokens.contractText, tokens.rawInput, sport, league);
+      contract = parseSeries(
+        tokens.contractText,
+        tokens.rawInput,
+        sport,
+        league,
+        tokens.gameNumber
+      );
       break;
     case 'Writein':
       throw new InvalidContractTypeError(
@@ -1068,25 +1157,67 @@ export function parseChatFill(message: string): ChatFillResult {
 
   switch (contractType) {
     case 'TotalPoints':
-      contract = parseGameTotal(tokens.contractText, tokens.rawInput, sport, league);
+      contract = parseGameTotal(
+        tokens.contractText,
+        tokens.rawInput,
+        sport,
+        league,
+        tokens.gameNumber
+      );
       break;
     case 'TotalPointsContestant':
-      contract = parseTeamTotal(tokens.contractText, tokens.rawInput, sport, league);
+      contract = parseTeamTotal(
+        tokens.contractText,
+        tokens.rawInput,
+        sport,
+        league,
+        tokens.gameNumber
+      );
       break;
     case 'HandicapContestantML':
-      contract = parseMoneyline(tokens.contractText, tokens.rawInput, sport, league);
+      contract = parseMoneyline(
+        tokens.contractText,
+        tokens.rawInput,
+        sport,
+        league,
+        tokens.gameNumber
+      );
       break;
     case 'HandicapContestantLine':
-      contract = parseSpread(tokens.contractText, tokens.rawInput, sport, league);
+      contract = parseSpread(
+        tokens.contractText,
+        tokens.rawInput,
+        sport,
+        league,
+        tokens.gameNumber
+      );
       break;
     case 'PropOU':
-      contract = parsePropOU(tokens.contractText, tokens.rawInput, sport, league);
+      contract = parsePropOU(
+        tokens.contractText,
+        tokens.rawInput,
+        sport,
+        league,
+        tokens.gameNumber
+      );
       break;
     case 'PropYN':
-      contract = parsePropYN(tokens.contractText, tokens.rawInput, sport, league);
+      contract = parsePropYN(
+        tokens.contractText,
+        tokens.rawInput,
+        sport,
+        league,
+        tokens.gameNumber
+      );
       break;
     case 'Series':
-      contract = parseSeries(tokens.contractText, tokens.rawInput, sport, league);
+      contract = parseSeries(
+        tokens.contractText,
+        tokens.rawInput,
+        sport,
+        league,
+        tokens.gameNumber
+      );
       break;
     case 'Writein':
       throw new InvalidContractTypeError(

@@ -227,8 +227,8 @@ Parses chat fills (YG messages) where size is required and decimal values are in
 ### Basic Structure
 ```ebnf
 message          = iw_details | yg_details
-iw_details       = "IW" [rotation_number] chat_order    (* Orders *)
-yg_details       = "YG" [rotation_number] chat_fill   (* Fills *)
+iw_details       = "IW" [rotation_number] [game_number] chat_order    (* Orders *)
+yg_details       = "YG" [rotation_number] [game_number] chat_fill   (* Fills *)
 
 chat_order       = contract [bet_price] ["=" unit_size]          (* Orders: price and size optional *)
 chat_fill        = contract [bet_price] "=" fill_size            (* Fills: price optional, size required *)
@@ -241,8 +241,8 @@ contract         = game_total | team_total | moneyline | spread | prop | series 
 (* Rotation number must come immediately after YG if present *)
 rotation_number  = digit+
 
-(* Game number patterns: g2, gm1, #2 *)
-game_number      = (("g" ["m"]) | "#") digit+
+(* Game number patterns: g2, gm1, #2, g 2, gm 1, # 2 *)
+game_number      = (("g" ["m"] [" "]) | "#" [" "]) digit+
 
 (* Over/under pattern: o4.5, u0.5 *)
 over_under       = ("o" | "u") line
@@ -273,7 +273,7 @@ hockey_period    = "period" | "p"
 (* Team and period patterns *)
 team             = [("49" | "76")] (letter | "&" | " ")+ 
 teams            = team "/" team                              (* Both teams must be different *)
-match            = (teams | team) [game_number]
+match            = (teams | team) [game_number]              (* Game number can also appear before match in message structure *)
 
 (* Period patterns - flexible combinations *)
 period           = (first (inning | half | quarter | hockey_period | "five" | "5")) | 
@@ -351,10 +351,14 @@ mm_dd_alt        = digit+ "-" digit+                                 (* MM-DD - 
 - `IW ATH/SF F5 o4.5 @ -117 = 2.7` (with unit_size = $2.70 literal)
 - `IW KC F7 o6.5 @ -115 = 1.0` (first seven innings with unit_size = $1.00 literal)
 - `IW 507 Thunder/Nuggets o213.5` (no price, no size)
+- `IW G1 St. Louis/PHI o8.5 @ -110` (game number before teams)
+- `IW # 2 COL/ARI F5 u5 @ -105` (game number with space before teams)
 
 **Team Totals**
 - `IW LAA TT o3.5 @ -115.5` (no size - order only)
 - `IW MIA F5 TT u1.5 @ -110 = 1.0` (with unit_size = $1.00 literal)
+- `IW G2 SEA TT u4.5 @ -110` (game number before team)
+- `IW # 3 LAA TT o3.5 @ -115` (game number with space before team)
 
 **Moneylines**
 - `IW 872 Athletics @ +145` (no size - order only)
@@ -396,11 +400,14 @@ mm_dd_alt        = digit+ "-" digit+                                 (* MM-DD - 
 - `YG KC F7 o6.5 @ -115 = 1.5` (first seven innings, decimal_thousands_size = $1,500)
 - `YG 507 Thunder/Nuggets o213.5 @ 2k` (k_size = $2,000)
 - `YG COL/ARI #2 1st inning u0.5 @ +120 = $200` (dollar_size = $200 literal)
+- `YG G2 COL/ARI 1st inning u0.5 @ +120 = 2.0` (game number before teams)
+- `YG GM 1 CLE/WAS 1st inning o0.5 runs = 1.0` (game number with space before teams)
 
 **Team Totals**
 - `YG LAA TT o3.5 @ -115.5 = 8.925` (decimal_thousands_size = $8,925)
 - `YG MIA F5 TT u1.5 @ -110 = 1.0` (decimal_thousands_size = $1,000)
 - `YG SEA G2 TT u4.5 @ -110 = 1.5k` (k_size = $1,500)
+- `YG G 2 SEA TT u4.5 @ -110 = 1.0` (game number with space before team)
 
 **Moneylines**
 - `YG 872 Athletics @ 4k` (k_size = $4,000, default price -110)
@@ -456,7 +463,7 @@ mm_dd_alt        = digit+ "-" digit+                                 (* MM-DD - 
 
 - **Case Insensitivity**: All text patterns are matched case insensitively
 - **Rotation Numbers**: Must appear immediately after "YG" when present
-- **Game Numbers**: Patterns `g1`, `gm2`, `#2` (case insensitive)
+- **Game Numbers**: Can appear before or after teams/team with patterns `g1`, `gm2`, `#2`, `g 1`, `gm 2`, `# 2` (case insensitive, optional spaces)
 - **Default Price**: `-110` when price omitted in k-notation bets
 - **Line Validation**: Must be divisible by 0.5
 - **Team Validation**: In team matchups (Team1/Team2 format), both teams must be different

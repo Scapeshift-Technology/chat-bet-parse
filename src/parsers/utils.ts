@@ -246,13 +246,13 @@ export function parsePeriod(periodStr: string, rawInput: string): Period {
 // ==============================================================================
 
 /**
- * Parse game number: G2, GM1, #2, etc.
+ * Parse game number: G2, GM1, #2, G 2, GM 1, # 2, etc.
  */
 export function parseGameNumber(gameStr: string, rawInput: string): number {
   const cleaned = gameStr.toLowerCase().trim();
 
-  // Patterns: g2, gm1, #2
-  const match = cleaned.match(/^(?:g(?:m)?(\d+)|#(\d+))$/);
+  // Patterns: g2, gm1, #2, g 2, gm 1, # 2
+  const match = cleaned.match(/^(?:g(?:m)?\s*(\d+)|#\s*(\d+))$/);
   if (!match) {
     throw new InvalidGameNumberError(rawInput, gameStr);
   }

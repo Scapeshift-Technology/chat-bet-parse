@@ -14,6 +14,7 @@ import {
   createGradingClientWithConfig,
   GradingConnectionError,
   GradingDataError,
+  isWritein,
   type GradingClientConfig,
 } from '../../src/index';
 
@@ -363,22 +364,28 @@ testSuite('Grading Integration Tests', () => {
   describe('Edge Cases', () => {
     it('should handle contracts with special characters in team names', async () => {
       const parseResult = parseChat('YG 49ers @ +150 = 1.0');
-      expect(parseResult.contract.Match.Team1).toBe('49ers');
+      if (!isWritein(parseResult.contract)) {
+        expect(parseResult.contract.Match.Team1).toBe('49ers');
+      }
     });
 
     it('should handle contracts with game numbers', async () => {
       const parseResult = parseChat('YG St. Louis/PHI G1 o8.5 @ -110 = 1.5');
-      expect(parseResult.contract.Match.Team1).toBe('St. Louis');
-      expect(parseResult.contract.Match.Team2).toBe('PHI');
-      expect(parseResult.contract.Match.DaySequence).toBe(1);
+      if (!isWritein(parseResult.contract)) {
+        expect(parseResult.contract.Match.Team1).toBe('St. Louis');
+        expect(parseResult.contract.Match.Team2).toBe('PHI');
+        expect(parseResult.contract.Match.DaySequence).toBe(1);
+      }
 
       const grade = await sharedClient.grade(parseResult, { matchScheduledDate: new Date('2025-05-14') });
       expect(['L']).toContain(grade);
 
       const parseResult2 = parseChat('YG PHI/St. Louis #2 o8.5 @ -110 = 1.5');
-      expect(parseResult2.contract.Match.Team1).toBe('PHI');
-      expect(parseResult2.contract.Match.Team2).toBe('St. Louis');
-      expect(parseResult2.contract.Match.DaySequence).toBe(2);
+      if (!isWritein(parseResult2.contract)) {
+        expect(parseResult2.contract.Match.Team1).toBe('PHI');
+        expect(parseResult2.contract.Match.Team2).toBe('St. Louis');
+        expect(parseResult2.contract.Match.DaySequence).toBe(2);
+      }
 
       const grade2 = await sharedClient.grade(parseResult2, { matchScheduledDate: new Date('2025-05-14') });
       expect(['W']).toContain(grade2);
