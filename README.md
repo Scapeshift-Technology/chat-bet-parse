@@ -512,3 +512,6 @@ npm run format
 ## License
 
 MIT
+
+
+## Bet Size Format is Easy to Misuse
