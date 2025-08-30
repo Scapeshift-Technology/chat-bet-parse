@@ -21,7 +21,10 @@ import type {
   ContractSportCompetitionMatchPropOU,
   ContractSportCompetitionSeries,
   ContractWritein,
+  KnownLeague,
 } from '../types/index';
+
+import { knownLeagues, knownSports } from '../types/index';
 
 import {
   InvalidChatFormatError,
@@ -60,6 +63,8 @@ interface ParsedTokens {
   rotationNumber?: number;
   gameNumber?: number;
   contractText: string;
+  explicitLeague?: KnownLeague;
+  explicitSport?: Sport;
   price?: number;
   size?: number;
   rawInput: string;
@@ -394,12 +399,34 @@ function tokenizeChat(message: string): TokenResult {
     throw new MissingSizeForFillError(rawInput);
   }
 
+  // Extract explicit league if at beginning
+  let explicitLeague: KnownLeague | undefined;
+  const leagueMatch = contractText.match(/^([A-Z]{2,3})\s+(.+)$/);
+  if (leagueMatch && knownLeagues.has(leagueMatch[1] as any)) {
+    explicitLeague = leagueMatch[1] as KnownLeague;
+    contractText = leagueMatch[2];
+  }
+
+  // Extract explicit sport if at beginning
+  let explicitSport: Sport | undefined;
+  const sportMatch = contractText.match(/^([a-zA-Z]+)\s+(.+)$/i);
+  if (sportMatch) {
+    const potentialSport =
+      sportMatch[1].charAt(0).toUpperCase() + sportMatch[1].slice(1).toLowerCase();
+    if (knownSports.has(potentialSport as any)) {
+      explicitSport = potentialSport as Sport;
+      contractText = sportMatch[2];
+    }
+  }
+
   return {
     chatType,
     rotationNumber,
     gameNumber,
     contractText,
     price: price ?? -110, // Default price
+    explicitLeague,
+    explicitSport,
     size,
     rawInput,
   };
@@ -1036,7 +1063,11 @@ export function parseChatOrder(message: string): ChatOrderResult {
 
   // Handle regular contracts
   const contractType = detectContractType(tokens.contractText, tokens.rawInput);
-  const { sport, league } = inferSportAndLeague(tokens.rotationNumber);
+  const { sport, league } = inferSportAndLeague(
+    tokens.rotationNumber,
+    tokens.explicitLeague,
+    tokens.explicitSport
+  );
 
   let contract: Contract;
 
@@ -1159,7 +1190,11 @@ export function parseChatFill(message: string): ChatFillResult {
 
   // Handle regular contracts
   const contractType = detectContractType(tokens.contractText, tokens.rawInput);
-  const { sport, league } = inferSportAndLeague(tokens.rotationNumber);
+  const { sport, league } = inferSportAndLeague(
+    tokens.rotationNumber,
+    tokens.explicitLeague,
+    tokens.explicitSport
+  );
 
   let contract: Contract;
 

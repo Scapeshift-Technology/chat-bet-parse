@@ -21,6 +21,7 @@ export interface TestCase {
   expectedPeriod?: { PeriodTypeCode: string; PeriodNumber: number };
   expectedContestantType?: 'Individual' | 'TeamAdHoc' | 'TeamLeague';
   expectedSport?: string;
+  expectedLeague?: string;
   // Writein-specific fields
   expectedEventDate?: Date;
   expectedDescription?: string;
@@ -758,6 +759,72 @@ export const validFillTestCases: TestCase[] = [
     expectedSize: 1000, // Dollar amounts are literal
     expectedTeam1: 'col',
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
+  },
+  {
+    description: 'YG with explicit league CFB and period 1Q',
+    input: 'YG CFB 1Q Baylor/Auburn u13 @ -115 = 2k',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: -115,
+    expectedSize: 2000,
+    expectedTeam1: 'Baylor',
+    expectedTeam2: 'Auburn',
+    expectedLine: 13,
+    expectedIsOver: false,
+    expectedPeriod: { PeriodTypeCode: 'Q', PeriodNumber: 1 },
+    expectedLeague: 'CFB',
+    expectedSport: 'Football'
+  },
+  {
+    description: 'YG without explicit league or sport, with period 2h',
+    input: 'YG auburn 2h o27.5 @ -110 = 1k',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: -110,
+    expectedSize: 1000,
+    expectedTeam1: 'auburn',
+    expectedLine: 27.5,
+    expectedIsOver: true,
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 2 }
+  },
+  {
+    description: 'YG with explicit league FCS and spread',
+    input: 'YG FCS Marist +6 @ -105 = 2k',
+    expectedChatType: 'fill',
+    expectedContractType: 'HandicapContestantLine',
+    expectedPrice: -105,
+    expectedSize: 2000,
+    expectedTeam1: 'Marist',
+    expectedLine: 6,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+    expectedLeague: 'CFB',
+    expectedSport: 'Football'
+  },
+  {
+    description: 'YG with explicit league CFB and negative spread',
+    input: 'YG CFB Georgetown -1 @ +100 = 500',
+    expectedChatType: 'fill',
+    expectedContractType: 'HandicapContestantLine',
+    expectedPrice: 100,
+    expectedSize: 500000,
+    expectedTeam1: 'Georgetown',
+    expectedLine: -1,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+    expectedLeague: 'CFB',
+    expectedSport: 'Football'
+  },
+  {
+    description: 'YG with explicit league CFB and positive spread',
+    input: 'YG CFB Georgetown +1.5 @ -115 = $500',
+    expectedChatType: 'fill',
+    expectedContractType: 'HandicapContestantLine',
+    expectedPrice: -115,
+    expectedSize: 500,
+    expectedTeam1: 'Georgetown',
+    expectedLine: 1.5,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+    expectedLeague: 'CFB',
+    expectedSport: 'Football'
   }
 ];
 

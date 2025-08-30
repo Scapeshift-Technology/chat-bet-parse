@@ -138,6 +138,9 @@ describe('Chat Bet Parsing', () => {
       if (testCase.expectedSport && !isWritein(result.contract)) {
         expect(result.contract.Sport).toBe(testCase.expectedSport);
       }
+      if (testCase.expectedLeague && !isWritein(result.contract)) {
+        expect(result.contract.League).toBe(testCase.expectedLeague);
+      }
     });
   });
   

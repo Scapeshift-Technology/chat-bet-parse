@@ -3,7 +3,13 @@
  * Implements core patterns from EBNF grammar
  */
 
-import type { Period, Sport, League } from '../types/index';
+import {
+  type Period,
+  type Sport,
+  type League,
+  leagueSportMap,
+  type KnownLeague,
+} from '../types/index';
 import {
   InvalidPriceFormatError,
   InvalidSizeFormatError,
@@ -361,26 +367,52 @@ export function parseTeams(teamsStr: string, rawInput: string): { team1: string;
  * Infer sport and league from context (rotation number, teams, etc.)
  * This is a simplified version - in practice, you might use rotation number ranges
  */
-export function inferSportAndLeague(rotationNumber?: number): { sport?: Sport; league?: League } {
-  // use rotation number ranges and other heuristics to determine sport/league
-  if (rotationNumber) {
-    // Example heuristics (adjust based on your sportsbook's rotation number scheme):
+export function inferSportAndLeague(
+  rotationNumber?: number,
+  explicitLeague?: KnownLeague,
+  explicitSport?: Sport
+): { sport?: Sport; league?: League } {
+  let sport = explicitSport;
+  let league = explicitLeague;
+
+  if (explicitLeague && explicitSport && leagueSportMap[explicitLeague] !== explicitSport) {
+    throw new Error('Conflicting explicit league and sport specifications');
+  }
+
+  if (explicitLeague && !sport) {
+    sport = leagueSportMap[explicitLeague];
+  }
+  if (league === 'FCS') {
+    league = 'CFB';
+  }
+
+  // Infer from rotation if needed
+  if ((!sport || !league) && rotationNumber) {
+    // Existing inference logic
+    // use rotation number ranges and other heuristics to determine sport/league
     if (rotationNumber >= 100 && rotationNumber < 499) {
+      const inferredSport = 'Football';
+      // TODO: Enhance to infer specific league based on range
+      if (!sport) sport = inferredSport;
       return { sport: 'Football' }; // observed 169,215 -> CFB, 709 -> CFL, 103,277,455 -> NFL
     }
     if (rotationNumber >= 500 && rotationNumber < 700) {
+      const inferredSport = 'Basketball';
+      if (!sport) sport = inferredSport;
       return { sport: 'Basketball' }; // observed 611-628 -> wnba, 500-600 -> nba
     }
     if (
       (rotationNumber >= 800 && rotationNumber < 900) ||
       (rotationNumber >= 9900 && rotationNumber < 10000)
     ) {
+      const inferredSport = 'Baseball';
+      if (!sport) sport = inferredSport;
       return { sport: 'Baseball' }; // observed 872, 901-926 -> mlb.. todo observer college baseball
     }
   }
 
   // Default
-  return {};
+  return { sport, league };
 }
 
 // ==============================================================================

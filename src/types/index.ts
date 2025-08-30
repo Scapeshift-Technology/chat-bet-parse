@@ -29,12 +29,37 @@ export type League =
   | 'CFB' // Football (NCAA)
   | 'NFL' // Football
   | 'UFL' // Football
+  | 'FCS' // Football (NCAA)
   | 'LPGA' // Golf
   | 'PGA' // Golf
   | 'NHL' // Hockey
   | 'UFC' // MMA
   | 'WTA' // Tennis
   | 'ATP'; // Tennis
+
+export const leagueSportMap: Record<League, Sport> = {
+  MLB: 'Baseball',
+  WNBA: 'Basketball',
+  CBK: 'Basketball',
+  NBA: 'Basketball',
+  CFL: 'Football',
+  CFB: 'Football',
+  NFL: 'Football',
+  UFL: 'Football',
+  FCS: 'Football',
+  LPGA: 'Golf',
+  PGA: 'Golf',
+  NHL: 'Hockey',
+  UFC: 'MMA',
+  WTA: 'Tennis',
+  ATP: 'Tennis',
+};
+
+export const knownLeagues = new Set(Object.keys(leagueSportMap) as League[]);
+
+export type KnownLeague = typeof knownLeagues extends Set<infer T> ? T : never;
+
+export const knownSports = new Set(Object.values(leagueSportMap));
 
 // ==============================================================================
 // PERIOD TYPES
