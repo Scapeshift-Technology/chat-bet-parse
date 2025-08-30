@@ -365,14 +365,17 @@ export function inferSportAndLeague(rotationNumber?: number): { sport?: Sport; l
   // use rotation number ranges and other heuristics to determine sport/league
   if (rotationNumber) {
     // Example heuristics (adjust based on your sportsbook's rotation number scheme):
-    if (rotationNumber >= 500 && rotationNumber < 600) {
-      return { sport: 'Basketball', league: 'NBA' };
+    if (rotationNumber >= 100 && rotationNumber < 499) {
+      return { sport: 'Football' }; // observed 169,215 -> CFB, 709 -> CFL, 103,277,455 -> NFL
+    }
+    if (rotationNumber >= 500 && rotationNumber < 700) {
+      return { sport: 'Basketball' }; // observed 611-628 -> wnba, 500-600 -> nba
     }
     if (
       (rotationNumber >= 800 && rotationNumber < 900) ||
       (rotationNumber >= 9900 && rotationNumber < 10000)
     ) {
-      return { sport: 'Baseball', league: 'MLB' };
+      return { sport: 'Baseball' }; // observed 872, 901-926 -> mlb.. todo observer college baseball
     }
   }
 

@@ -571,21 +571,30 @@ describe('Chat Bet Parsing', () => {
   
   describe('Sport/League Inference', () => {
     
-    test('should infer NBA from rotation number range', () => {
+    test('should infer Basketball from rotation number range', () => {
       const result = parseChat('IW 507 Thunder/Nuggets o213.5');
       expect('Sport' in result.contract)
       if ('Sport' in result.contract) {
         expect(result.contract.Sport).toBe('Basketball');
-        expect(result.contract.League).toBe('NBA');
+        // expect(result.contract.League).toBe('NBA');
       }
     });
     
-    test('should infer MLB from rotation number range', () => {
+    test('should infer Baseball from rotation number range', () => {
       const result = parseChat('IW 872 Athletics @ +145');
       expect('Sport' in result.contract)
       if ('Sport' in result.contract) {
         expect(result.contract.Sport).toBe('Baseball');
-        expect(result.contract.League).toBe('MLB');
+        // expect(result.contract.League).toBe('MLB');
+      }
+    });
+
+    test('should infer Football from rotation number range', () => {
+      const result = parseChat('IW 457 Dolphins @ +145');
+      expect('Sport' in result.contract)
+      if ('Sport' in result.contract) {
+        expect(result.contract.Sport).toBe('Football');
+        // expect(result.contract.League).toBe('NFL');
       }
     });
     
