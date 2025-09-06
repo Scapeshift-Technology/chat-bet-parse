@@ -527,6 +527,16 @@ function detectContractType(contractText: string, rawInput: string): ContractTyp
     return 'TotalPoints';
   }
 
+  // Single team game totals shorthand: just team name with o/u (e.g., "Bucknell o55.5")
+  // This is for cases where sport/league context makes it clear it's a full game total
+  if (
+    /^[a-zA-Z\s&.-]+\s+[ou]\d+(?:\.\d+)?(?:[+-]\d+(?:\.\d+)?)?/i.test(contractText) &&
+    !contractText.includes('TT') &&
+    !contractText.toLowerCase().includes(' tt ')
+  ) {
+    return 'TotalPoints';
+  }
+
   // Moneylines: just team name (after eliminating other types), team name with +0/-0, or team name with "ML"
   // Also handles cases where only team and period remain (e.g., "COL F5" after price extraction)
   // Or just team name alone (e.g., "COL" after price extraction)

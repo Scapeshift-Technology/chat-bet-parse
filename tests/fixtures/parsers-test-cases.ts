@@ -825,6 +825,48 @@ export const validFillTestCases: TestCase[] = [
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
     expectedLeague: 'CFB',
     expectedSport: 'Football'
+  },
+  {
+    description: 'YG CFB full game total - Bucknell over (shorthand team notation)',
+    input: 'YG CFB Bucknell o55.5 @ -110 = 500',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: -110,
+    expectedSize: 500000,
+    expectedTeam1: 'Bucknell',
+    expectedLine: 55.5,
+    expectedIsOver: true,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+    expectedLeague: 'CFB',
+    expectedSport: 'Football'
+  },
+  {
+    description: 'YG CFB full game total - FAU over with k suffix (shorthand team notation)',
+    input: 'YG CFB FAU o60.5 @ -110 = 2.5k',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: -110,
+    expectedSize: 2500,
+    expectedTeam1: 'FAU',
+    expectedLine: 60.5,
+    expectedIsOver: true,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+    expectedLeague: 'CFB',
+    expectedSport: 'Football'
+  },
+  {
+    description: 'YG CFB full game total - Charlotte under with k suffix (shorthand team notation)',
+    input: 'YG CFB charlotte u50 @ -110 = 3k',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: -110,
+    expectedSize: 3000,
+    expectedTeam1: 'charlotte',
+    expectedLine: 50,
+    expectedIsOver: false,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+    expectedLeague: 'CFB',
+    expectedSport: 'Football'
   }
 ];
 
