@@ -54,7 +54,7 @@ export function parsePrice(priceStr: string, rawInput: string): number {
 // SIZE PARSING
 // ==============================================================================
 
-export type SizeFormat = 'unit' | 'decimal_thousands' | 'k_notation' | 'dollar';
+export type SizeFormat = 'unit' | 'decimal_thousands' | 'k_notation' | 'dollar' | 'plain_number';
 
 export interface ParsedSize {
   value: number;
@@ -126,17 +126,23 @@ export function parseFillSize(sizeStr: string, rawInput: string): ParsedSize {
     return { value: value * 1000, format: 'k_notation' };
   }
 
-  // Decimal thousands format: 2.0 = $2000, 0.563 = $563
+  // Plain number or decimal thousands format
   const value = parseFloat(cleaned);
   if (isNaN(value) || value < 0) {
     throw new InvalidSizeFormatError(
       rawInput,
       sizeStr,
-      'positive decimal number like 2.0 (=$2000) or 0.563 (=$563)'
+      'positive number like 100 (=$100) or 2.5 (=$2500)'
     );
   }
 
-  return { value: value * 1000, format: 'decimal_thousands' };
+  // Only multiply by 1000 if there's a decimal point in the input
+  // e.g., "2.0" -> 2000, "2.5" -> 2500, but "100" -> 100, "999" -> 999
+  if (cleaned.includes('.')) {
+    return { value: value * 1000, format: 'decimal_thousands' };
+  } else {
+    return { value: value, format: 'plain_number' };
+  }
 }
 
 // ==============================================================================

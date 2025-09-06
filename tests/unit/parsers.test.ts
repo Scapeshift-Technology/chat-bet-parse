@@ -306,10 +306,30 @@ describe('Chat Bet Parsing', () => {
       });
     });
     
-    describe('Fill Size Parsing (thousands interpretation)', () => {
-      test('should parse decimal as thousands', () => {
-        const result = parseChat('YG LAA TT o3.5 @ -115 = 2.5');
-        expect(result.bet.Size).toBe(2500);
+    describe('Fill Size Parsing', () => {
+      test('should parse plain integers as literal (no multiplication)', () => {
+        const result1 = parseChat('YG LAA TT o3.5 @ -115 = 100');
+        expect(result1.bet.Size).toBe(100);
+        
+        const result2 = parseChat('YG LAA TT o3.5 @ -115 = 200');
+        expect(result2.bet.Size).toBe(200);
+        
+        const result3 = parseChat('YG LAA TT o3.5 @ -115 = 999');
+        expect(result3.bet.Size).toBe(999);
+        
+        const result4 = parseChat('YG LAA TT o3.5 @ -115 = 500');
+        expect(result4.bet.Size).toBe(500);
+      });
+      
+      test('should parse decimals as thousands (multiply by 1000)', () => {
+        const result1 = parseChat('YG LAA TT o3.5 @ -115 = 2.5');
+        expect(result1.bet.Size).toBe(2500);
+        
+        const result2 = parseChat('YG LAA TT o3.5 @ -115 = 2.0');
+        expect(result2.bet.Size).toBe(2000);
+        
+        const result3 = parseChat('YG LAA TT o3.5 @ -115 = 1.5');
+        expect(result3.bet.Size).toBe(1500);
       });
       
       test('should parse k-notation correctly', () => {
