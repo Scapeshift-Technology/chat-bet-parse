@@ -18,5 +18,8 @@ export * from './parsers/utils';
 // Export grading functionality
 export * from './grading/index';
 
+// Export tracking functionality
+export * from './tracking/index';
+
 // Re-export main function as default
 export { parseChat as default } from './parsers/index';
