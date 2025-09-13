@@ -13,6 +13,8 @@ export interface TestCase {
   expectedTeam2?: string;
   expectedLine?: number;
   expectedIsOver?: boolean;
+  expectedIsYes?: boolean;
+  expectedTiesLose?: boolean;
   expectedProp?: string;
   expectedSeriesLength?: number;
   expectedRotationNumber?: number;

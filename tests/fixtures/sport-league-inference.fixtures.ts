@@ -29,7 +29,8 @@ export const sportLeagueInferenceTestCases: TestCase[] = [
     expectedRotationNumber: 872,
     expectedTeam1: 'Athletics',
     expectedSport: 'Baseball',
-    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+    expectedTiesLose: false
   },
   {
     description: 'Infer Football from rotation number range (400s)',
@@ -40,7 +41,8 @@ export const sportLeagueInferenceTestCases: TestCase[] = [
     expectedRotationNumber: 457,
     expectedTeam1: 'Dolphins',
     expectedSport: 'Football',
-    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+    expectedTiesLose: false
   },
   
 ];

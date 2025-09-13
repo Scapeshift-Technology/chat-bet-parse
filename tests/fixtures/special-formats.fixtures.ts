@@ -27,7 +27,8 @@ export const specialFormatsTestCases: TestCase[] = [
     expectedPrice: -120,
     expectedSize: 750, // 0.75 as decimal thousands for fills
     expectedTeam1: 'ARI',
-    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 }
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 },
+    expectedTiesLose: false
   },
 
   // Spacing variations around = sign
@@ -77,7 +78,8 @@ export const specialFormatsTestCases: TestCase[] = [
     expectedPrice: 135,
     expectedSize: 1000, // Dollar amounts are literal
     expectedTeam1: 'COL',
-    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 }
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 },
+    expectedTiesLose: false
   },
   {
     description: 'YG implicit moneyline full game (auto-detect ML) - case insensitive',
@@ -87,7 +89,8 @@ export const specialFormatsTestCases: TestCase[] = [
     expectedPrice: 135,
     expectedSize: 1000, // Dollar amounts are literal
     expectedTeam1: 'col',
-    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+    expectedTiesLose: false
   },
 
   // League prefix formats

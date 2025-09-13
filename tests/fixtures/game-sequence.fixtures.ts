@@ -43,6 +43,7 @@ export const gameSequenceTestCases: TestCase[] = [
     expectedTeam1: 'DET',
     expectedDaySequence: 1,
     expectedProp: 'FirstToScore',
+    expectedIsYes: true,
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
   },
   {
@@ -55,6 +56,7 @@ export const gameSequenceTestCases: TestCase[] = [
     expectedTeam1: 'DET',
     expectedDaySequence: 2,
     expectedProp: 'FirstToScore',
+    expectedIsYes: true,
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
   },
   
@@ -142,6 +144,7 @@ export const enhancedGameNumberTestCases: TestCase[] = [
     expectedTeam1: 'DET',
     expectedDaySequence: 1,
     expectedProp: 'FirstToScore',
+    expectedIsYes: true,
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
   },
   // Game numbers with spaces
@@ -210,6 +213,7 @@ export const enhancedGameNumberTestCases: TestCase[] = [
     expectedTeam1: 'DET',
     expectedDaySequence: 1,
     expectedProp: 'FirstToScore',
+    expectedIsYes: true,
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
   },
   // Game numbers after teams
@@ -264,7 +268,8 @@ export const enhancedGameNumberTestCases: TestCase[] = [
     expectedRotationNumber: 872,
     expectedTeam1: 'Athletics',
     expectedDaySequence: 1,
-    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+    expectedTiesLose: false
   },
   {
     description: 'YG Game number "# 2" after teams with dollar size',
@@ -289,7 +294,8 @@ export const enhancedGameNumberTestCases: TestCase[] = [
     expectedSize: 150,
     expectedTeam1: 'DET',
     expectedDaySequence: 2,
-    expectedProp: 'FirstToScore'
+    expectedProp: 'FirstToScore',
+    expectedIsYes: true
   },
   {
     description: 'IW Game number G1 at beginning - game total order',

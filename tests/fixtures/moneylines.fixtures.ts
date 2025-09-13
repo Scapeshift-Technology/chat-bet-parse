@@ -15,7 +15,8 @@ export const moneylinesTestCases: TestCase[] = [
     expectedPrice: 145,
     expectedSize: 4.0,
     expectedRotationNumber: 872,
-    expectedTeam1: 'Athletics'
+    expectedTeam1: 'Athletics',
+    expectedTiesLose: false
   },
 
   // Fills (YG)
@@ -27,7 +28,8 @@ export const moneylinesTestCases: TestCase[] = [
     expectedPrice: 145,
     expectedSize: 500,
     expectedRotationNumber: 872,
-    expectedTeam1: 'Athletics'
+    expectedTeam1: 'Athletics',
+    expectedTiesLose: false
   },
   {
     description: 'YG Spread +0 line F5',
@@ -40,6 +42,7 @@ export const moneylinesTestCases: TestCase[] = [
     expectedTeam1: 'SEA',
     expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 },
     expectedSport: 'Baseball',
+    expectedTiesLose: false
   },
   {
     description: 'YG Spread +0 line F5 variant',
@@ -52,6 +55,7 @@ export const moneylinesTestCases: TestCase[] = [
     expectedTeam1: 'SD',
     expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 },
     expectedSport: 'Baseball',
+    expectedTiesLose: false
   },
   {
     description: 'YG Moneyline with +0 line (interpreted as ML)',
@@ -61,6 +65,7 @@ export const moneylinesTestCases: TestCase[] = [
     expectedPrice: 100,
     expectedSize: 5000,
     expectedRotationNumber: 960,
-    expectedTeam1: 'COL'
+    expectedTeam1: 'COL',
+    expectedTiesLose: false
   }
 ];

@@ -114,6 +114,20 @@ function validateTestCase(testCase: TestCase) {
     }
   }
 
+  if (testCase.expectedIsYes !== undefined) {
+    expect('IsYes' in result.contract).toBe(true);
+    if ('IsYes' in result.contract) {
+      expect(result.contract.IsYes).toBe(testCase.expectedIsYes);
+    }
+  }
+
+  if (testCase.expectedTiesLose !== undefined) {
+    expect('TiesLose' in result.contract).toBe(true);
+    if ('TiesLose' in result.contract) {
+      expect(result.contract.TiesLose).toBe(testCase.expectedTiesLose);
+    }
+  }
+
   if (testCase.expectedProp !== undefined) {
     expect('Prop' in result.contract).toBe(true);
     if ('Prop' in result.contract) {

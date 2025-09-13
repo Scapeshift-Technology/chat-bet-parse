@@ -15,7 +15,8 @@ export const propsYNTestCases: TestCase[] = [
     expectedPrice: -139,
     expectedSize: 0.50,
     expectedTeam1: 'CHC',
-    expectedProp: 'LastToScore'
+    expectedProp: 'LastToScore',
+    expectedIsYes: true
   },
   {
     description: 'IW "to score first" phrase',
@@ -25,6 +26,7 @@ export const propsYNTestCases: TestCase[] = [
     expectedPrice: -115,
     expectedTeam1: 'CIN',
     expectedProp: 'FirstToScore',
+    expectedIsYes: true,
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
   },
   {
@@ -35,6 +37,7 @@ export const propsYNTestCases: TestCase[] = [
     expectedPrice: -115,
     expectedTeam1: 'CIN',
     expectedProp: 'FirstToScore',
+    expectedIsYes: true,
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
   },
   {
@@ -45,6 +48,7 @@ export const propsYNTestCases: TestCase[] = [
     expectedPrice: -115,
     expectedTeam1: 'CIN',
     expectedProp: 'LastToScore',
+    expectedIsYes: true,
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
   },
   {
@@ -55,6 +59,7 @@ export const propsYNTestCases: TestCase[] = [
     expectedPrice: -115,
     expectedTeam1: 'CIN',
     expectedProp: 'LastToScore',
+    expectedIsYes: true,
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
   },
 
@@ -67,7 +72,8 @@ export const propsYNTestCases: TestCase[] = [
     expectedPrice: -139,
     expectedSize: 350,
     expectedTeam1: 'CHC',
-    expectedProp: 'LastToScore'
+    expectedProp: 'LastToScore',
+    expectedIsYes: true
   }
 ];
 

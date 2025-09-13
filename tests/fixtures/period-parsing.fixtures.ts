@@ -79,7 +79,8 @@ export const periodParsingTestCases: TestCase[] = [
     expectedPrice: 125,
     expectedSize: 2000,
     expectedTeam1: 'KC',
-    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 17 }
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 17 },
+    expectedTiesLose: false
   },
   {
     description: 'YG Team F7 moneyline default price',
@@ -89,6 +90,7 @@ export const periodParsingTestCases: TestCase[] = [
     expectedPrice: 125,
     expectedSize: 2000,
     expectedTeam1: 'LAA',
-    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 17 }
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 17 },
+    expectedTiesLose: false
   }
 ];

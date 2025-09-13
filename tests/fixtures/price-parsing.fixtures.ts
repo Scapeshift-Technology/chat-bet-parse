@@ -25,7 +25,8 @@ export const priceParsingTestCases: TestCase[] = [
     expectedContractType: 'HandicapContestantML',
     expectedPrice: 145,
     expectedTeam1: 'Athletics',
-    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+    expectedTiesLose: false
   },
   {
     description: 'Parse negative odds',
@@ -47,6 +48,7 @@ export const priceParsingTestCases: TestCase[] = [
     expectedSize: 265,
     expectedTeam1: 'CIN',
     expectedProp: 'FirstToScore',
+    expectedIsYes: true,
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
   },
   
@@ -70,6 +72,7 @@ export const priceParsingTestCases: TestCase[] = [
     expectedSize: 4000,
     expectedRotationNumber: 872,
     expectedTeam1: 'Athletics',
-    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+    expectedTiesLose: false
   }
 ];

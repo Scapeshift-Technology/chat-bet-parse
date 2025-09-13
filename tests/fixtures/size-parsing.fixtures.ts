@@ -162,6 +162,7 @@ export const fillSizeTestCases: TestCase[] = [
     expectedSize: 563,
     expectedTeam1: 'CIN',
     expectedProp: 'FirstToScore',
+    expectedIsYes: true,
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
   }
 ];
