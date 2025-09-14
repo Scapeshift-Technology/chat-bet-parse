@@ -80,13 +80,8 @@ export const errorTestCases: ErrorTestCase[] = [
     expectedErrorMessage: 'Invalid period format: "99th inning"'
   },
 
-  // Invalid game numbers
-  {
-    description: 'Invalid game number format',
-    input: 'YG SEA Gx TT u4.5 @ -110 = 1.0',
-    expectedErrorType: 'InvalidGameNumberError',
-    expectedErrorMessage: 'Invalid game number format: "Gx"'
-  },
+  // Invalid game numbers - removed since we now only extract valid patterns
+  // 'Gx' is no longer treated as an invalid game number, just part of the team name
 
   // Invalid teams
   {

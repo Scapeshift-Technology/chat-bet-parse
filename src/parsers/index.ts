@@ -32,7 +32,6 @@ import {
   MissingSizeForFillError,
   InvalidContractTypeError,
   InvalidRotationNumberError,
-  InvalidGameNumberError,
   InvalidTeamFormatError,
   InvalidWriteinFormatError,
 } from '../errors/index';
@@ -419,6 +418,28 @@ function tokenizeChat(message: string): TokenResult {
     }
   }
 
+  // Extract period if at beginning (e.g., "2h Vanderbilt +2.5")
+  // Check for common period patterns at the start
+  const periodAtStartMatch = contractText.match(
+    /^(f5|f3|f7|h1|1h|h2|2h|q1|q2|q3|q4|p1|p2|p3)\s+(.+)$/i
+  );
+  if (periodAtStartMatch) {
+    // Keep the period in the contract text but in a normalized position
+    // Move it after the team name so parseMatchInfo can find it properly
+    const period = periodAtStartMatch[1];
+    const restOfContract = periodAtStartMatch[2];
+
+    // Check if this looks like a spread bet (team name followed by +/- line)
+    const spreadMatch = restOfContract.match(/^([a-zA-Z\s&.-]+)\s*([+-]\d+(?:\.\d+)?)/);
+    if (spreadMatch) {
+      // Insert period between team and line: "Vanderbilt 2h +2.5"
+      contractText = `${spreadMatch[1]} ${period} ${spreadMatch[2]}`;
+    } else {
+      // For other patterns, just append period at the end
+      contractText = `${restOfContract} ${period}`;
+    }
+  }
+
   return {
     chatType,
     rotationNumber,
@@ -511,9 +532,14 @@ function detectContractType(contractText: string, rawInput: string): ContractTyp
   }
 
   // Game totals: teams with o/u OR single team with period and o/u
+  // Also handle cases where period comes after the total (e.g., "Rangers/Devils u.5 p3")
+  // Allow optional leading digit (e.g., "u.5" or "u0.5")
   if (
     /\//.test(contractText) &&
-    /[ou]\d+(?:\.\d+)?(?:[+-]\d+(?:\.\d+)?)?(\s+runs)?/i.test(contractText)
+    (/[ou]\d*\.?\d+(?:[+-]\d+(?:\.\d+)?)?(\s+runs)?/i.test(contractText) ||
+      /[ou]\d*\.?\d+(?:[+-]\d+(?:\.\d+)?)?\s+(f5|f3|f7|h1|1h|h2|2h|q1|q2|q3|q4|p1|p2|p3)/i.test(
+        contractText
+      ))
   ) {
     return 'TotalPoints';
   }
@@ -572,7 +598,8 @@ function parseGameTotal(
   gameNumber?: number
 ): ContractSportCompetitionMatchTotalPoints {
   // Extract over/under and line, with optional "runs" suffix
-  const ouMatch = contractText.match(/([ou])(\d+(?:\.\d+)?)(\s+runs)?/i);
+  // Allow optional leading digit (e.g., "u.5" or "u0.5")
+  const ouMatch = contractText.match(/([ou])(\d*\.?\d+)(\s+runs)?/i);
   if (!ouMatch) {
     throw new InvalidContractTypeError(rawInput, contractText);
   }
@@ -581,8 +608,9 @@ function parseGameTotal(
   const hasRunsSuffix = !!ouMatch[3];
 
   // Remove the o/u part (and optional "runs") to get teams and period
+  // Allow optional leading digit (e.g., "u.5" or "u0.5")
   const withoutOU = contractText
-    .replace(/\s*[ou]\d+(?:\.\d+)?(?:[+-]\d+(?:\.\d+)?)?(\s+runs)?/i, '')
+    .replace(/\s*[ou]\d*\.?\d+(?:[+-]\d+(?:\.\d+)?)?(\s+runs)?/i, '')
     .trim();
 
   // Parse teams and extract game info
@@ -621,7 +649,8 @@ function parseTeamTotal(
   gameNumber?: number
 ): ContractSportCompetitionMatchTotalPointsContestant {
   // Extract over/under and line, with optional "runs" suffix
-  const ouMatch = contractText.match(/([ou])(\d+(?:\.\d+)?)(\s+runs)?/i);
+  // Allow optional leading digit (e.g., "u.5" or "u0.5")
+  const ouMatch = contractText.match(/([ou])(\d*\.?\d+)(\s+runs)?/i);
   if (!ouMatch) {
     throw new InvalidContractTypeError(rawInput, contractText);
   }
@@ -750,7 +779,8 @@ function parsePropOU(
   gameNumber?: number
 ): ContractSportCompetitionMatchPropOU {
   // Extract over/under and line, with optional "runs" suffix
-  const ouMatch = contractText.match(/([ou])(\d+(?:\.\d+)?)(\s+runs)?/i);
+  // Allow optional leading digit (e.g., "u.5" or "u0.5")
+  const ouMatch = contractText.match(/([ou])(\d*\.?\d+)(\s+runs)?/i);
   if (!ouMatch) {
     throw new InvalidContractTypeError(rawInput, 'PropOU requires an over/under line');
   }
@@ -993,26 +1023,20 @@ function parseMatchInfo(
 
   // Only try to extract game number from text if we don't already have one from tokens
   if (daySequence === undefined) {
-    const gameMatch = workingText.match(/\s+(g(?:m)?\s*\d+|#\s*\d+)\s*/i);
+    // Look for valid game number patterns: g2, gm2, game2, g 2, gm 1, game 3, #2, # 2
+    const gameMatch = workingText.match(/\s+((?:game|gm|g)\s*\d+|#\s*\d+)\s*/i);
     if (gameMatch) {
       daySequence = parseGameNumber(gameMatch[1], rawInput);
       workingText = workingText.replace(gameMatch[0], ' ').trim();
-    } else {
-      // Check for invalid game number patterns like "Gx", "G", "#x", etc.
-      const invalidGameMatch = workingText.match(
-        /\s+(g(?:m)?\s*[a-zA-Z]+|#\s*[a-zA-Z]+|g(?:m)?\s*$|#\s*$)\s*/i
-      );
-      if (invalidGameMatch) {
-        throw new InvalidGameNumberError(rawInput, invalidGameMatch[1]);
-      }
     }
+    // If no valid game number found, just continue - don't throw errors for things like "Bowling green"
   }
 
   // Extract period if present
   let period: Period = { PeriodTypeCode: 'M', PeriodNumber: 0 }; // Default
   const periodPatterns = [
     /\b(\d+(?:st|nd|rd|th)?\s*(?:inning|i))\b/i,
-    /\b(f5|f3|f7|h1|1h|h2|2h)\b/i,
+    /\b(f5|f3|f7|h1|1h|h2|2h|q1|q2|q3|q4|p1|p2|p3)\b/i,
     /\b(\d+(?:st|nd|rd|th)?\s*(?:quarter|q))\b/i,
     /\b(\d+(?:st|nd|rd|th)?\s*(?:period|p))\b/i,
     /\b(first\s*(?:half|five|5|inning|i))\b/i,

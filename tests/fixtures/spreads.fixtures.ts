@@ -53,5 +53,16 @@ export const spreadsTestCases: TestCase[] = [
     expectedTeam1: 'SD',
     expectedLine: 0.5,
     expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 }
+  },
+  {
+    description: 'YG Second half spread with period at beginning',
+    input: 'YG 2h Vanderbilt +2.5 @ +100 = 1k',
+    expectedChatType: 'fill',
+    expectedContractType: 'HandicapContestantLine',
+    expectedPrice: 100,
+    expectedSize: 1000,
+    expectedTeam1: 'Vanderbilt',
+    expectedLine: 2.5,
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 2 }
   }
 ];

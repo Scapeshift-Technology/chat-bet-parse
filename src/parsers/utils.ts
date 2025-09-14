@@ -263,8 +263,8 @@ export function parsePeriod(periodStr: string, rawInput: string): Period {
 export function parseGameNumber(gameStr: string, rawInput: string): number {
   const cleaned = gameStr.toLowerCase().trim();
 
-  // Patterns: g2, gm1, #2, g 2, gm 1, # 2
-  const match = cleaned.match(/^(?:g(?:m)?\s*(\d+)|#\s*(\d+))$/);
+  // Patterns: g2, gm1, game2, #2, g 2, gm 1, game 3, # 2
+  const match = cleaned.match(/^(?:(?:game|gm|g)\s*(\d+)|#\s*(\d+))$/);
   if (!match) {
     throw new InvalidGameNumberError(rawInput, gameStr);
   }
