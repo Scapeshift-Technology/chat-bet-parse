@@ -66,6 +66,12 @@ export function mapParseResultToContractLegSpec(
     if (league) {
       baseSpec.League = league;
     }
+
+    // Extract sport from contract
+    const sport = extractSport(contract);
+    if (sport) {
+      baseSpec.Sport = sport;
+    }
   }
 
   // Add period info for contracts that need it
@@ -196,6 +202,18 @@ function extractLeague(contract: Contract): string | undefined {
   }
 
   // Default to undefined for now - could be enhanced to infer from team names
+  return undefined;
+}
+
+/**
+ * Extract Sport from contract if available
+ */
+function extractSport(contract: Contract): string | undefined {
+  if ('Sport' in contract && contract.Sport) {
+    return contract.Sport;
+  }
+
+  // Default to undefined for now - could be enhanced to infer from league
   return undefined;
 }
 
