@@ -67,5 +67,29 @@ export const moneylinesTestCases: TestCase[] = [
     expectedRotationNumber: 960,
     expectedTeam1: 'COL',
     expectedTiesLose: false
+  },
+  // Regression test: team name containing "under" should not be parsed as total
+  {
+    description: 'YG Dunder Mifflin moneyline (team name contains "under")',
+    input: 'YG Dunder Mifflin @ +199 = $500',
+    expectedChatType: 'fill',
+    expectedContractType: 'HandicapContestantML',
+    expectedPrice: 199,
+    expectedSize: 500,
+    expectedTeam1: 'Dunder Mifflin',
+    expectedTiesLose: false,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
+  },
+  // Regression test: team name starting with "Under" should not be parsed as total
+  {
+    description: 'YG Underwood moneyline (team name starts with "Under")',
+    input: 'YG Underwood @ +155 = 2.5k',
+    expectedChatType: 'fill',
+    expectedContractType: 'HandicapContestantML',
+    expectedPrice: 155,
+    expectedSize: 2500,
+    expectedTeam1: 'Underwood',
+    expectedTiesLose: false,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
   }
 ];

@@ -205,5 +205,85 @@ export const periodParsingTestCases: TestCase[] = [
     expectedPeriod: { PeriodTypeCode: 'P', PeriodNumber: 3 },
     expectedSport: 'Hockey',
     expectedLeague: 'NHL'
+  },
+  // New CFB test cases for TDD
+  {
+    description: 'YG CFB Miami Ohio 1Q spread',
+    input: 'YG CFB Miami Ohio 1Q +.5 @ -150 = 2.5k',
+    expectedChatType: 'fill',
+    expectedContractType: 'HandicapContestantLine',
+    expectedPrice: -150,
+    expectedSize: 2500,
+    expectedTeam1: 'Miami Ohio',
+    expectedLine: 0.5,
+    expectedPeriod: { PeriodTypeCode: 'Q', PeriodNumber: 1 },
+    expectedSport: 'Football',
+    expectedLeague: 'CFB'
+  },
+  {
+    description: 'YG 1H CFB Kennesaw St spread',
+    input: 'YG 1H CFB Kennesaw St +21.5 -110 = 0.9',
+    expectedChatType: 'fill',
+    expectedContractType: 'HandicapContestantLine',
+    expectedPrice: -110,
+    expectedSize: 900,
+    expectedTeam1: 'Kennesaw St',
+    expectedLine: 21.5,
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 }
+  },
+  {
+    description: 'YG CFB Eastern Michigan 1Q spread',
+    input: 'YG CFB Eastern Michigan 1Q +.5 @ -140 = 500',
+    expectedChatType: 'fill',
+    expectedContractType: 'HandicapContestantLine',
+    expectedPrice: -140,
+    expectedSize: 500,
+    expectedTeam1: 'Eastern Michigan',
+    expectedLine: 0.5,
+    expectedPeriod: { PeriodTypeCode: 'Q', PeriodNumber: 1 },
+    expectedSport: 'Football',
+    expectedLeague: 'CFB'
+  },
+  {
+    description: 'YG CFB 1Q Utah State under',
+    input: 'YG CFB 1Q Utah State u10.5 @ -125 = 3k',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: -125,
+    expectedSize: 3000,
+    expectedTeam1: 'Utah State',
+    expectedLine: 10.5,
+    expectedIsOver: false,
+    expectedPeriod: { PeriodTypeCode: 'Q', PeriodNumber: 1 },
+    expectedSport: 'Football',
+    expectedLeague: 'CFB'
+  },
+  {
+    description: 'YG CFB 1Q Oregon under',
+    input: 'YG CFB 1Q Oregon under 14.5 @ -130 = 3k',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: -130,
+    expectedSize: 3000,
+    expectedTeam1: 'Oregon',
+    expectedLine: 14.5,
+    expectedIsOver: false,
+    expectedPeriod: { PeriodTypeCode: 'Q', PeriodNumber: 1 },
+    expectedSport: 'Football',
+    expectedLeague: 'CFB'
+  },
+  {
+    description: 'YG CFB 2h TCU under',
+    input: 'YG CFB 2h TCU u30.5 @ -110 = 3k',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: -110,
+    expectedSize: 3000,
+    expectedTeam1: 'TCU',
+    expectedLine: 30.5,
+    expectedIsOver: false,
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 2 },
+    expectedSport: 'Football',
+    expectedLeague: 'CFB'
   }
 ];

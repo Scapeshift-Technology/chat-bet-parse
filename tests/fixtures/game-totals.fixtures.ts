@@ -129,5 +129,36 @@ export const gameTotalsTestCases: TestCase[] = [
     expectedIsOver: true,
     expectedPeriod: { PeriodTypeCode: 'I', PeriodNumber: 1 },
     expectedSport: 'Baseball'
+  },
+  // New CFB test case for TDD
+  {
+    description: 'YG CFB Northern Illinois/Maryland Under',
+    input: 'YG CFB Northern Illinois/Maryland Under 47 @ -110 = 2.4k',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: -110,
+    expectedSize: 2400,
+    expectedTeam1: 'Northern Illinois',
+    expectedTeam2: 'Maryland',
+    expectedLine: 47,
+    expectedIsOver: false,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+    expectedSport: 'Football',
+    expectedLeague: 'CFB'
+  },
+  // MLB 1st inning test with .5 format (no leading zero)
+  {
+    description: 'YG MLB 1st inning over with .5 format',
+    input: 'YG Yankees/Red Sox 1st inning o.5 @ +105 = 1.2k',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: 105,
+    expectedSize: 1200,
+    expectedTeam1: 'Yankees',
+    expectedTeam2: 'Red Sox',
+    expectedLine: 0.5,
+    expectedIsOver: true,
+    expectedPeriod: { PeriodTypeCode: 'I', PeriodNumber: 1 },
+    expectedSport: 'Baseball'
   }
 ];

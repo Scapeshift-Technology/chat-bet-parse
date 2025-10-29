@@ -316,8 +316,9 @@ function tokenizeChat(message: string): TokenResult {
         // Don't set price here, let the @ price be used instead
         break;
       }
-      // If it's likely a price (> 100 or whole number between 50-100), treat as price
-      else if (value > 50 && (value > 100 || value % 1 === 0)) {
+      // Numbers with absolute value 0-99 should NEVER be treated as prices
+      // Only values >= 100 are likely prices (e.g., +145, -110)
+      else if (value >= 100) {
         // This looks like a price - split the contract text here
         contractEndIndex = i;
         price = parsePrice(parts[i], rawInput);
@@ -398,7 +399,42 @@ function tokenizeChat(message: string): TokenResult {
     throw new MissingSizeForFillError(rawInput);
   }
 
-  // Extract explicit league if at beginning
+  // Extract period if at beginning (e.g., "2h Vanderbilt +2.5")
+  // Check for common period patterns at the start
+  const periodAtStartMatch = contractText.match(
+    /^(f5|f3|f7|h1|1h|h2|2h|q1|q2|q3|q4|1q|2q|3q|4q|p1|p2|p3)\s+(.+)$/i
+  );
+  if (periodAtStartMatch) {
+    // Keep the period in the contract text but in a normalized position
+    // Move it after the team name so parseMatchInfo can find it properly
+    const period = periodAtStartMatch[1];
+    const restOfContract = periodAtStartMatch[2];
+    // Check if this looks like a spread bet (team name followed by +/- line)
+    // Handle both formats: +1.5 and +.5
+    // Use non-greedy match for team name to avoid including the spread
+    const spreadMatch = restOfContract.match(/^([a-zA-Z\s&.-]+?)\s+([+-](?:\d+)?\.?\d+)/);
+    if (spreadMatch) {
+      // Insert period between team and line: "Vanderbilt 2h +2.5"
+      const teamName = spreadMatch[1].trim();
+      contractText = `${teamName} ${period} ${spreadMatch[2]}`;
+    } else {
+      // Check if this looks like a total (team name followed by o/u or Over/Under)
+      // Use non-greedy match for team name to avoid including the total indicator
+      const totalMatch = restOfContract.match(
+        /^([a-zA-Z\s&.-]+?)\s+([ou]|over|under)\s*(\d+(?:\.\d+)?)/i
+      );
+      if (totalMatch) {
+        // Insert period between team and total: "Utah State 1Q u10.5"
+        const teamName = totalMatch[1].trim();
+        contractText = `${teamName} ${period} ${totalMatch[2]} ${totalMatch[3]}`;
+      } else {
+        // For other patterns (like moneylines), just append period at the end
+        contractText = `${restOfContract} ${period}`;
+      }
+    }
+  }
+
+  // Extract explicit league if at beginning (after period processing)
   let explicitLeague: KnownLeague | undefined;
   const leagueMatch = contractText.match(/^([A-Z]{2,3})\s+(.+)$/);
   if (leagueMatch && knownLeagues.has(leagueMatch[1] as any)) {
@@ -406,7 +442,7 @@ function tokenizeChat(message: string): TokenResult {
     contractText = leagueMatch[2];
   }
 
-  // Extract explicit sport if at beginning
+  // Extract explicit sport if at beginning (after period and league processing)
   let explicitSport: Sport | undefined;
   const sportMatch = contractText.match(/^([a-zA-Z]+)\s+(.+)$/i);
   if (sportMatch) {
@@ -418,25 +454,38 @@ function tokenizeChat(message: string): TokenResult {
     }
   }
 
-  // Extract period if at beginning (e.g., "2h Vanderbilt +2.5")
-  // Check for common period patterns at the start
-  const periodAtStartMatch = contractText.match(
-    /^(f5|f3|f7|h1|1h|h2|2h|q1|q2|q3|q4|p1|p2|p3)\s+(.+)$/i
+  // Extract period if at beginning AGAIN (after league/sport extraction)
+  // This handles cases like "CFB 1Q Utah State u10.5" where league extraction reveals the period
+  const periodAtStartMatch2 = contractText.match(
+    /^(f5|f3|f7|h1|1h|h2|2h|q1|q2|q3|q4|1q|2q|3q|4q|p1|p2|p3)\s+(.+)$/i
   );
-  if (periodAtStartMatch) {
+  if (periodAtStartMatch2) {
     // Keep the period in the contract text but in a normalized position
     // Move it after the team name so parseMatchInfo can find it properly
-    const period = periodAtStartMatch[1];
-    const restOfContract = periodAtStartMatch[2];
-
+    const period = periodAtStartMatch2[1];
+    const restOfContract = periodAtStartMatch2[2];
     // Check if this looks like a spread bet (team name followed by +/- line)
-    const spreadMatch = restOfContract.match(/^([a-zA-Z\s&.-]+)\s*([+-]\d+(?:\.\d+)?)/);
+    // Handle both formats: +1.5 and +.5
+    // Use non-greedy match for team name to avoid including the spread
+    const spreadMatch = restOfContract.match(/^([a-zA-Z\s&.-]+?)\s+([+-](?:\d+)?\.?\d+)/);
     if (spreadMatch) {
       // Insert period between team and line: "Vanderbilt 2h +2.5"
-      contractText = `${spreadMatch[1]} ${period} ${spreadMatch[2]}`;
+      const teamName = spreadMatch[1].trim();
+      contractText = `${teamName} ${period} ${spreadMatch[2]}`;
     } else {
-      // For other patterns, just append period at the end
-      contractText = `${restOfContract} ${period}`;
+      // Check if this looks like a total (team name followed by o/u or Over/Under)
+      // Use non-greedy match for team name to avoid including the total indicator
+      const totalMatch = restOfContract.match(
+        /^([a-zA-Z\s&.-]+?)\s+([ou]|over|under)\s*(\d+(?:\.\d+)?)/i
+      );
+      if (totalMatch) {
+        // Insert period between team and total: "Utah State 1Q u10.5"
+        const teamName = totalMatch[1].trim();
+        contractText = `${teamName} ${period} ${totalMatch[2]} ${totalMatch[3]}`;
+      } else {
+        // For other patterns (like moneylines), just append period at the end
+        contractText = `${restOfContract} ${period}`;
+      }
     }
   }
 
@@ -504,11 +553,12 @@ function detectContractType(contractText: string, rawInput: string): ContractTyp
 
   // Spreads: team name followed by +/- number (but not if it's clearly a price like +145)
   // Can include periods like F5 between team and line
-  if (/[a-zA-Z]+(?:\s+[a-zA-Z0-9]+)*\s*[+-]\d+(?:\.\d+)?/i.test(contractText)) {
+  // Handle both +1.5 and +.5 formats
+  if (/[a-zA-Z]+(?:\s+[a-zA-Z0-9]+)*\s*[+-](?:\d+)?\.?\d+/i.test(contractText)) {
     // Check if this might be a price rather than a spread
     // Prices are typically > 100 or have decimals like +145, -110.5
     const spreadMatch = contractText.match(
-      /([a-zA-Z]+(?:\s+[a-zA-Z0-9]+)*)\s*([+-])(\d+(?:\.\d+)?)/i
+      /([a-zA-Z]+(?:\s+[a-zA-Z0-9]+)*)\s*([+-])((?:\d+)?\.?\d+)/i
     );
     if (spreadMatch) {
       const value = parseFloat(spreadMatch[3]);
@@ -516,17 +566,13 @@ function detectContractType(contractText: string, rawInput: string): ContractTyp
       if (value === 0) {
         return 'HandicapContestantML';
       }
-      // If it's a decimal number <= 50, it's likely a spread line
-      // If it's a whole number > 100, it's likely a price
-      if (value <= 50 || value % 1 !== 0) {
-        // This is likely a spread (fractional lines like 1.5, 2.5 or low numbers)
+      // Numbers with absolute value 0-99 should NEVER be interpreted as moneyline
+      // They are always spreads (e.g., -51, +21.5, -1.5, etc.)
+      if (value < 100) {
         return 'HandicapContestantLine';
-      } else if (value > 100 && value % 1 === 0) {
-        // This is likely a moneyline with embedded price
-        return 'HandicapContestantML';
       } else {
-        // For edge cases between 50-100, default to spread
-        return 'HandicapContestantLine';
+        // Values >= 100 are likely moneyline prices (e.g., +145, -110)
+        return 'HandicapContestantML';
       }
     }
   }
@@ -534,10 +580,11 @@ function detectContractType(contractText: string, rawInput: string): ContractTyp
   // Game totals: teams with o/u OR single team with period and o/u
   // Also handle cases where period comes after the total (e.g., "Rangers/Devils u.5 p3")
   // Allow optional leading digit (e.g., "u.5" or "u0.5")
+  // Support both short form (o/u) and full words (Over/Under)
   if (
     /\//.test(contractText) &&
-    (/[ou]\d*\.?\d+(?:[+-]\d+(?:\.\d+)?)?(\s+runs)?/i.test(contractText) ||
-      /[ou]\d*\.?\d+(?:[+-]\d+(?:\.\d+)?)?\s+(f5|f3|f7|h1|1h|h2|2h|q1|q2|q3|q4|p1|p2|p3)/i.test(
+    (/(over|under|[ou])\s*\d*\.?\d+(?:[+-]\d+(?:\.\d+)?)?(\s+runs)?/i.test(contractText) ||
+      /(over|under|[ou])\s*\d*\.?\d+(?:[+-]\d+(?:\.\d+)?)?\s+(f5|f3|f7|h1|1h|h2|2h|q1|q2|q3|q4|p1|p2|p3)/i.test(
         contractText
       ))
   ) {
@@ -546,7 +593,7 @@ function detectContractType(contractText: string, rawInput: string): ContractTyp
 
   // Single team game totals: team with period and over/under (e.g., "Pirates F5 u4.5")
   if (
-    /^[a-zA-Z\s&.-]+\s+(f5|f3|h1|1h|h2|2h|\d+(?:st|nd|rd|th)?\s*(?:inning|i|quarter|q|period|p))\s+[ou]\d+(?:\.\d+)?(?:[+-]\d+(?:\.\d+)?)?/i.test(
+    /^[a-zA-Z\s&.-]+\s+(f5|f3|h1|1h|h2|2h|\d+(?:st|nd|rd|th)?\s*(?:inning|i|quarter|q|period|p))\s+(over|under|[ou])\s*\d+(?:\.\d+)?(?:[+-]\d+(?:\.\d+)?)?/i.test(
       contractText
     )
   ) {
@@ -556,7 +603,9 @@ function detectContractType(contractText: string, rawInput: string): ContractTyp
   // Single team game totals shorthand: just team name with o/u (e.g., "Bucknell o55.5")
   // This is for cases where sport/league context makes it clear it's a full game total
   if (
-    /^[a-zA-Z\s&.-]+\s+[ou]\d+(?:\.\d+)?(?:[+-]\d+(?:\.\d+)?)?/i.test(contractText) &&
+    /^[a-zA-Z\s&.-]+\s+(over|under|[ou])\s*\d+(?:\.\d+)?(?:[+-]\d+(?:\.\d+)?)?/i.test(
+      contractText
+    ) &&
     !contractText.includes('TT') &&
     !contractText.toLowerCase().includes(' tt ')
   ) {
@@ -599,18 +648,25 @@ function parseGameTotal(
 ): ContractSportCompetitionMatchTotalPoints {
   // Extract over/under and line, with optional "runs" suffix
   // Allow optional leading digit (e.g., "u.5" or "u0.5")
-  const ouMatch = contractText.match(/([ou])(\d*\.?\d+)(\s+runs)?/i);
+  // Support both short form (o/u) and full words (Over/Under)
+  // Require word boundary before o/u to prevent matching team names ending in o/u
+  const ouMatch = contractText.match(/\b(over|under|[ou])\s*(\d*\.?\d+)(\s+runs)?/i);
   if (!ouMatch) {
     throw new InvalidContractTypeError(rawInput, contractText);
   }
 
-  const { isOver, line } = parseOverUnder(ouMatch[1] + ouMatch[2], rawInput);
+  // Convert full words to single letters for parseOverUnder function
+  const ouIndicator = ouMatch[1].toLowerCase();
+  const normalizedOU = ouIndicator === 'over' ? 'o' : ouIndicator === 'under' ? 'u' : ouIndicator;
+  const { isOver, line } = parseOverUnder(normalizedOU + ouMatch[2], rawInput);
   const hasRunsSuffix = !!ouMatch[3];
 
   // Remove the o/u part (and optional "runs") to get teams and period
   // Allow optional leading digit (e.g., "u.5" or "u0.5")
+  // Support both short form (o/u) and full words (Over/Under)
+  // Require word boundary before o/u to prevent matching team names ending in o/u
   const withoutOU = contractText
-    .replace(/\s*[ou]\d*\.?\d+(?:[+-]\d+(?:\.\d+)?)?(\s+runs)?/i, '')
+    .replace(/\b(over|under|[ou])\s*\d*\.?\d+(?:[+-]\d+(?:\.\d+)?)?(\s+runs)?/i, '')
     .trim();
 
   // Parse teams and extract game info
@@ -742,7 +798,8 @@ function parseSpread(
   gameNumber?: number
 ): ContractSportCompetitionMatchHandicapContestantLine {
   // Extract spread line and price (if embedded) - handle periods like F5 between team and line
-  const spreadMatch = contractText.match(/^(.*?)\s*([+-]\d+(?:\.\d+)?)$/);
+  // Handle both +1.5 and +.5 formats
+  const spreadMatch = contractText.match(/^(.*?)\s*([+-](?:\d+)?\.?\d+)$/);
   if (!spreadMatch) {
     throw new InvalidContractTypeError(rawInput, contractText);
   }

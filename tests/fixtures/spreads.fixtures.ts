@@ -64,5 +64,43 @@ export const spreadsTestCases: TestCase[] = [
     expectedTeam1: 'Vanderbilt',
     expectedLine: 2.5,
     expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 2 }
+  },
+  // New CFB test case for TDD
+  {
+    description: 'YG CFB Baylor spread',
+    input: 'YG CFB Baylor -51 @ -110 = 0.5',
+    expectedChatType: 'fill',
+    expectedContractType: 'HandicapContestantLine',
+    expectedPrice: -110,
+    expectedSize: 500,
+    expectedTeam1: 'Baylor',
+    expectedLine: -51,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+    expectedSport: 'Football',
+    expectedLeague: 'CFB'
+  },
+  // Regression test: team name containing "over" should not be parsed as total
+  {
+    description: 'YG Hanover spread (team name contains "over")',
+    input: 'YG Hanover +51.5 @ -110 = 3k',
+    expectedChatType: 'fill',
+    expectedContractType: 'HandicapContestantLine',
+    expectedPrice: -110,
+    expectedSize: 3000,
+    expectedTeam1: 'Hanover',
+    expectedLine: 51.5,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
+  },
+  // Regression test: team name starting with "Over" should not be parsed as total
+  {
+    description: 'YG Overland spread (team name starts with "Over")',
+    input: 'YG Overland -7.5 @ -105 = 1.2k',
+    expectedChatType: 'fill',
+    expectedContractType: 'HandicapContestantLine',
+    expectedPrice: -105,
+    expectedSize: 1200,
+    expectedTeam1: 'Overland',
+    expectedLine: -7.5,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
   }
 ];
