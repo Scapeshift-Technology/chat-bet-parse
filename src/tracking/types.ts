@@ -34,6 +34,9 @@ export interface ContractLegSpec {
   /** Contestant type */
   ContestantType?: string;
 
+  /** Sport */
+  Sport?: string;
+
   /** Period type code */
   PeriodTypeCode?: string;
 
