@@ -402,7 +402,7 @@ export function inferSportAndLeague(
       if (!sport) sport = inferredSport;
       return { sport: 'Football' }; // observed 169,215 -> CFB, 709 -> CFL, 103,277,455 -> NFL
     }
-    if (rotationNumber >= 500 && rotationNumber < 700) {
+    if (rotationNumber >= 500 && rotationNumber < 800) {
       const inferredSport = 'Basketball';
       if (!sport) sport = inferredSport;
       return { sport: 'Basketball' }; // observed 611-628 -> wnba, 500-600 -> nba
