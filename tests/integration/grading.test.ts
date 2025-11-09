@@ -370,9 +370,9 @@ testSuite('Grading Integration Tests', () => {
     });
 
     it('should handle contracts with game numbers', async () => {
-      const parseResult = parseChat('YG St. Louis/PHI G1 o8.5 @ -110 = 1.5');
+      const parseResult = parseChat('YG St. Louis Cardinals/PHI G1 o8.5 @ -110 = 1.5');
       if (!isWritein(parseResult.contract)) {
-        expect(parseResult.contract.Match.Team1).toBe('St. Louis');
+        expect(parseResult.contract.Match.Team1).toBe('St. Louis Cardinals');
         expect(parseResult.contract.Match.Team2).toBe('PHI');
         expect(parseResult.contract.Match.DaySequence).toBe(1);
       }
@@ -380,10 +380,10 @@ testSuite('Grading Integration Tests', () => {
       const grade = await sharedClient.grade(parseResult, { matchScheduledDate: new Date('2025-05-14') });
       expect(['L']).toContain(grade);
 
-      const parseResult2 = parseChat('YG PHI/St. Louis #2 o8.5 @ -110 = 1.5');
+      const parseResult2 = parseChat('YG PHI/St. Louis Cardinals #2 o8.5 @ -110 = 1.5');
       if (!isWritein(parseResult2.contract)) {
         expect(parseResult2.contract.Match.Team1).toBe('PHI');
-        expect(parseResult2.contract.Match.Team2).toBe('St. Louis');
+        expect(parseResult2.contract.Match.Team2).toBe('St. Louis Cardinals');
         expect(parseResult2.contract.Match.DaySequence).toBe(2);
       }
 
