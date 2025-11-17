@@ -9,11 +9,12 @@ import {
   parseChatFill,
   isWritein,
   isParlay,
+  isRoundRobin,
   ChatBetParseError
 } from '../../src/index';
 
 // Import test types
-import { TestCase, ErrorTestCase, ParlayTestCase } from '../fixtures/types';
+import { TestCase, ErrorTestCase, ParlayTestCase, RoundRobinTestCase, NcrNotationTestCase, NcrNotationErrorTestCase } from '../fixtures/types';
 
 // Import test fixtures directly from individual files
 import { edgeCaseTestCases } from '../fixtures/edge-cases.fixtures';
@@ -36,6 +37,12 @@ import { teamTotalsTestCases } from '../fixtures/team-totals.fixtures';
 import { writeinTestCases } from '../fixtures/writein.fixtures';
 import { parlayTestCases } from '../fixtures/parlay.fixtures';
 import { parlayErrorTestCases } from '../fixtures/parlay-errors.fixtures';
+import { ncrNotationTestCases, ncrNotationErrorTestCases } from '../fixtures/ncr-notation.fixtures';
+import { roundRobinTestCases } from '../fixtures/round-robin.fixtures';
+import { roundRobinErrorTestCases } from '../fixtures/round-robin-errors.fixtures';
+
+// Import nCr parser for unit tests
+import { parseNcrNotation } from '../../src/parsers/ncr';
 
 /**
  * Generic test function that validates a parsed result against expected values
@@ -281,6 +288,93 @@ function validateParlayTestCase(testCase: ParlayTestCase) {
   }
 }
 
+/**
+ * Validation function for nCr notation unit tests
+ */
+function validateNcrTestCase(testCase: NcrNotationTestCase) {
+  const result = parseNcrNotation(testCase.input, testCase.input);
+  expect(result.totalLegs).toBe(testCase.expectedTotalLegs);
+  expect(result.parlaySize).toBe(testCase.expectedParlaySize);
+  expect(result.isAtMost).toBe(testCase.expectedIsAtMost);
+}
+
+/**
+ * Validation function for nCr notation error tests
+ */
+function validateNcrErrorTestCase(testCase: NcrNotationErrorTestCase) {
+  expect(() => parseNcrNotation(testCase.input, testCase.input)).toThrow();
+  try {
+    parseNcrNotation(testCase.input, testCase.input);
+  } catch (error) {
+    expect((error as Error).name).toBe(testCase.expectedErrorType);
+    expect((error as Error).message).toContain(testCase.expectedErrorMessage);
+  }
+}
+
+/**
+ * Validation function for round robin integration tests
+ */
+function validateRoundRobinTestCase(testCase: RoundRobinTestCase) {
+  const options = testCase.referenceDate ? { referenceDate: testCase.referenceDate } : undefined;
+  const result = parseChat(testCase.input, options);
+
+  // Verify it's a round robin
+  expect(isRoundRobin(result)).toBe(true);
+  if (!isRoundRobin(result)) return; // Type guard
+
+  // Validate round robin-level properties
+  expect(result.chatType).toBe(testCase.expectedChatType);
+  expect(result.parlaySize).toBe(testCase.expectedParlaySize);
+  expect(result.isAtMost).toBe(testCase.expectedIsAtMost);
+  expect(result.riskType).toBe(testCase.expectedRiskType);
+
+  if (testCase.expectedRisk !== undefined) {
+    expect(result.bet.Risk).toBe(testCase.expectedRisk);
+  }
+  if (testCase.expectedToWin !== undefined) {
+    expect(result.bet.ToWin).toBe(testCase.expectedToWin);
+  }
+  expect(result.useFair).toBe(testCase.expectedUseFair);
+  if (testCase.expectedPushesLose !== undefined) {
+    expect(result.pushesLose).toBe(testCase.expectedPushesLose);
+  }
+  if (testCase.expectedFreeBet !== undefined) {
+    expect(result.bet.IsFreeBet).toBe(testCase.expectedFreeBet);
+  }
+
+  // Validate leg count
+  expect(result.legs).toHaveLength(testCase.expectedLegs.length);
+
+  // Validate each leg (same logic as parlays)
+  for (let i = 0; i < testCase.expectedLegs.length; i++) {
+    const expectedLeg = testCase.expectedLegs[i];
+    const actualLeg = result.legs[i];
+
+    expect('contract' in actualLeg).toBe(true);
+    if (!('contract' in actualLeg)) continue;
+
+    expect(actualLeg.contractType).toBe(expectedLeg.contractType);
+    expect(actualLeg.bet.Price).toBe(expectedLeg.price);
+
+    if (expectedLeg.team) {
+      expect('Contestant' in actualLeg.contract &&
+        actualLeg.contract.Contestant).toBe(expectedLeg.team);
+    }
+    if (expectedLeg.teams) {
+      expect(actualLeg.contract.Match.Team1).toBe(expectedLeg.teams[0]);
+      if (expectedLeg.teams[1]) {
+        expect(actualLeg.contract.Match.Team2).toBe(expectedLeg.teams[1]);
+      }
+    }
+    if (expectedLeg.line !== undefined) {
+      expect('Line' in actualLeg.contract && actualLeg.contract.Line).toBe(expectedLeg.line);
+    }
+    if (expectedLeg.isOver !== undefined) {
+      expect('IsOver' in actualLeg.contract && actualLeg.contract.IsOver).toBe(expectedLeg.isOver);
+    }
+  }
+}
+
 describe('Chat Bet Parsing', () => {
 
   // Edge Cases
@@ -401,6 +495,26 @@ describe('Chat Bet Parsing', () => {
   // Parlay Error Cases (Stage 2)
   describe('Parlay Errors', () => {
     test.each(parlayErrorTestCases)('$description', validateErrorTestCase);
+  });
+
+  // nCr Notation Parsing (Unit Tests - Stage 3)
+  describe('nCr Notation Parsing', () => {
+    test.each(ncrNotationTestCases)('$description', validateNcrTestCase);
+  });
+
+  // nCr Notation Errors (Unit Tests - Stage 3)
+  describe('nCr Notation Errors', () => {
+    test.each(ncrNotationErrorTestCases)('$description', validateNcrErrorTestCase);
+  });
+
+  // Round Robins (Stage 3)
+  describe('Round Robins', () => {
+    test.each(roundRobinTestCases)('$description', validateRoundRobinTestCase);
+  });
+
+  // Round Robin Error Cases (Stage 3)
+  describe('Round Robin Errors', () => {
+    test.each(roundRobinErrorTestCases)('$description', validateErrorTestCase);
   });
 
   // Additional specific parser tests

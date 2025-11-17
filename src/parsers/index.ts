@@ -7,6 +7,7 @@ import type {
   ParseResult,
   ParseResultStraight,
   ParseResultParlay,
+  ParseResultRoundRobin,
   Contract,
   ContractType,
   Match,
@@ -40,7 +41,13 @@ import {
   InvalidKeywordSyntaxError,
   InvalidParlayStructureError,
   InvalidParlayLegError,
+  MissingNcrNotationError,
+  LegCountMismatchError,
+  InvalidRoundRobinLegError,
+  InvalidRoundRobinToWinError,
 } from '../errors/index';
+
+import { parseNcrNotation } from './ncr';
 
 import {
   parsePrice,
@@ -60,6 +67,7 @@ import {
   parseKeywords,
   parseParlayKeywords,
   parseParlaySize,
+  parseRoundRobinSize,
 } from './utils';
 
 // ==============================================================================
@@ -2001,22 +2009,288 @@ function parseParlayOrder(rawInput: string, options?: ParseOptions): ParseResult
   };
 }
 
+// ==============================================================================
+// ROUND ROBIN PARSING (Stage 3)
+// ==============================================================================
+
+/**
+ * Parse YGRR (You Got Round Robin) fill message
+ * Format: YGRR <ncr> [keywords] leg1 & leg2 [& leg3...] = $risk <type> [tw $towin]
+ */
+function parseRoundRobinFill(rawInput: string, options?: ParseOptions): ParseResultRoundRobin {
+  // 1. Extract "YGRR" prefix
+  let text = rawInput.slice(4).trim();
+
+  // 2. Parse round robin-level keywords (same as parlays)
+  const allowedKeys = ['pusheslose', 'tieslose', 'freebet'];
+  let keywordResult;
+  try {
+    keywordResult = parseParlayKeywords(text, rawInput, allowedKeys);
+  } catch (error) {
+    // Check if this is an unknown keyword error for "towin"
+    if (
+      (error as Error).name === 'UnknownKeywordError' &&
+      (error as Error).message.includes('towin')
+    ) {
+      throw new InvalidRoundRobinToWinError(
+        rawInput,
+        'Invalid to-win format: use "tw $500" not "towin:500"'
+      );
+    }
+    throw error;
+  }
+  const { pusheslose, tieslose, freebet, cleanedText } = keywordResult;
+
+  // 3. Extract nCr notation (must be first token after keywords)
+  const firstToken = cleanedText.match(/^\S+/);
+  if (!firstToken) {
+    throw new MissingNcrNotationError(rawInput);
+  }
+
+  const ncrNotation = firstToken[0];
+
+  // Validate it looks like nCr notation (more lenient check)
+  // Must have digits, a letter, and more content
+  if (!/^\d+[a-zA-Z]/.test(ncrNotation)) {
+    // Check if there's a valid nCr notation later in the text
+    if (/\d+[cC]\d+/.test(cleanedText)) {
+      throw new MissingNcrNotationError(rawInput, 'nCr notation must appear before legs');
+    }
+    throw new MissingNcrNotationError(rawInput);
+  }
+
+  // Now validate with parseNcrNotation (will throw InvalidNcrNotationError for bad formats)
+  const { totalLegs, parlaySize, isAtMost } = parseNcrNotation(ncrNotation, rawInput);
+
+  // Remove nCr from text (preserving newlines)
+  const afterNcr = cleanedText.slice(ncrNotation.length).trim();
+
+  // 4. Detect format: ampersand or multiline
+  const isMultiline = afterNcr.includes('\n');
+
+  // 5. Extract legs and size
+  let legTexts: string[];
+  let sizeText: string;
+
+  if (isMultiline) {
+    const lines = afterNcr
+      .split('\n')
+      .map(l => l.trim())
+      .filter(l => l);
+    const sizeLineIndex = lines.findIndex(l => l.startsWith('='));
+    if (sizeLineIndex === -1) {
+      throw new MissingSizeForFillError(rawInput);
+    }
+    legTexts = lines.slice(0, sizeLineIndex);
+    sizeText = lines[sizeLineIndex];
+  } else {
+    // Ampersand format
+    const sizeIndex = afterNcr.indexOf('=');
+    if (sizeIndex === -1) {
+      throw new MissingSizeForFillError(rawInput);
+    }
+    const legsText = afterNcr.slice(0, sizeIndex).trim();
+    sizeText = afterNcr.slice(sizeIndex).trim();
+    legTexts = legsText.split('&').map(l => l.trim());
+  }
+
+  // 6. Validate leg count matches nCr notation
+  if (legTexts.length !== totalLegs) {
+    throw new LegCountMismatchError(rawInput, totalLegs, legTexts.length);
+  }
+
+  // 7. Validate legs are not empty and have prices
+  for (let i = 0; i < legTexts.length; i++) {
+    const leg = legTexts[i];
+    if (!leg || leg.trim() === '') {
+      throw new InvalidRoundRobinLegError(rawInput, i + 1, 'Empty round robin leg');
+    }
+    // Check if leg has a price (must have @ symbol)
+    if (!leg.includes('@')) {
+      throw new InvalidRoundRobinLegError(
+        rawInput,
+        i + 1,
+        'Each round robin leg must have a price'
+      );
+    }
+  }
+
+  // 8. Parse each leg as IW order (reuse existing logic!)
+  const legs: ParseResultStraight[] = [];
+  for (let i = 0; i < legTexts.length; i++) {
+    try {
+      const legInput = `IW ${legTexts[i]}`;
+      const legResult = parseChatOrder(legInput, options);
+      legs.push(legResult);
+    } catch (error) {
+      const errorMsg = (error as Error).message;
+      throw new InvalidRoundRobinLegError(rawInput, i + 1, errorMsg);
+    }
+  }
+
+  // 8. Parse size with risk type
+  const { risk, toWin, useFair, riskType } = parseRoundRobinSize(sizeText, rawInput);
+
+  // 9. Build result
+  return {
+    chatType: 'fill',
+    betType: 'roundRobin',
+    bet: {
+      Risk: risk,
+      ToWin: toWin,
+      ExecutionDtm: new Date(),
+      IsFreeBet: freebet || false,
+    },
+    useFair,
+    pushesLose: pusheslose || tieslose || undefined,
+    parlaySize,
+    isAtMost,
+    riskType,
+    legs,
+  };
+}
+
+/**
+ * Parse IWRR (I Want Round Robin) order message
+ * Format: IWRR <ncr> [keywords] leg1 & leg2 [& leg3...]
+ */
+function parseRoundRobinOrder(rawInput: string, options?: ParseOptions): ParseResultRoundRobin {
+  // 1. Extract "IWRR" prefix
+  let text = rawInput.slice(4).trim();
+
+  // 2. Parse round robin-level keywords (same as parlays)
+  const allowedKeys = ['pusheslose', 'tieslose', 'freebet'];
+  let keywordResult;
+  try {
+    keywordResult = parseParlayKeywords(text, rawInput, allowedKeys);
+  } catch (error) {
+    // Check if this is an unknown keyword error for "towin"
+    if (
+      (error as Error).name === 'UnknownKeywordError' &&
+      (error as Error).message.includes('towin')
+    ) {
+      throw new InvalidRoundRobinToWinError(
+        rawInput,
+        'Invalid to-win format: use "tw $500" not "towin:500"'
+      );
+    }
+    throw error;
+  }
+  const { pusheslose, tieslose, freebet, cleanedText } = keywordResult;
+
+  // 3. Extract nCr notation (must be first token after keywords)
+  const firstToken = cleanedText.match(/^\S+/);
+  if (!firstToken) {
+    throw new MissingNcrNotationError(rawInput);
+  }
+
+  const ncrNotation = firstToken[0];
+
+  // Validate it looks like nCr notation (more lenient check)
+  // Must have digits, a letter, and more content
+  if (!/^\d+[a-zA-Z]/.test(ncrNotation)) {
+    // Check if there's a valid nCr notation later in the text
+    if (/\d+[cC]\d+/.test(cleanedText)) {
+      throw new MissingNcrNotationError(rawInput, 'nCr notation must appear before legs');
+    }
+    throw new MissingNcrNotationError(rawInput);
+  }
+
+  // Now validate with parseNcrNotation (will throw InvalidNcrNotationError for bad formats)
+  const { totalLegs, parlaySize, isAtMost } = parseNcrNotation(ncrNotation, rawInput);
+
+  // Remove nCr from text (preserving newlines)
+  const afterNcr = cleanedText.slice(ncrNotation.length).trim();
+
+  // 4. Detect format: ampersand or multiline
+  const isMultiline = afterNcr.includes('\n');
+
+  // 5. Extract legs
+  let legTexts: string[];
+
+  if (isMultiline) {
+    legTexts = afterNcr
+      .split('\n')
+      .map(l => l.trim())
+      .filter(l => l);
+  } else {
+    // Ampersand format
+    legTexts = afterNcr.split('&').map(l => l.trim());
+  }
+
+  // 6. Validate leg count matches nCr notation
+  if (legTexts.length !== totalLegs) {
+    throw new LegCountMismatchError(rawInput, totalLegs, legTexts.length);
+  }
+
+  // 7. Validate legs are not empty and have prices
+  for (let i = 0; i < legTexts.length; i++) {
+    const leg = legTexts[i];
+    if (!leg || leg.trim() === '') {
+      throw new InvalidRoundRobinLegError(rawInput, i + 1, 'Empty round robin leg');
+    }
+    // Check if leg has a price (must have @ symbol)
+    if (!leg.includes('@')) {
+      throw new InvalidRoundRobinLegError(
+        rawInput,
+        i + 1,
+        'Each round robin leg must have a price'
+      );
+    }
+  }
+
+  // 8. Parse each leg as IW order (reuse existing logic!)
+  const legs: ParseResultStraight[] = [];
+  for (let i = 0; i < legTexts.length; i++) {
+    try {
+      const legInput = `IW ${legTexts[i]}`;
+      const legResult = parseChatOrder(legInput, options);
+      legs.push(legResult);
+    } catch (error) {
+      const errorMsg = (error as Error).message;
+      throw new InvalidRoundRobinLegError(rawInput, i + 1, errorMsg);
+    }
+  }
+
+  // 8. Build result (no size for orders, default riskType to 'perSelection')
+  return {
+    chatType: 'order',
+    betType: 'roundRobin',
+    bet: {
+      Risk: undefined,
+      ToWin: undefined,
+      ExecutionDtm: undefined,
+      IsFreeBet: freebet || false,
+    },
+    useFair: true, // Default to true for orders
+    pushesLose: pusheslose || tieslose || undefined,
+    parlaySize,
+    isAtMost,
+    riskType: 'perSelection', // Default for orders
+    legs,
+  };
+}
+
 export function parseChat(message: string, options?: ParseOptions): ParseResult {
   const trimmed = message.trim();
   const upperTrimmed = trimmed.toUpperCase();
 
-  // Check for parlay prefixes first
+  // Check for round robin first (before parlay)
+  if (upperTrimmed.startsWith('YGRR ') || upperTrimmed.startsWith('YGRR\n')) {
+    return parseRoundRobinFill(message, options);
+  }
+
+  if (upperTrimmed.startsWith('IWRR ') || upperTrimmed.startsWith('IWRR\n')) {
+    return parseRoundRobinOrder(message, options);
+  }
+
+  // Check for parlay prefixes
   if (upperTrimmed.startsWith('YGP ') || upperTrimmed.startsWith('YGP\n')) {
     return parseParlayFill(message, options);
   }
 
   if (upperTrimmed.startsWith('IWP ') || upperTrimmed.startsWith('IWP\n')) {
     return parseParlayOrder(message, options);
-  }
-
-  // Check for round robin (Stage 3)
-  if (upperTrimmed.startsWith('YGRR ') || upperTrimmed.startsWith('IWRR ')) {
-    throw new InvalidChatFormatError(message, 'Round robin not yet implemented (Stage 3)');
   }
 
   // Existing straight bet logic

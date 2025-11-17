@@ -232,6 +232,52 @@ export class InvalidParlayToWinError extends ChatBetParseError {
   }
 }
 
+// ==============================================================================
+// ROUND ROBIN ERROR CLASSES (Stage 3)
+// ==============================================================================
+
+export class MissingNcrNotationError extends ChatBetParseError {
+  constructor(rawInput: string, message: string = 'Round robin requires nCr notation') {
+    super(message, rawInput);
+    this.name = 'MissingNcrNotationError';
+  }
+}
+
+export class LegCountMismatchError extends ChatBetParseError {
+  constructor(rawInput: string, expected: number, actual: number) {
+    super(`Expected ${expected} legs from nCr notation, but found ${actual}`, rawInput);
+    this.name = 'LegCountMismatchError';
+  }
+}
+
+export class MissingRiskTypeError extends ChatBetParseError {
+  constructor(rawInput: string) {
+    super('Round robin requires risk type: "per" or "total"', rawInput);
+    this.name = 'MissingRiskTypeError';
+  }
+}
+
+export class InvalidRiskTypeError extends ChatBetParseError {
+  constructor(rawInput: string, value: string) {
+    super(`Invalid risk type: must be "per" or "total", got "${value}"`, rawInput);
+    this.name = 'InvalidRiskTypeError';
+  }
+}
+
+export class InvalidRoundRobinLegError extends ChatBetParseError {
+  constructor(rawInput: string, legNumber: number, message: string) {
+    super(`Leg ${legNumber}: ${message}`, rawInput);
+    this.name = 'InvalidRoundRobinLegError';
+  }
+}
+
+export class InvalidRoundRobinToWinError extends ChatBetParseError {
+  constructor(rawInput: string, message: string) {
+    super(message, rawInput);
+    this.name = 'InvalidRoundRobinToWinError';
+  }
+}
+
 // Utility function to create position-aware error messages
 export function createPositionError(
   ErrorClass: new (rawInput: string, ...args: any[]) => ChatBetParseError,

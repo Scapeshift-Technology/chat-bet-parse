@@ -26,6 +26,9 @@ import {
   InvalidKeywordValueError,
   UnknownKeywordError,
   InvalidParlayToWinError,
+  MissingRiskTypeError,
+  InvalidRiskTypeError,
+  InvalidRoundRobinToWinError,
 } from '../errors/index';
 
 // ==============================================================================
@@ -885,6 +888,13 @@ export interface ParsedParlaySize {
   useFair: boolean;
 }
 
+export interface ParsedRoundRobinSize {
+  risk: number;
+  toWin?: number;
+  useFair: boolean;
+  riskType: 'perSelection' | 'total';
+}
+
 /**
  * Parse parlay size specification with optional to-win override
  * Format: "= $100" or "= $100 tw $500"
@@ -949,4 +959,105 @@ export function parseParlaySize(sizeText: string, rawInput: string): ParsedParla
   }
 
   return { risk, toWin: undefined, useFair: true };
+}
+
+/**
+ * Parse round robin size with risk type specification
+ * Format: "= $100 per" or "= $600 total" or "= $100 per tw $500"
+ */
+export function parseRoundRobinSize(sizeText: string, rawInput: string): ParsedRoundRobinSize {
+  // Remove leading '='
+  if (!sizeText.startsWith('=')) {
+    throw new InvalidSizeFormatError(rawInput, sizeText, 'Size must start with =');
+  }
+
+  const text = sizeText.slice(1).trim();
+
+  // Parse format: $<amount> <type> [tw $<towin>]
+  // Example: "$100 per" or "$600 total tw $1500"
+
+  // Check for invalid "towin:500" format (similar to parlay check)
+  if (text.match(/towin:/i)) {
+    throw new InvalidRoundRobinToWinError(
+      rawInput,
+      'Invalid to-win format: use "tw $500" not "towin:500"'
+    );
+  }
+
+  // Check for risk type before size (e.g., "per $100")
+  if (text.match(/^(per|total)\s+\$?[\d.]+/i)) {
+    throw new InvalidSizeFormatError(rawInput, sizeText, 'Risk type must come after size amount');
+  }
+
+  // Check for to-win override
+  const twMatch = text.match(/^(\$?[\d.]+)\s+(per|total)\s+tw\s+(\$?[\d.]+)$/i);
+
+  if (twMatch) {
+    // Has to-win override
+    const risk = parseFloat(twMatch[1].replace('$', ''));
+    const riskTypeRaw = twMatch[2].toLowerCase();
+    const toWin = parseFloat(twMatch[3].replace('$', ''));
+
+    if (isNaN(risk) || risk < 0) {
+      throw new InvalidSizeFormatError(rawInput, sizeText, 'positive risk amount');
+    }
+    if (isNaN(toWin) || toWin < 0) {
+      throw new InvalidSizeFormatError(rawInput, sizeText, 'positive to-win amount');
+    }
+
+    // Validate and normalize risk type
+    if (riskTypeRaw !== 'per' && riskTypeRaw !== 'total') {
+      throw new InvalidRiskTypeError(rawInput, riskTypeRaw);
+    }
+
+    // Normalize "per" to "perSelection"
+    const riskType = riskTypeRaw === 'per' ? 'perSelection' : 'total';
+
+    return { risk, toWin, useFair: false, riskType };
+  }
+
+  // Check for missing tw keyword (e.g., "$100 per $500")
+  if (text.match(/^(\$?[\d.]+)\s+(per|total)\s+\$[\d.]+$/i)) {
+    throw new InvalidSizeFormatError(
+      rawInput,
+      sizeText,
+      'Invalid to-win syntax: must use "tw" keyword'
+    );
+  }
+
+  // No to-win, parse risk and type
+  const sizeMatch = text.match(/^(\$?[\d.]+)\s+(per|total)$/i);
+
+  if (!sizeMatch) {
+    // Check if risk type is missing
+    const hasRiskOnly = text.match(/^\$?[\d.]+$/);
+    if (hasRiskOnly) {
+      throw new MissingRiskTypeError(rawInput);
+    }
+
+    // Check for invalid risk type (not "per" or "total")
+    const hasInvalidType = text.match(/^(\$?[\d.]+)\s+(\w+)$/i);
+    if (hasInvalidType) {
+      throw new InvalidRiskTypeError(rawInput, hasInvalidType[2]);
+    }
+
+    throw new InvalidSizeFormatError(rawInput, sizeText, 'Format: "= $100 per" or "= $600 total"');
+  }
+
+  const risk = parseFloat(sizeMatch[1].replace('$', ''));
+  const riskTypeRaw = sizeMatch[2].toLowerCase();
+
+  if (isNaN(risk) || risk < 0) {
+    throw new InvalidSizeFormatError(rawInput, sizeText, 'positive risk amount');
+  }
+
+  // Validate risk type
+  if (riskTypeRaw !== 'per' && riskTypeRaw !== 'total') {
+    throw new InvalidRiskTypeError(rawInput, riskTypeRaw);
+  }
+
+  // Normalize "per" to "perSelection"
+  const riskType = riskTypeRaw === 'per' ? 'perSelection' : 'total';
+
+  return { risk, toWin: undefined, useFair: true, riskType };
 }

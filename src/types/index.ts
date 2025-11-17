@@ -299,7 +299,9 @@ export interface ParseResultParlay extends ParseResultBase {
  */
 export interface ParseResultRoundRobin extends ParseResultBase {
   betType: 'roundRobin';
-  parlaySize: number; // e.g., 2 for 2-teamers
+  parlaySize: number; // e.g., 2 for 2-teamers from nCr notation
+  isAtMost: boolean; // from trailing minus (e.g., true from "4c3-")
+  riskType: 'perSelection' | 'total'; // from "per" or "total"
   useFair: boolean;
   pushesLose?: boolean;
   legs: Array<ParseResultStraight>;
