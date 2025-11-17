@@ -8,7 +8,7 @@ import type {
   ContractSportCompetitionMatch,
   ContractSportCompetitionSeries,
 } from '../types/index';
-import { isWritein } from '../types/index';
+import { isWritein, isStraight } from '../types/index';
 import type { GradingSqlParameters, GradingOptions } from './types';
 import { GradingDataError } from './types';
 
@@ -18,11 +18,19 @@ import { GradingDataError } from './types';
 
 /**
  * Convert a ParseResult to SQL Server function parameters
+ * Note: This function only handles straight bets (not parlays or round robins)
  */
 export function mapParseResultToSqlParameters(
   result: ParseResult,
   options?: GradingOptions
 ): GradingSqlParameters {
+  // Only straight bets can be mapped
+  if (!isStraight(result)) {
+    throw new GradingDataError(
+      'Cannot map parlay or round robin to SQL parameters. Parlays/RR must be graded leg-by-leg.'
+    );
+  }
+
   const contract = result.contract;
 
   // Determine the match scheduled date - must be provided explicitly

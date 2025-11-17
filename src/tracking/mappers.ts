@@ -8,17 +8,25 @@ import type {
   ContractSportCompetitionMatch,
   ContractSportCompetitionSeries,
 } from '../types/index';
-import { isWritein } from '../types/index';
+import { isWritein, isStraight } from '../types/index';
 import type { ContractLegSpec, ContractMappingOptions } from './types';
 import { ContractMappingError } from './types';
 
 /**
  * Convert a ParseResult to ContractLegSpec for SQL Server
+ * Note: This function only handles straight bets (not parlays or round robins)
  */
 export function mapParseResultToContractLegSpec(
   result: ParseResult,
   options?: ContractMappingOptions
 ): ContractLegSpec {
+  // Only straight bets can be mapped (parlays/round robins must be handled differently)
+  if (!isStraight(result)) {
+    throw new ContractMappingError(
+      'Cannot map parlay or round robin to single ContractLegSpec. Use mapParlayToContractLegSpecs instead.'
+    );
+  }
+
   const contract = result.contract;
   const contractType = result.contractType;
 

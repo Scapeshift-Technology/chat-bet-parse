@@ -225,27 +225,8 @@ export type Contract =
 // BET TYPES
 // ==============================================================================
 
-export interface BaseBet {
-  ExecutionDtm?: Date; // Optional for orders
-  Price: number; // USA odds format
-  Size?: number; // Optional for orders, required for fills
-  IsFreeBet?: boolean; // Optional free bet flag
-}
-
-export interface ChatOrder extends BaseBet {
-  Size?: number; // Optional, interpreted as literal units when present
-}
-
-export interface ChatFill extends BaseBet {
-  ExecutionDtm: Date; // Required for fills
-  Size: number; // Required, interpreted based on format (thousands, k-notation, dollar)
-}
-
-// ==============================================================================
-// PARSING RESULT TYPES
-// ==============================================================================
-
 export type ChatType = 'order' | 'fill';
+export type BetType = 'straight' | 'parlay' | 'roundRobin';
 
 export type ContractType =
   | 'TotalPoints'
@@ -257,24 +238,84 @@ export type ContractType =
   | 'Series'
   | 'Writein';
 
+/**
+ * Unified bet structure - fields populated based on chatType and betType
+ * - Price/Size: Only for straight bets
+ * - Risk/ToWin: Only for parlay/roundRobin fills
+ * - ExecutionDtm: Only for fills (all betTypes)
+ */
+export interface Bet {
+  // Straight bet fields
+  Price?: number; // USA odds format (straight bets only)
+  Size?: number; // Straight bets only (optional for orders, required for fills)
+
+  // Parlay/RoundRobin fill fields
+  Risk?: number; // Parlay/RR fills only (from "= $100")
+  ToWin?: number; // Parlay/RR fills only (optional override from "tw $500")
+
+  // Common fields
+  ExecutionDtm?: Date; // Fills only (all betTypes)
+  IsFreeBet?: boolean; // All types
+}
+
+// ==============================================================================
+// PARSING RESULT TYPES
+// ==============================================================================
+
+/**
+ * Base interface for all parse results
+ */
 export interface ParseResultBase {
   chatType: ChatType;
+  betType: BetType;
+  bet: Bet;
+}
+
+/**
+ * Straight bet (normalized matchup or writein)
+ * Discriminated by betType === 'straight'
+ */
+export interface ParseResultStraight extends ParseResultBase {
+  betType: 'straight';
   contractType: ContractType;
   contract: Contract;
   rotationNumber?: number;
 }
 
-export interface ChatOrderResult extends ParseResultBase {
-  chatType: 'order';
-  bet: ChatOrder;
+/**
+ * Parlay bet (2+ legs combined)
+ * Discriminated by betType === 'parlay'
+ */
+export interface ParseResultParlay extends ParseResultBase {
+  betType: 'parlay';
+  useFair: boolean; // true when ToWin not specified
+  pushesLose?: boolean; // from "pusheslose:true" or "tieslose:true"
+  legs: Array<ParseResultStraight>; // Each leg is a straight bet
 }
 
-export interface ChatFillResult extends ParseResultBase {
-  chatType: 'fill';
-  bet: ChatFill;
+/**
+ * Round robin bet (Stage 3)
+ * Discriminated by betType === 'roundRobin'
+ */
+export interface ParseResultRoundRobin extends ParseResultBase {
+  betType: 'roundRobin';
+  parlaySize: number; // e.g., 2 for 2-teamers
+  useFair: boolean;
+  pushesLose?: boolean;
+  legs: Array<ParseResultStraight>;
 }
 
-export type ParseResult = ChatOrderResult | ChatFillResult;
+export type ParseResult = ParseResultStraight | ParseResultParlay | ParseResultRoundRobin;
+
+// ==============================================================================
+// DEPRECATED TYPE ALIASES (for backwards compatibility)
+// ==============================================================================
+
+/** @deprecated Use ParseResultStraight with chatType === 'order' instead */
+export type ChatOrderResult = ParseResultStraight & { chatType: 'order' };
+
+/** @deprecated Use ParseResultStraight with chatType === 'fill' instead */
+export type ChatFillResult = ParseResultStraight & { chatType: 'fill' };
 
 // ==============================================================================
 // PARSE OPTIONS
@@ -294,12 +335,26 @@ export interface ParseOptions {
 // CONVENIENCE TYPE GUARDS
 // ==============================================================================
 
-export function isOrder(result: ParseResult): result is ChatOrderResult {
+// ChatType guards
+export function isOrder(result: ParseResult): result is ParseResult & { chatType: 'order' } {
   return result.chatType === 'order';
 }
 
-export function isFill(result: ParseResult): result is ChatFillResult {
+export function isFill(result: ParseResult): result is ParseResult & { chatType: 'fill' } {
   return result.chatType === 'fill';
+}
+
+// BetType guards
+export function isStraight(result: ParseResult): result is ParseResultStraight {
+  return result.betType === 'straight';
+}
+
+export function isParlay(result: ParseResult): result is ParseResultParlay {
+  return result.betType === 'parlay';
+}
+
+export function isRoundRobin(result: ParseResult): result is ParseResultRoundRobin {
+  return result.betType === 'roundRobin';
 }
 
 export function isTotalPoints(

@@ -25,6 +25,7 @@ import {
   InvalidKeywordSyntaxError,
   InvalidKeywordValueError,
   UnknownKeywordError,
+  InvalidParlayToWinError,
 } from '../errors/index';
 
 // ==============================================================================
@@ -792,4 +793,160 @@ export function parseKeywords(
     ...keywords,
     cleanedText: remainingParts.join(' '),
   };
+}
+
+// ==============================================================================
+// PARLAY KEYWORD PARSING (Stage 2)
+// ==============================================================================
+
+export interface ParsedParlayKeywords {
+  pusheslose?: boolean;
+  tieslose?: boolean;
+  freebet?: boolean;
+  cleanedText: string;
+}
+
+/**
+ * Parse parlay-specific keywords (appear on first line only)
+ * Format: key:value (no spaces around colon)
+ * Returns parsed keywords and text with keywords removed
+ */
+export function parseParlayKeywords(
+  text: string,
+  rawInput: string,
+  allowedKeys: string[]
+): ParsedParlayKeywords {
+  // Extract first line (keywords appear on first line only)
+  const lines = text.split('\n');
+  const firstLine = lines[0];
+  const remainingLines = lines.slice(1);
+
+  // Parse keywords from first line
+  const parts = firstLine.trim().split(/\s+/);
+  const keywords: Partial<ParsedParlayKeywords> = {};
+  const remainingParts: string[] = [];
+
+  for (const part of parts) {
+    if (part.includes(':')) {
+      // Validate syntax (same as Stage 1)
+      const [key, ...valueParts] = part.split(':');
+
+      if (valueParts.length === 0 || key === '' || valueParts.join(':') === '') {
+        throw new InvalidKeywordSyntaxError(
+          rawInput,
+          part,
+          'Invalid keyword syntax: no spaces allowed around colon'
+        );
+      }
+
+      const value = valueParts.join(':');
+
+      if (!allowedKeys.includes(key)) {
+        throw new UnknownKeywordError(rawInput, key);
+      }
+
+      switch (key) {
+        case 'pusheslose':
+        case 'tieslose':
+        case 'freebet':
+          if (value !== 'true') {
+            throw new InvalidKeywordValueError(
+              rawInput,
+              key,
+              value,
+              `Invalid ${key} value: must be "true"`
+            );
+          }
+          keywords[key] = true;
+          break;
+      }
+    } else {
+      remainingParts.push(part);
+    }
+  }
+
+  // Rebuild cleaned text
+  const cleanedFirstLine = remainingParts.join(' ');
+  const allLines = cleanedFirstLine ? [cleanedFirstLine, ...remainingLines] : remainingLines;
+
+  return {
+    ...keywords,
+    cleanedText: allLines.join('\n'),
+  };
+}
+
+// ==============================================================================
+// PARLAY SIZE PARSING (Stage 2)
+// ==============================================================================
+
+export interface ParsedParlaySize {
+  risk: number;
+  toWin?: number;
+  useFair: boolean;
+}
+
+/**
+ * Parse parlay size specification with optional to-win override
+ * Format: "= $100" or "= $100 tw $500"
+ */
+export function parseParlaySize(sizeText: string, rawInput: string): ParsedParlaySize {
+  // Remove leading '='
+  if (!sizeText.startsWith('=')) {
+    throw new InvalidSizeFormatError(rawInput, sizeText, 'Size must start with =');
+  }
+
+  const text = sizeText.slice(1).trim();
+
+  // Check for invalid "towin:500" format
+  if (text.match(/towin:/i)) {
+    throw new InvalidParlayToWinError(
+      rawInput,
+      'Invalid to-win format: use "tw $500" not "towin:500"'
+    );
+  }
+
+  // Check for to-win override
+  const twMatch = text.match(/^(\$?[\d.]+)\s+tw\s+(\$?[\d.]+)$/i);
+
+  if (twMatch) {
+    // Has to-win override
+    const risk = parseFloat(twMatch[1].replace('$', ''));
+    const toWin = parseFloat(twMatch[2].replace('$', ''));
+
+    if (isNaN(risk) || risk < 0) {
+      throw new InvalidSizeFormatError(rawInput, sizeText, 'positive risk amount');
+    }
+    if (isNaN(toWin) || toWin < 0) {
+      throw new InvalidParlayToWinError(rawInput, 'Invalid to-win amount');
+    }
+
+    return { risk, toWin, useFair: false };
+  }
+
+  // Check for multiple tw (error case)
+  if (text.toLowerCase().match(/\btw\b.*\btw\b/)) {
+    throw new InvalidParlayToWinError(rawInput, 'To-win amount specified multiple times');
+  }
+
+  // Check for invalid tw usage (missing keyword)
+  if (text.match(/^\$?[\d.]+\s+\$[\d.]+$/)) {
+    throw new InvalidSizeFormatError(
+      rawInput,
+      sizeText,
+      'Invalid to-win syntax: must use "tw" keyword'
+    );
+  }
+
+  // No to-win, calculate from fair odds
+  const riskMatch = text.match(/^\$?([\d.]+)$/);
+  if (!riskMatch) {
+    throw new InvalidSizeFormatError(rawInput, sizeText, 'Format: "= $100" or "= $100 tw $500"');
+  }
+
+  const risk = parseFloat(riskMatch[1]);
+  if (isNaN(risk) || risk < 0) {
+    throw new InvalidSizeFormatError(rawInput, sizeText, 'positive risk amount');
+  }
+
+  return { risk, toWin: undefined, useFair: true };
 }

@@ -121,10 +121,7 @@ export class InvalidSeriesLengthError extends ChatBetParseError {
 
 export class MissingSizeForFillError extends ChatBetParseError {
   constructor(rawInput: string) {
-    super(
-      `Missing size for fill (YG) bet. Fill bets must include size with "=" format. Input: "${rawInput}"`,
-      rawInput
-    );
+    super(`Fill (YG/YGP/YGRR) messages require a size`, rawInput);
     this.name = 'MissingSizeForFillError';
   }
 }
@@ -207,6 +204,31 @@ export class UnknownKeywordError extends ChatBetParseError {
   constructor(rawInput: string, keyword: string) {
     super(`Unknown keyword: ${keyword}`, rawInput);
     this.name = 'UnknownKeywordError';
+  }
+}
+
+// ==============================================================================
+// PARLAY ERROR CLASSES (Stage 2)
+// ==============================================================================
+
+export class InvalidParlayStructureError extends ChatBetParseError {
+  constructor(rawInput: string, message: string) {
+    super(message, rawInput);
+    this.name = 'InvalidParlayStructureError';
+  }
+}
+
+export class InvalidParlayLegError extends ChatBetParseError {
+  constructor(rawInput: string, legNumber: number, message: string) {
+    super(`Leg ${legNumber}: ${message}`, rawInput);
+    this.name = 'InvalidParlayLegError';
+  }
+}
+
+export class InvalidParlayToWinError extends ChatBetParseError {
+  constructor(rawInput: string, message: string) {
+    super(message, rawInput);
+    this.name = 'InvalidParlayToWinError';
   }
 }
 

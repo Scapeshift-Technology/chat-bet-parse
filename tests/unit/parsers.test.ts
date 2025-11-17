@@ -8,11 +8,12 @@ import {
   parseChatOrder,
   parseChatFill,
   isWritein,
+  isParlay,
   ChatBetParseError
 } from '../../src/index';
 
 // Import test types
-import { TestCase, ErrorTestCase } from '../fixtures/types';
+import { TestCase, ErrorTestCase, ParlayTestCase } from '../fixtures/types';
 
 // Import test fixtures directly from individual files
 import { edgeCaseTestCases } from '../fixtures/edge-cases.fixtures';
@@ -33,6 +34,8 @@ import { sportLeagueInferenceTestCases } from '../fixtures/sport-league-inferenc
 import { spreadsTestCases } from '../fixtures/spreads.fixtures';
 import { teamTotalsTestCases } from '../fixtures/team-totals.fixtures';
 import { writeinTestCases } from '../fixtures/writein.fixtures';
+import { parlayTestCases } from '../fixtures/parlay.fixtures';
+import { parlayErrorTestCases } from '../fixtures/parlay-errors.fixtures';
 
 /**
  * Generic test function that validates a parsed result against expected values
@@ -196,6 +199,88 @@ function validateErrorTestCase(testCase: ErrorTestCase) {
   }
 }
 
+/**
+ * Parlay test validation function
+ */
+function validateParlayTestCase(testCase: ParlayTestCase) {
+  const options = testCase.referenceDate ? { referenceDate: testCase.referenceDate } : undefined;
+  const result = parseChat(testCase.input, options);
+
+  // Verify it's a parlay
+  expect(isParlay(result)).toBe(true);
+  if (!isParlay(result)) return; // Type guard
+
+  // Validate parlay-level properties
+  expect(result.chatType).toBe(testCase.expectedChatType);
+  if (testCase.expectedRisk !== undefined) {
+    expect(result.bet.Risk).toBe(testCase.expectedRisk);
+  }
+  if (testCase.expectedToWin !== undefined) {
+    expect(result.bet.ToWin).toBe(testCase.expectedToWin);
+  }
+  expect(result.useFair).toBe(testCase.expectedUseFair);
+  if (testCase.expectedPushesLose !== undefined) {
+    expect(result.pushesLose).toBe(testCase.expectedPushesLose);
+  }
+  if (testCase.expectedFreeBet !== undefined) {
+    expect(result.bet.IsFreeBet).toBe(testCase.expectedFreeBet);
+  }
+
+  // Validate leg count
+  expect(result.legs).toHaveLength(testCase.expectedLegs.length);
+
+  // Validate each leg
+  for (let i = 0; i < testCase.expectedLegs.length; i++) {
+    const expectedLeg = testCase.expectedLegs[i];
+    const actualLeg = result.legs[i];
+
+    // Each leg must be a straight bet
+    expect('contract' in actualLeg).toBe(true);
+    if (!('contract' in actualLeg)) continue;
+
+    // Validate leg properties
+    expect(actualLeg.contractType).toBe(expectedLeg.contractType);
+    expect(actualLeg.bet.Price).toBe(expectedLeg.price);
+
+    // Validate leg contract details (team, teams, line, etc.)
+    if (expectedLeg.team) {
+      expect('Contestant' in actualLeg.contract &&
+        actualLeg.contract.Contestant).toBe(expectedLeg.team);
+    }
+    if (expectedLeg.teams) {
+      expect(actualLeg.contract.Match.Team1).toBe(expectedLeg.teams[0]);
+      if (expectedLeg.teams[1]) {
+        expect(actualLeg.contract.Match.Team2).toBe(expectedLeg.teams[1]);
+      }
+    }
+    if (expectedLeg.line !== undefined) {
+      expect('Line' in actualLeg.contract && actualLeg.contract.Line).toBe(expectedLeg.line);
+    }
+    if (expectedLeg.isOver !== undefined) {
+      expect('IsOver' in actualLeg.contract && actualLeg.contract.IsOver).toBe(expectedLeg.isOver);
+    }
+    if (expectedLeg.rotationNumber !== undefined) {
+      expect(actualLeg.rotationNumber).toBe(expectedLeg.rotationNumber);
+    }
+    if (expectedLeg.daySequence !== undefined) {
+      expect(actualLeg.contract.Match.DaySequence).toBe(expectedLeg.daySequence);
+    }
+    if (expectedLeg.period) {
+      expect(actualLeg.contract.Period.PeriodTypeCode).toBe(expectedLeg.period.PeriodTypeCode);
+      expect(actualLeg.contract.Period.PeriodNumber).toBe(expectedLeg.period.PeriodNumber);
+    }
+    if (expectedLeg.sport) {
+      expect(actualLeg.contract.Sport).toBe(expectedLeg.sport);
+    }
+    if (expectedLeg.league) {
+      expect(actualLeg.contract.League).toBe(expectedLeg.league);
+    }
+    if (expectedLeg.eventDate) {
+      expect(actualLeg.contract.Match.Date).toEqual(expectedLeg.eventDate);
+    }
+  }
+}
+
 describe('Chat Bet Parsing', () => {
 
   // Edge Cases
@@ -306,6 +391,16 @@ describe('Chat Bet Parsing', () => {
   // Writein Error Cases
   describe('Writein Error Cases', () => {
     test.each(writeinErrorTestCases)('$description', validateErrorTestCase);
+  });
+
+  // Parlays (Stage 2)
+  describe('Parlays', () => {
+    test.each(parlayTestCases)('$description', validateParlayTestCase);
+  });
+
+  // Parlay Error Cases (Stage 2)
+  describe('Parlay Errors', () => {
+    test.each(parlayErrorTestCases)('$description', validateErrorTestCase);
   });
 
   // Additional specific parser tests

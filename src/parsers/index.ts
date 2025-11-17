@@ -5,8 +5,8 @@
 
 import type {
   ParseResult,
-  ChatOrderResult,
-  ChatFillResult,
+  ParseResultStraight,
+  ParseResultParlay,
   Contract,
   ContractType,
   Match,
@@ -37,6 +37,9 @@ import {
   InvalidWriteinFormatError,
   InvalidDateError,
   InvalidKeywordValueError,
+  InvalidKeywordSyntaxError,
+  InvalidParlayStructureError,
+  InvalidParlayLegError,
 } from '../errors/index';
 
 import {
@@ -55,6 +58,8 @@ import {
   parseWriteinDate,
   validateWriteinDescription,
   parseKeywords,
+  parseParlayKeywords,
+  parseParlaySize,
 } from './utils';
 
 // ==============================================================================
@@ -1364,7 +1369,7 @@ function parseMatchInfo(
 /**
  * Parse a chat order (IW message)
  */
-export function parseChatOrder(message: string, options?: ParseOptions): ChatOrderResult {
+export function parseChatOrder(message: string, options?: ParseOptions): ParseResultStraight {
   const tokens = tokenizeChat(message, options);
 
   if (tokens.chatType !== 'order') {
@@ -1384,6 +1389,7 @@ export function parseChatOrder(message: string, options?: ParseOptions): ChatOrd
 
     return {
       chatType: 'order',
+      betType: 'straight',
       contractType: 'Writein',
       contract,
       rotationNumber: undefined,
@@ -1492,6 +1498,7 @@ export function parseChatOrder(message: string, options?: ParseOptions): ChatOrd
 
   return {
     chatType: 'order',
+    betType: 'straight',
     contractType,
     contract,
     rotationNumber: tokens.rotationNumber,
@@ -1506,7 +1513,7 @@ export function parseChatOrder(message: string, options?: ParseOptions): ChatOrd
 /**
  * Parse a chat fill (YG message)
  */
-export function parseChatFill(message: string, options?: ParseOptions): ChatFillResult {
+export function parseChatFill(message: string, options?: ParseOptions): ParseResultStraight {
   const tokens = tokenizeChat(message, options);
 
   if (tokens.chatType !== 'fill') {
@@ -1526,6 +1533,7 @@ export function parseChatFill(message: string, options?: ParseOptions): ChatFill
 
     return {
       chatType: 'fill',
+      betType: 'straight',
       contractType: 'Writein',
       contract,
       rotationNumber: undefined,
@@ -1635,6 +1643,7 @@ export function parseChatFill(message: string, options?: ParseOptions): ChatFill
 
   return {
     chatType: 'fill',
+    betType: 'straight',
     contractType,
     contract,
     rotationNumber: tokens.rotationNumber,
@@ -1650,10 +1659,367 @@ export function parseChatFill(message: string, options?: ParseOptions): ChatFill
 /**
  * Main entry point - automatically detects order vs fill
  */
+// ==============================================================================
+// PARLAY PARSING (Stage 2)
+// ==============================================================================
+
+/**
+ * Parse YGP (You Got Parlay) fill message
+ * Format: YGP [keywords] leg1 & leg2 [& leg3...] = $risk [tw $towin]
+ */
+function parseParlayFill(rawInput: string, options?: ParseOptions): ParseResultParlay {
+  // 1. Extract "YGP" prefix
+  let text = rawInput.slice(3).trim();
+
+  // 2. Parse parlay-level keywords (pusheslose, tieslose, freebet)
+  // Only parse keywords from the first line before legs start
+  const allowedKeys = ['pusheslose', 'tieslose', 'freebet'];
+  let pusheslose: boolean | undefined;
+  let tieslose: boolean | undefined;
+  let freebet: boolean | undefined;
+  let cleanedText = text;
+
+  // Detect if multiline or ampersand format
+  const hasNewline = text.includes('\n');
+  const hasAmpersand = text.includes('&');
+
+  if (hasNewline) {
+    // Multiline: only parse keywords from first line
+    const parsed = parseParlayKeywords(text, rawInput, allowedKeys);
+    pusheslose = parsed.pusheslose;
+    tieslose = parsed.tieslose;
+    freebet = parsed.freebet;
+    cleanedText = parsed.cleanedText;
+  } else if (hasAmpersand) {
+    // Ampersand format: only parse keywords before first ampersand
+    const ampIndex = text.indexOf('&');
+    const firstPart = text.slice(0, ampIndex);
+    const restPart = text.slice(ampIndex);
+
+    // Only parse keywords from the part before the first leg
+    const beforeLegs = firstPart.trim().split(/\s+/);
+    const keywordsFound: string[] = [];
+    const nonKeywords: string[] = [];
+
+    for (const part of beforeLegs) {
+      // Check if this looks like a keyword without colon (e.g., "pusheslose")
+      if (allowedKeys.includes(part)) {
+        throw new InvalidKeywordSyntaxError(rawInput, part, 'Invalid keyword syntax');
+      }
+
+      if (part.includes(':')) {
+        const [key] = part.split(':');
+        if (allowedKeys.includes(key)) {
+          keywordsFound.push(part);
+          // Parse the keyword
+          const [, ...valueParts] = part.split(':');
+          const value = valueParts.join(':');
+
+          // Validate value is 'true'
+          if (value !== 'true') {
+            throw new InvalidKeywordValueError(
+              rawInput,
+              key,
+              value,
+              `Invalid ${key} value: must be "true"`
+            );
+          }
+
+          if (key === 'pusheslose') pusheslose = true;
+          if (key === 'tieslose') tieslose = true;
+          if (key === 'freebet') freebet = true;
+        } else {
+          // Not a parlay-level keyword, keep it
+          nonKeywords.push(part);
+        }
+      } else {
+        nonKeywords.push(part);
+      }
+    }
+
+    cleanedText = (nonKeywords.join(' ') + ' ' + restPart).trim();
+  }
+
+  // 3. Detect format: ampersand or multiline
+  const isMultiline = cleanedText.includes('\n');
+
+  // 4. Extract legs and size
+  let legTexts: string[];
+  let sizeText: string;
+
+  if (isMultiline) {
+    const lines = cleanedText
+      .split('\n')
+      .map(l => l.trim())
+      .filter(l => l);
+    const sizeLineIndex = lines.findIndex(l => l.startsWith('='));
+    if (sizeLineIndex === -1) {
+      throw new MissingSizeForFillError(rawInput);
+    }
+    legTexts = lines.slice(0, sizeLineIndex);
+    sizeText = lines[sizeLineIndex];
+  } else {
+    // Ampersand format
+    const sizeIndex = cleanedText.indexOf('=');
+    if (sizeIndex === -1) {
+      throw new MissingSizeForFillError(rawInput);
+    }
+    const legsText = cleanedText.slice(0, sizeIndex).trim();
+    sizeText = cleanedText.slice(sizeIndex).trim();
+    legTexts = legsText.split('&').map(l => l.trim());
+  }
+
+  // 5. Validate leg count
+  if (legTexts.length < 2) {
+    // Check if user used comma instead of ampersand
+    if (cleanedText.includes(',')) {
+      throw new InvalidParlayStructureError(rawInput, 'Parlay legs must be separated by &');
+    }
+    throw new InvalidParlayStructureError(rawInput, 'Parlay requires at least 2 legs');
+  }
+
+  // Check for empty legs
+  for (let i = 0; i < legTexts.length; i++) {
+    if (!legTexts[i]) {
+      throw new InvalidParlayLegError(rawInput, i + 1, 'Empty parlay leg');
+    }
+  }
+
+  // 6. Parse each leg as IW order (reuse existing logic!)
+  const legs: ParseResultStraight[] = [];
+  for (let i = 0; i < legTexts.length; i++) {
+    try {
+      const legText = legTexts[i];
+
+      // Check if leg has @ symbol
+      if (!legText.includes('@')) {
+        // Check if it looks like it's missing a price entirely vs missing @ symbol
+        // If it has no symbols at all, it's likely missing price
+        if (!legText.match(/[@+-]/)) {
+          throw new Error('Each parlay leg must have a price');
+        }
+        throw new Error('Invalid leg format: missing @ symbol');
+      }
+
+      // Check if leg has a price after @
+      const atIndex = legText.lastIndexOf('@');
+      const afterAt = legText.slice(atIndex + 1).trim();
+      if (!afterAt || afterAt.length === 0) {
+        throw new Error('Each parlay leg must have a price');
+      }
+
+      const legInput = `IW ${legText}`;
+      const legResult = parseChatOrder(legInput, options);
+      legs.push(legResult);
+    } catch (error) {
+      const errorMsg = (error as Error).message;
+      // Clean up error messages for better parlay context
+      if (errorMsg.includes('Invalid chat format') || errorMsg.includes('Expected order')) {
+        throw new InvalidParlayLegError(rawInput, i + 1, 'Invalid leg format: missing @ symbol');
+      }
+      throw new InvalidParlayLegError(rawInput, i + 1, errorMsg);
+    }
+  }
+
+  // 7. Parse size and optional to-win
+  const { risk, toWin, useFair } = parseParlaySize(sizeText, rawInput);
+
+  // 8. Build result
+  return {
+    chatType: 'fill',
+    betType: 'parlay',
+    bet: {
+      Risk: risk,
+      ToWin: toWin,
+      ExecutionDtm: new Date(),
+      IsFreeBet: freebet || false,
+    },
+    useFair,
+    pushesLose: pusheslose || tieslose || undefined,
+    legs,
+  };
+}
+
+/**
+ * Parse IWP (I Want Parlay) order message
+ * Format: IWP [keywords] leg1 & leg2 [& leg3...]
+ */
+function parseParlayOrder(rawInput: string, options?: ParseOptions): ParseResultParlay {
+  // 1. Extract "IWP" prefix
+  let text = rawInput.slice(3).trim();
+
+  // 2. Parse parlay-level keywords (pusheslose, tieslose, freebet)
+  // Only parse keywords from the first line before legs start
+  const allowedKeys = ['pusheslose', 'tieslose', 'freebet'];
+  let pusheslose: boolean | undefined;
+  let tieslose: boolean | undefined;
+  let freebet: boolean | undefined;
+  let cleanedText = text;
+
+  // Detect if multiline or ampersand format
+  const hasNewline = text.includes('\n');
+  const hasAmpersand = text.includes('&');
+
+  if (hasNewline) {
+    // Multiline: only parse keywords from first line
+    const parsed = parseParlayKeywords(text, rawInput, allowedKeys);
+    pusheslose = parsed.pusheslose;
+    tieslose = parsed.tieslose;
+    freebet = parsed.freebet;
+    cleanedText = parsed.cleanedText;
+  } else if (hasAmpersand) {
+    // Ampersand format: only parse keywords before first ampersand
+    const ampIndex = text.indexOf('&');
+    const firstPart = text.slice(0, ampIndex);
+    const restPart = text.slice(ampIndex);
+
+    // Only parse keywords from the part before the first leg
+    const beforeLegs = firstPart.trim().split(/\s+/);
+    const keywordsFound: string[] = [];
+    const nonKeywords: string[] = [];
+
+    for (const part of beforeLegs) {
+      // Check if this looks like a keyword without colon (e.g., "pusheslose")
+      if (allowedKeys.includes(part)) {
+        throw new InvalidKeywordSyntaxError(rawInput, part, 'Invalid keyword syntax');
+      }
+
+      if (part.includes(':')) {
+        const [key] = part.split(':');
+        if (allowedKeys.includes(key)) {
+          keywordsFound.push(part);
+          // Parse the keyword
+          const [, ...valueParts] = part.split(':');
+          const value = valueParts.join(':');
+
+          // Validate value is 'true'
+          if (value !== 'true') {
+            throw new InvalidKeywordValueError(
+              rawInput,
+              key,
+              value,
+              `Invalid ${key} value: must be "true"`
+            );
+          }
+
+          if (key === 'pusheslose') pusheslose = true;
+          if (key === 'tieslose') tieslose = true;
+          if (key === 'freebet') freebet = true;
+        } else {
+          // Not a parlay-level keyword, keep it
+          nonKeywords.push(part);
+        }
+      } else {
+        nonKeywords.push(part);
+      }
+    }
+
+    cleanedText = (nonKeywords.join(' ') + ' ' + restPart).trim();
+  }
+
+  // 3. Detect format: ampersand or multiline
+  const isMultiline = cleanedText.includes('\n');
+
+  // 4. Extract legs
+  let legTexts: string[];
+
+  if (isMultiline) {
+    legTexts = cleanedText
+      .split('\n')
+      .map(l => l.trim())
+      .filter(l => l);
+  } else {
+    // Ampersand format
+    legTexts = cleanedText.split('&').map(l => l.trim());
+  }
+
+  // 5. Validate leg count
+  if (legTexts.length < 2) {
+    // Check if user used comma instead of ampersand
+    if (cleanedText.includes(',')) {
+      throw new InvalidParlayStructureError(rawInput, 'Parlay legs must be separated by &');
+    }
+    throw new InvalidParlayStructureError(rawInput, 'Parlay requires at least 2 legs');
+  }
+
+  // Check for empty legs
+  for (let i = 0; i < legTexts.length; i++) {
+    if (!legTexts[i]) {
+      throw new InvalidParlayLegError(rawInput, i + 1, 'Empty parlay leg');
+    }
+  }
+
+  // 6. Parse each leg as IW order (reuse existing logic!)
+  const legs: ParseResultStraight[] = [];
+  for (let i = 0; i < legTexts.length; i++) {
+    try {
+      const legText = legTexts[i];
+
+      // Check if leg has @ symbol
+      if (!legText.includes('@')) {
+        // Check if it looks like it's missing a price entirely vs missing @ symbol
+        // If it has no symbols at all, it's likely missing price
+        if (!legText.match(/[@+-]/)) {
+          throw new Error('Each parlay leg must have a price');
+        }
+        throw new Error('Invalid leg format: missing @ symbol');
+      }
+
+      // Check if leg has a price after @
+      const atIndex = legText.lastIndexOf('@');
+      const afterAt = legText.slice(atIndex + 1).trim();
+      if (!afterAt || afterAt.length === 0) {
+        throw new Error('Each parlay leg must have a price');
+      }
+
+      const legInput = `IW ${legText}`;
+      const legResult = parseChatOrder(legInput, options);
+      legs.push(legResult);
+    } catch (error) {
+      const errorMsg = (error as Error).message;
+      // Clean up error messages for better parlay context
+      if (errorMsg.includes('Invalid chat format') || errorMsg.includes('Expected order')) {
+        throw new InvalidParlayLegError(rawInput, i + 1, 'Invalid leg format: missing @ symbol');
+      }
+      throw new InvalidParlayLegError(rawInput, i + 1, errorMsg);
+    }
+  }
+
+  // 7. Build result (no size for orders)
+  return {
+    chatType: 'order',
+    betType: 'parlay',
+    bet: {
+      Risk: undefined,
+      ToWin: undefined,
+      ExecutionDtm: undefined,
+      IsFreeBet: freebet || false,
+    },
+    useFair: true, // Default to true for orders
+    pushesLose: pusheslose || tieslose || undefined,
+    legs,
+  };
+}
+
 export function parseChat(message: string, options?: ParseOptions): ParseResult {
   const trimmed = message.trim();
   const upperTrimmed = trimmed.toUpperCase();
 
+  // Check for parlay prefixes first
+  if (upperTrimmed.startsWith('YGP ') || upperTrimmed.startsWith('YGP\n')) {
+    return parseParlayFill(message, options);
+  }
+
+  if (upperTrimmed.startsWith('IWP ') || upperTrimmed.startsWith('IWP\n')) {
+    return parseParlayOrder(message, options);
+  }
+
+  // Check for round robin (Stage 3)
+  if (upperTrimmed.startsWith('YGRR ') || upperTrimmed.startsWith('IWRR ')) {
+    throw new InvalidChatFormatError(message, 'Round robin not yet implemented (Stage 3)');
+  }
+
+  // Existing straight bet logic
   if (upperTrimmed.startsWith('IW') || upperTrimmed.startsWith('IWW')) {
     return parseChatOrder(message, options);
   } else if (upperTrimmed.startsWith('YG') || upperTrimmed.startsWith('YGW')) {

@@ -19,7 +19,7 @@ export const errorTestCases: ErrorTestCase[] = [
     description: 'Missing size for YG bet',
     input: 'YG Padres/Pirates u0.5 @ +100',
     expectedErrorType: 'MissingSizeForFillError',
-    expectedErrorMessage: 'Missing size for fill (YG) bet'
+    expectedErrorMessage: 'Fill (YG/YGP/YGRR) messages require a size'
   },
 
   // Invalid prices
@@ -212,6 +212,6 @@ export const writeinErrorTestCases: ErrorTestCase[] = [
     description: 'Missing size for YG writein bet',
     input: 'YG writein 2024/11/5 Trump to win presidency @ +150',
     expectedErrorType: 'MissingSizeForFillError',
-    expectedErrorMessage: 'Missing size for fill (YG) bet'
+    expectedErrorMessage: 'Fill (YG/YGP/YGRR) messages require a size'
   }
 ];
