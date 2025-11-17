@@ -72,6 +72,14 @@ export function mapParseResultToContractLegSpec(
     if (sport) {
       baseSpec.Sport = sport;
     }
+  } else if (isWritein(contract)) {
+    // For writein contracts, extract league and sport from the contract itself
+    if (contract.League) {
+      baseSpec.League = contract.League;
+    }
+    if (contract.Sport) {
+      baseSpec.Sport = contract.Sport;
+    }
   }
 
   // Add period info for contracts that need it

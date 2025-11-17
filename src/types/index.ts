@@ -200,6 +200,8 @@ export interface ContractSportCompetitionSeries {
 export interface ContractWritein {
   EventDate: Date;
   Description: string;
+  Sport?: Sport;
+  League?: League;
 }
 
 // ==============================================================================
@@ -227,6 +229,7 @@ export interface BaseBet {
   ExecutionDtm?: Date; // Optional for orders
   Price: number; // USA odds format
   Size?: number; // Optional for orders, required for fills
+  IsFreeBet?: boolean; // Optional free bet flag
 }
 
 export interface ChatOrder extends BaseBet {
@@ -272,6 +275,20 @@ export interface ChatFillResult extends ParseResultBase {
 }
 
 export type ParseResult = ChatOrderResult | ChatFillResult;
+
+// ==============================================================================
+// PARSE OPTIONS
+// ==============================================================================
+
+export interface ParseOptions {
+  /**
+   * Reference date for year inference logic.
+   * When parsing dates without years (e.g., "7/1" or "MM/DD"), this date is used
+   * to determine whether to use the current year or next year.
+   * Defaults to new Date() (current date/time).
+   */
+  referenceDate?: Date;
+}
 
 // ==============================================================================
 // CONVENIENCE TYPE GUARDS

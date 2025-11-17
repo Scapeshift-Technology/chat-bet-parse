@@ -22,9 +22,10 @@ import type {
   ContractSportCompetitionSeries,
   ContractWritein,
   KnownLeague,
+  ParseOptions,
 } from '../types/index';
 
-import { knownLeagues, knownSports } from '../types/index';
+import { knownLeagues, knownSports, leagueSportMap } from '../types/index';
 
 import {
   InvalidChatFormatError,
@@ -34,6 +35,8 @@ import {
   InvalidRotationNumberError,
   InvalidTeamFormatError,
   InvalidWriteinFormatError,
+  InvalidDateError,
+  InvalidKeywordValueError,
 } from '../errors/index';
 
 import {
@@ -51,6 +54,7 @@ import {
   detectContestantType,
   parseWriteinDate,
   validateWriteinDescription,
+  parseKeywords,
 } from './utils';
 
 // ==============================================================================
@@ -64,6 +68,8 @@ interface ParsedTokens {
   contractText: string;
   explicitLeague?: KnownLeague;
   explicitSport?: Sport;
+  eventDate?: Date; // Parsed event date
+  isFreeBet?: boolean; // Free bet flag
   price?: number;
   size?: number;
   rawInput: string;
@@ -74,6 +80,9 @@ interface WriteInTokens {
   isWritein: true;
   dateString: string;
   description: string;
+  league?: League;
+  sport?: Sport;
+  isFreeBet?: boolean; // Free bet flag
   price?: number;
   size?: number;
   rawInput: string;
@@ -94,9 +103,11 @@ function isWriteinTokens(tokens: TokenResult): tokens is WriteInTokens {
 function tokenizeWritein(
   parts: string[],
   chatType: 'order' | 'fill',
-  rawInput: string
+  rawInput: string,
+  options?: ParseOptions
 ): WriteInTokens {
-  // Expected format: IW/YG writein DATE DESCRIPTION [@ price] [= size]
+  // Expected format: IW/YG writein [keywords] [LEAGUE] DATE DESCRIPTION [@ price] [= size]
+  const referenceDate = options?.referenceDate;
 
   if (parts.length < 4) {
     throw new InvalidWriteinFormatError(
@@ -105,7 +116,7 @@ function tokenizeWritein(
     );
   }
 
-  // Check that there's a space between writein and the date
+  // Check that there's a space between writein and the rest
   if (parts[1].toLowerCase() !== 'writein') {
     throw new InvalidWriteinFormatError(
       rawInput,
@@ -115,11 +126,7 @@ function tokenizeWritein(
 
   let currentIndex = 2; // Start after "writein"
 
-  // Extract date (next token)
-  const dateString = parts[currentIndex];
-  currentIndex++;
-
-  // Find price and size markers
+  // Find price and size markers first to know where the description ends
   let priceIndex = -1;
   let sizeIndex = -1;
 
@@ -132,10 +139,8 @@ function tokenizeWritein(
     }
   }
 
-  // Extract description (everything between date and price/size markers)
+  // Extract the text before price/size markers
   let descriptionEndIndex = parts.length;
-
-  // Find the first @ or = to determine where description ends
   for (let i = currentIndex; i < parts.length; i++) {
     if (parts[i] === '@' || parts[i] === '=') {
       descriptionEndIndex = i;
@@ -143,11 +148,92 @@ function tokenizeWritein(
     }
   }
 
-  if (descriptionEndIndex <= currentIndex) {
+  // Parse keywords from the beginning
+  const textBeforeMarkers = parts.slice(currentIndex, descriptionEndIndex).join(' ');
+  const allowedKeys = ['date', 'league', 'freebet'];
+  const {
+    date: dateKeyword,
+    league: leagueKeyword,
+    freebet,
+    cleanedText,
+  } = parseKeywords(textBeforeMarkers, rawInput, allowedKeys);
+
+  // Now parse positional date and league from cleaned text
+  const cleanedParts = cleanedText.trim().split(/\s+/);
+
+  let dateString: string | undefined = dateKeyword;
+  let leagueString: string | undefined = leagueKeyword;
+  let descriptionStartIndex = 0;
+
+  // Helper function to check if a string looks like a date
+  const looksLikeDate = (str: string): boolean => {
+    return (
+      /^\d{4}[/-]\d{1,2}[/-]\d{1,2}$/.test(str) || // YYYY-MM-DD or YYYY/MM/DD
+      /^\d{1,2}[/-]\d{1,2}[/-]\d{2,4}$/.test(str) || // MM/DD/YYYY or MM/DD/YY or MM-DD-YYYY or MM-DD-YY
+      /^\d{1,2}[/-]\d{1,2}$/.test(str)
+    ); // MM/DD or MM-DD
+  };
+
+  // Parse positional date and league (in any order)
+  let firstNonLeagueToken: string | undefined;
+  for (let i = 0; i < cleanedParts.length && i < 2; i++) {
+    const part = cleanedParts[i];
+
+    // Check if it's a league
+    if (!leagueString && knownLeagues.has(part.toUpperCase() as any)) {
+      leagueString = part.toUpperCase();
+      descriptionStartIndex = i + 1;
+    }
+    // Check if it's a date
+    else if (!dateString && looksLikeDate(part)) {
+      dateString = part;
+      descriptionStartIndex = i + 1;
+    }
+    // Otherwise, this might be the date or start of description
+    else {
+      if (!firstNonLeagueToken) {
+        firstNonLeagueToken = part;
+      }
+      break;
+    }
+  }
+
+  // If we still don't have a date from keywords or recognized format,
+  // use the first non-league token as the date candidate
+  if (!dateString && firstNonLeagueToken) {
+    dateString = firstNonLeagueToken;
+    descriptionStartIndex++;
+  }
+
+  // If we still don't have any date candidate, throw format error
+  if (!dateString || dateString.trim() === '') {
+    // Try to parse empty/whitespace as date to get proper error
+    parseWriteinDate(dateString || '', rawInput, true, referenceDate);
+  }
+
+  // At this point, dateString is guaranteed to be a non-empty string
+  // (the above check would have thrown otherwise)
+  // Using non-null assertion since TypeScript can't infer that parseWriteinDate throws
+  const validatedDateString: string = dateString!;
+
+  // Validate the date string by parsing it (will throw InvalidWriteinDateError if invalid)
+  // This ensures proper error types for empty, invalid, or malformed dates
+  parseWriteinDate(validatedDateString, rawInput, true, referenceDate);
+
+  // Extract description
+  const description = cleanedParts.slice(descriptionStartIndex).join(' ');
+
+  if (!description || description.trim().length === 0) {
     throw new InvalidWriteinFormatError(rawInput, 'Writein contracts must include a description');
   }
 
-  const description = parts.slice(currentIndex, descriptionEndIndex).join(' ');
+  // Determine sport from league if provided
+  let sport: Sport | undefined;
+  let league: League | undefined;
+  if (leagueString) {
+    league = leagueString as League;
+    sport = leagueSportMap[league];
+  }
 
   // Parse price if present
   let price: number | undefined;
@@ -186,8 +272,11 @@ function tokenizeWritein(
   return {
     chatType,
     isWritein: true,
-    dateString,
+    dateString: validatedDateString,
     description,
+    league,
+    sport,
+    isFreeBet: freebet,
     price: price ?? -110, // Default price
     size,
     rawInput,
@@ -197,8 +286,9 @@ function tokenizeWritein(
 /**
  * Break down the chat message into tokens according to EBNF grammar
  */
-function tokenizeChat(message: string): TokenResult {
+function tokenizeChat(message: string, options?: ParseOptions): TokenResult {
   const rawInput = message; // Preserve original input for error reporting
+  const referenceDate = options?.referenceDate;
 
   // Pre-process to handle spacing around = sign
   let processedMessage = message.trim();
@@ -235,15 +325,112 @@ function tokenizeChat(message: string): TokenResult {
 
   // Early detection of writein contracts
   if (parts.length >= 2 && parts[1].toLowerCase() === 'writein') {
-    return tokenizeWritein(parts, chatType, rawInput);
+    return tokenizeWritein(parts, chatType, rawInput, options);
   }
 
   let currentIndex = 1;
   let rotationNumber: number | undefined;
   let price: number | undefined;
+  let eventDate: Date | undefined;
+  let isFreeBet: boolean | undefined;
 
-  // Check for rotation number (must be immediately after IW/YG)
+  // Parse keywords from the text after prefix (before rotation number extraction)
+  // First, get all text before @ and = markers
+  let textBeforeMarkers = parts.slice(currentIndex).join(' ');
+  const atIndex = textBeforeMarkers.indexOf('@');
+  const eqIndex = textBeforeMarkers.indexOf('=');
+  let endIndex = textBeforeMarkers.length;
+  if (atIndex !== -1 && (eqIndex === -1 || atIndex < eqIndex)) {
+    endIndex = atIndex;
+  } else if (eqIndex !== -1) {
+    endIndex = eqIndex;
+  }
+  textBeforeMarkers = textBeforeMarkers.substring(0, endIndex).trim();
+
+  // Parse keywords
+  const allowedKeys = ['date', 'league', 'freebet'];
+  const keywordResult = parseKeywords(textBeforeMarkers, rawInput, allowedKeys);
+  isFreeBet = keywordResult.freebet;
+
+  // Parse league from keyword if provided
+  let keywordLeague: KnownLeague | undefined;
+  if (keywordResult.league) {
+    const upperLeague = keywordResult.league.toUpperCase();
+    if (knownLeagues.has(upperLeague as any)) {
+      keywordLeague = upperLeague as KnownLeague;
+    } else {
+      throw new InvalidKeywordValueError(
+        rawInput,
+        'league',
+        keywordResult.league,
+        `Invalid league: ${keywordResult.league}. Must be a known league code (e.g., MLB, NBA, NHL)`
+      );
+    }
+  }
+
+  // Parse date from keyword if provided
+  if (keywordResult.date) {
+    eventDate = parseWriteinDate(keywordResult.date, rawInput, false, referenceDate);
+  }
+
+  // Update parts array to remove keywords - reconstruct from cleaned text
+  const cleanedTextParts = keywordResult.cleanedText
+    .trim()
+    .split(/\s+/)
+    .filter(p => p.length > 0);
+
+  // Reconstruct parts: [prefix, rotation?, ...cleanedParts, ...priceAndSizeParts]
+  const priceAndSizeParts: string[] = [];
+  const originalParts = parts.slice(currentIndex);
+  let foundMarker = false;
+  for (let i = 0; i < originalParts.length; i++) {
+    if (originalParts[i] === '@' || originalParts[i] === '=') {
+      foundMarker = true;
+    }
+    if (foundMarker) {
+      priceAndSizeParts.push(originalParts[i]);
+    }
+  }
+
+  // Extract positional date from cleaned parts (before rebuilding parts array)
+  // Date regex pattern (includes 2-digit and 4-digit year formats)
+  const datePattern =
+    /^(\d{4}[/-]\d{1,2}[/-]\d{1,2}|\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|\d{1,2}[/-]\d{1,2})$/;
+  const cleanedPartsWithoutDate: string[] = [];
+
+  for (const part of cleanedTextParts) {
+    if (!eventDate && datePattern.test(part)) {
+      // Found a positional date - parse it (false = not a writein)
+      eventDate = parseWriteinDate(part, rawInput, false, referenceDate);
+    } else {
+      cleanedPartsWithoutDate.push(part);
+    }
+  }
+
+  // Rebuild parts array (without rotation number yet - we'll extract it next)
+  const newParts = [parts[0]]; // prefix
+  newParts.push(...cleanedPartsWithoutDate);
+  newParts.push(...priceAndSizeParts);
+
+  // Reset parts to use cleaned version
+  parts.length = 0;
+  parts.push(...newParts);
+
+  // Reset currentIndex
+  currentIndex = 1;
+
+  // Now check for rotation number (after date extraction)
   if (currentIndex < parts.length && /^\d+$/.test(parts[currentIndex])) {
+    const numStr = parts[currentIndex];
+    // Check if this looks like a date without separators (6-8 digits)
+    // Rotation numbers are typically 3-4 digits (100s-900s range)
+    if (numStr.length >= 6 && numStr.length <= 8) {
+      throw new InvalidDateError(
+        rawInput,
+        numStr,
+        'Unable to parse date. Dates must use separators (/ or -). Supported formats: YYYY-MM-DD, MM/DD/YYYY, etc.'
+      );
+    }
     rotationNumber = parseRotationNumber(parts[currentIndex], rawInput);
     currentIndex++;
   } else if (currentIndex < parts.length && parts[currentIndex] === 'abc') {
@@ -435,11 +622,14 @@ function tokenizeChat(message: string): TokenResult {
   }
 
   // Extract explicit league if at beginning (after period processing)
-  let explicitLeague: KnownLeague | undefined;
-  const leagueMatch = contractText.match(/^([A-Z]{2,3})\s+(.+)$/);
-  if (leagueMatch && knownLeagues.has(leagueMatch[1] as any)) {
-    explicitLeague = leagueMatch[1] as KnownLeague;
-    contractText = leagueMatch[2];
+  // Prefer keyword league over positional league
+  let explicitLeague: KnownLeague | undefined = keywordLeague;
+  if (!explicitLeague) {
+    const leagueMatch = contractText.match(/^([A-Z]{2,3})\s+(.+)$/);
+    if (leagueMatch && knownLeagues.has(leagueMatch[1] as any)) {
+      explicitLeague = leagueMatch[1] as KnownLeague;
+      contractText = leagueMatch[2];
+    }
   }
 
   // Extract explicit sport if at beginning (after period and league processing)
@@ -494,6 +684,8 @@ function tokenizeChat(message: string): TokenResult {
     rotationNumber,
     gameNumber,
     contractText,
+    eventDate,
+    isFreeBet,
     price: price ?? -110, // Default price
     explicitLeague,
     explicitSport,
@@ -644,7 +836,8 @@ function parseGameTotal(
   rawInput: string,
   sport?: Sport,
   league?: League,
-  gameNumber?: number
+  gameNumber?: number,
+  eventDate?: Date
 ): ContractSportCompetitionMatchTotalPoints {
   // Extract over/under and line, with optional "runs" suffix
   // Allow optional leading digit (e.g., "u.5" or "u0.5")
@@ -670,7 +863,14 @@ function parseGameTotal(
     .trim();
 
   // Parse teams and extract game info
-  const { period, match } = parseMatchInfo(withoutOU, rawInput, sport, league, gameNumber);
+  const { period, match } = parseMatchInfo(
+    withoutOU,
+    rawInput,
+    sport,
+    league,
+    gameNumber,
+    eventDate
+  );
 
   // If "runs" suffix was detected OR inning period detected, set sport to Baseball
   let finalSport = sport;
@@ -702,7 +902,8 @@ function parseTeamTotal(
   rawInput: string,
   sport?: Sport,
   league?: League,
-  gameNumber?: number
+  gameNumber?: number,
+  eventDate?: Date
 ): ContractSportCompetitionMatchTotalPointsContestant {
   // Extract over/under and line, with optional "runs" suffix
   // Allow optional leading digit (e.g., "u.5" or "u0.5")
@@ -732,7 +933,8 @@ function parseTeamTotal(
     rawInput,
     finalSport,
     league,
-    gameNumber
+    gameNumber,
+    eventDate
   );
 
   return {
@@ -757,7 +959,8 @@ function parseMoneyline(
   rawInput: string,
   sport?: Sport,
   league?: League,
-  gameNumber?: number
+  gameNumber?: number,
+  eventDate?: Date
 ): ContractSportCompetitionMatchHandicapContestantML {
   // Remove +0/-0 or ML from contract text if present (they're just moneyline indicators)
   const cleanedContractText = contractText
@@ -771,7 +974,8 @@ function parseMoneyline(
     rawInput,
     sport,
     league,
-    gameNumber
+    gameNumber,
+    eventDate
   );
 
   return {
@@ -795,7 +999,8 @@ function parseSpread(
   rawInput: string,
   sport?: Sport,
   league?: League,
-  gameNumber?: number
+  gameNumber?: number,
+  eventDate?: Date
 ): ContractSportCompetitionMatchHandicapContestantLine {
   // Extract spread line and price (if embedded) - handle periods like F5 between team and line
   // Handle both +1.5 and +.5 formats
@@ -810,7 +1015,14 @@ function parseSpread(
   const lineValue = parseFloat(lineStr.substring(1));
   const line = sign === '+' ? lineValue : -lineValue;
 
-  const { teams, period, match } = parseMatchInfo(teamPart, rawInput, sport, league, gameNumber);
+  const { teams, period, match } = parseMatchInfo(
+    teamPart,
+    rawInput,
+    sport,
+    league,
+    gameNumber,
+    eventDate
+  );
 
   return {
     Sport: sport,
@@ -833,7 +1045,8 @@ function parsePropOU(
   rawInput: string,
   sport?: Sport,
   league?: League,
-  gameNumber?: number
+  gameNumber?: number,
+  eventDate?: Date
 ): ContractSportCompetitionMatchPropOU {
   // Extract over/under and line, with optional "runs" suffix
   // Allow optional leading digit (e.g., "u.5" or "u0.5")
@@ -888,6 +1101,7 @@ function parsePropOU(
     Sport: finalSport,
     League: league,
     Match: {
+      Date: eventDate,
       Team1: contestant,
       DaySequence: gameNumber,
     },
@@ -911,7 +1125,8 @@ function parsePropYN(
   rawInput: string,
   sport?: Sport,
   league?: League,
-  gameNumber?: number
+  gameNumber?: number,
+  eventDate?: Date
 ): ContractSportCompetitionMatchPropYN {
   // Find the prop type first to know where it starts
   const propInfo = detectPropType(contractText.toLowerCase());
@@ -938,7 +1153,14 @@ function parsePropYN(
   }
 
   // Use parseMatchInfo to extract team and game number
-  const { teams, match } = parseMatchInfo(teamAndGameInfo, rawInput, sport, league, gameNumber);
+  const { teams, match } = parseMatchInfo(
+    teamAndGameInfo,
+    rawInput,
+    sport,
+    league,
+    gameNumber,
+    eventDate
+  );
 
   // Detect contestant type
   const contestantType = detectContestantType(teams.team1);
@@ -976,7 +1198,8 @@ function parseSeries(
   rawInput: string,
   sport?: Sport,
   league?: League,
-  gameNumber?: number
+  gameNumber?: number,
+  eventDate?: Date
 ): ContractSportCompetitionSeries {
   // Extract series length if specified
   // Try "series/X" pattern first
@@ -1031,6 +1254,7 @@ function parseSeries(
     Sport: sport,
     League: league,
     Match: {
+      Date: eventDate,
       Team1: team,
       DaySequence: gameNumber,
     },
@@ -1042,9 +1266,16 @@ function parseSeries(
 /**
  * Parse writein contract: "IW/YG writein 2024/11/5 Trump to win presidency"
  */
-function parseWritein(dateString: string, description: string, rawInput: string): ContractWritein {
+function parseWritein(
+  dateString: string,
+  description: string,
+  rawInput: string,
+  league?: League,
+  sport?: Sport,
+  referenceDate?: Date
+): ContractWritein {
   // Parse and validate the event date
-  const eventDate = parseWriteinDate(dateString, rawInput);
+  const eventDate = parseWriteinDate(dateString, rawInput, true, referenceDate);
 
   // Validate and clean the description
   const validatedDescription = validateWriteinDescription(description, rawInput);
@@ -1052,6 +1283,8 @@ function parseWritein(dateString: string, description: string, rawInput: string)
   return {
     EventDate: eventDate,
     Description: validatedDescription,
+    Sport: sport,
+    League: league,
   };
 }
 
@@ -1067,7 +1300,8 @@ function parseMatchInfo(
   rawInput: string,
   _sport?: Sport,
   _league?: League,
-  gameNumberFromTokens?: number
+  gameNumberFromTokens?: number,
+  eventDate?: Date
 ): {
   teams: { team1: string; team2?: string };
   period: Period;
@@ -1114,6 +1348,7 @@ function parseMatchInfo(
 
   // Create match object
   const match: Match = {
+    Date: eventDate,
     Team1: teams.team1,
     Team2: teams.team2,
     DaySequence: daySequence,
@@ -1129,8 +1364,8 @@ function parseMatchInfo(
 /**
  * Parse a chat order (IW message)
  */
-export function parseChatOrder(message: string): ChatOrderResult {
-  const tokens = tokenizeChat(message);
+export function parseChatOrder(message: string, options?: ParseOptions): ChatOrderResult {
+  const tokens = tokenizeChat(message, options);
 
   if (tokens.chatType !== 'order') {
     throw new InvalidChatFormatError(tokens.rawInput, 'Expected order (IW) message');
@@ -1138,7 +1373,14 @@ export function parseChatOrder(message: string): ChatOrderResult {
 
   // Handle writein contracts
   if (isWriteinTokens(tokens)) {
-    const contract = parseWritein(tokens.dateString, tokens.description, tokens.rawInput);
+    const contract = parseWritein(
+      tokens.dateString,
+      tokens.description,
+      tokens.rawInput,
+      tokens.league,
+      tokens.sport,
+      options?.referenceDate
+    );
 
     return {
       chatType: 'order',
@@ -1148,6 +1390,7 @@ export function parseChatOrder(message: string): ChatOrderResult {
       bet: {
         Price: tokens.price!,
         Size: tokens.size,
+        IsFreeBet: tokens.isFreeBet,
       },
     };
   }
@@ -1169,7 +1412,8 @@ export function parseChatOrder(message: string): ChatOrderResult {
         tokens.rawInput,
         sport,
         league,
-        tokens.gameNumber
+        tokens.gameNumber,
+        tokens.eventDate
       );
       break;
     case 'TotalPointsContestant':
@@ -1178,7 +1422,8 @@ export function parseChatOrder(message: string): ChatOrderResult {
         tokens.rawInput,
         sport,
         league,
-        tokens.gameNumber
+        tokens.gameNumber,
+        tokens.eventDate
       );
       break;
     case 'HandicapContestantML':
@@ -1187,7 +1432,8 @@ export function parseChatOrder(message: string): ChatOrderResult {
         tokens.rawInput,
         sport,
         league,
-        tokens.gameNumber
+        tokens.gameNumber,
+        tokens.eventDate
       );
       break;
     case 'HandicapContestantLine':
@@ -1196,7 +1442,8 @@ export function parseChatOrder(message: string): ChatOrderResult {
         tokens.rawInput,
         sport,
         league,
-        tokens.gameNumber
+        tokens.gameNumber,
+        tokens.eventDate
       );
       break;
     case 'PropOU':
@@ -1205,7 +1452,8 @@ export function parseChatOrder(message: string): ChatOrderResult {
         tokens.rawInput,
         sport,
         league,
-        tokens.gameNumber
+        tokens.gameNumber,
+        tokens.eventDate
       );
       break;
     case 'PropYN':
@@ -1214,7 +1462,8 @@ export function parseChatOrder(message: string): ChatOrderResult {
         tokens.rawInput,
         sport,
         league,
-        tokens.gameNumber
+        tokens.gameNumber,
+        tokens.eventDate
       );
       break;
     case 'Series':
@@ -1223,7 +1472,8 @@ export function parseChatOrder(message: string): ChatOrderResult {
         tokens.rawInput,
         sport,
         league,
-        tokens.gameNumber
+        tokens.gameNumber,
+        tokens.eventDate
       );
       break;
     case 'Writein':
@@ -1248,6 +1498,7 @@ export function parseChatOrder(message: string): ChatOrderResult {
     bet: {
       Price: tokens.price!,
       Size: tokens.size,
+      IsFreeBet: tokens.isFreeBet,
     },
   };
 }
@@ -1255,8 +1506,8 @@ export function parseChatOrder(message: string): ChatOrderResult {
 /**
  * Parse a chat fill (YG message)
  */
-export function parseChatFill(message: string): ChatFillResult {
-  const tokens = tokenizeChat(message);
+export function parseChatFill(message: string, options?: ParseOptions): ChatFillResult {
+  const tokens = tokenizeChat(message, options);
 
   if (tokens.chatType !== 'fill') {
     throw new InvalidChatFormatError(tokens.rawInput, 'Expected fill (YG) message');
@@ -1264,7 +1515,14 @@ export function parseChatFill(message: string): ChatFillResult {
 
   // Handle writein contracts
   if (isWriteinTokens(tokens)) {
-    const contract = parseWritein(tokens.dateString, tokens.description, tokens.rawInput);
+    const contract = parseWritein(
+      tokens.dateString,
+      tokens.description,
+      tokens.rawInput,
+      tokens.league,
+      tokens.sport,
+      options?.referenceDate
+    );
 
     return {
       chatType: 'fill',
@@ -1275,6 +1533,7 @@ export function parseChatFill(message: string): ChatFillResult {
         ExecutionDtm: new Date(), // Current time for fills
         Price: tokens.price!,
         Size: tokens.size!,
+        IsFreeBet: tokens.isFreeBet,
       },
     };
   }
@@ -1296,7 +1555,8 @@ export function parseChatFill(message: string): ChatFillResult {
         tokens.rawInput,
         sport,
         league,
-        tokens.gameNumber
+        tokens.gameNumber,
+        tokens.eventDate
       );
       break;
     case 'TotalPointsContestant':
@@ -1305,7 +1565,8 @@ export function parseChatFill(message: string): ChatFillResult {
         tokens.rawInput,
         sport,
         league,
-        tokens.gameNumber
+        tokens.gameNumber,
+        tokens.eventDate
       );
       break;
     case 'HandicapContestantML':
@@ -1314,7 +1575,8 @@ export function parseChatFill(message: string): ChatFillResult {
         tokens.rawInput,
         sport,
         league,
-        tokens.gameNumber
+        tokens.gameNumber,
+        tokens.eventDate
       );
       break;
     case 'HandicapContestantLine':
@@ -1323,7 +1585,8 @@ export function parseChatFill(message: string): ChatFillResult {
         tokens.rawInput,
         sport,
         league,
-        tokens.gameNumber
+        tokens.gameNumber,
+        tokens.eventDate
       );
       break;
     case 'PropOU':
@@ -1332,7 +1595,8 @@ export function parseChatFill(message: string): ChatFillResult {
         tokens.rawInput,
         sport,
         league,
-        tokens.gameNumber
+        tokens.gameNumber,
+        tokens.eventDate
       );
       break;
     case 'PropYN':
@@ -1341,7 +1605,8 @@ export function parseChatFill(message: string): ChatFillResult {
         tokens.rawInput,
         sport,
         league,
-        tokens.gameNumber
+        tokens.gameNumber,
+        tokens.eventDate
       );
       break;
     case 'Series':
@@ -1350,7 +1615,8 @@ export function parseChatFill(message: string): ChatFillResult {
         tokens.rawInput,
         sport,
         league,
-        tokens.gameNumber
+        tokens.gameNumber,
+        tokens.eventDate
       );
       break;
     case 'Writein':
@@ -1376,6 +1642,7 @@ export function parseChatFill(message: string): ChatFillResult {
       ExecutionDtm: new Date(), // Current time for fills
       Price: tokens.price!,
       Size: tokens.size!,
+      IsFreeBet: tokens.isFreeBet,
     },
   };
 }
@@ -1383,14 +1650,14 @@ export function parseChatFill(message: string): ChatFillResult {
 /**
  * Main entry point - automatically detects order vs fill
  */
-export function parseChat(message: string): ParseResult {
+export function parseChat(message: string, options?: ParseOptions): ParseResult {
   const trimmed = message.trim();
   const upperTrimmed = trimmed.toUpperCase();
 
   if (upperTrimmed.startsWith('IW') || upperTrimmed.startsWith('IWW')) {
-    return parseChatOrder(message);
+    return parseChatOrder(message, options);
   } else if (upperTrimmed.startsWith('YG') || upperTrimmed.startsWith('YGW')) {
-    return parseChatFill(message);
+    return parseChatFill(message, options);
   } else {
     throw new UnrecognizedChatPrefixError(message, trimmed.split(/\s+/)[0] || '');
   }

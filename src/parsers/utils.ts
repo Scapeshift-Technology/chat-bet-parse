@@ -19,8 +19,12 @@ import {
   InvalidRotationNumberError,
   InvalidTeamFormatError,
   InvalidContractTypeError,
+  InvalidDateError,
   InvalidWriteinDateError,
   InvalidWriteinDescriptionError,
+  InvalidKeywordSyntaxError,
+  InvalidKeywordValueError,
+  UnknownKeywordError,
 } from '../errors/index';
 
 // ==============================================================================
@@ -555,23 +559,34 @@ export function validatePropFormat(propText: string, hasLine: boolean, rawInput:
 /**
  * Parse writein date with multiple format support and smart year inference
  */
-export function parseWriteinDate(dateString: string, rawInput: string): Date {
+export function parseWriteinDate(
+  dateString: string,
+  rawInput: string,
+  isWritein: boolean = true,
+  referenceDate?: Date
+): Date {
   const cleaned = dateString.trim();
 
+  const ErrorClass = isWritein ? InvalidWriteinDateError : InvalidDateError;
+
   if (!cleaned) {
-    throw new InvalidWriteinDateError(rawInput, dateString, 'Date cannot be empty');
+    throw new ErrorClass(rawInput, dateString, 'Date cannot be empty');
   }
 
   // Try parsing various date formats
   let parsedDate: Date | null = null;
-  const currentYear = new Date().getFullYear();
-  const today = new Date();
+  const refDate = referenceDate || new Date();
+  const currentYear = refDate.getFullYear();
+  const today = refDate;
 
   // Format patterns to try
   const patterns = [
-    // Full date patterns with year
+    // Full date patterns with 4-digit year
     /^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/, // YYYY/MM/DD or YYYY-MM-DD
     /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/, // MM/DD/YYYY or MM-DD-YYYY
+
+    // Full date patterns with 2-digit year
+    /^(\d{1,2})[/-](\d{1,2})[/-](\d{2})$/, // MM/DD/YY or MM-DD-YY
 
     // Date patterns without year
     /^(\d{1,2})[/-](\d{1,2})$/, // MM/DD or MM-DD
@@ -589,8 +604,15 @@ export function parseWriteinDate(dateString: string, rawInput: string): Date {
           year = parseInt(match[1]);
           month = parseInt(match[2]);
           day = parseInt(match[3]);
+        } else if (pattern.source.includes('(\\d{2})$')) {
+          // MM/DD/YY format with 2-digit year
+          month = parseInt(match[1]);
+          day = parseInt(match[2]);
+          const twoDigitYear = parseInt(match[3]);
+          // Convert 2-digit year to 4-digit: 00-99 -> 2000-2099
+          year = 2000 + twoDigitYear;
         } else {
-          // MM/DD/YYYY format
+          // MM/DD/YYYY format with 4-digit year
           month = parseInt(match[1]);
           day = parseInt(match[2]);
           year = parseInt(match[3]);
@@ -612,6 +634,16 @@ export function parseWriteinDate(dateString: string, rawInput: string): Date {
         }
       }
 
+      // Validate month and day ranges before creating Date
+      if (month < 1 || month > 12 || day < 1 || day > 31) {
+        // Month or day out of valid range
+        throw new ErrorClass(
+          rawInput,
+          dateString,
+          'Unable to parse date. Supported formats: YYYY-MM-DD, MM/DD/YYYY, YYYY/MM/DD, MM-DD-YYYY, MM/DD, MM-DD'
+        );
+      }
+
       // Create and validate the date
       const testDate = new Date(year, month - 1, day);
 
@@ -624,7 +656,7 @@ export function parseWriteinDate(dateString: string, rawInput: string): Date {
         parsedDate = testDate;
         break;
       } else {
-        throw new InvalidWriteinDateError(
+        throw new ErrorClass(
           rawInput,
           dateString,
           `Invalid calendar date (e.g., February 30th doesn't exist)`
@@ -634,7 +666,7 @@ export function parseWriteinDate(dateString: string, rawInput: string): Date {
   }
 
   if (!parsedDate) {
-    throw new InvalidWriteinDateError(
+    throw new ErrorClass(
       rawInput,
       dateString,
       'Unable to parse date. Supported formats: YYYY-MM-DD, MM/DD/YYYY, YYYY/MM/DD, MM-DD-YYYY, MM/DD, MM-DD'
@@ -680,4 +712,84 @@ export function validateWriteinDescription(description: string, rawInput: string
   }
 
   return trimmed;
+}
+
+// ==============================================================================
+// KEYWORD PROPERTY PARSING
+// ==============================================================================
+
+export interface ParsedKeywords {
+  date?: string;
+  league?: string;
+  freebet?: boolean;
+  // Cleaned text with keywords removed
+  cleanedText: string;
+}
+
+/**
+ * Parse and extract keyword properties from contract text
+ * Format: key:value (no spaces around colon)
+ * Returns parsed keywords and text with keywords removed
+ */
+export function parseKeywords(
+  text: string,
+  rawInput: string,
+  allowedKeys: string[]
+): ParsedKeywords {
+  const parts = text.trim().split(/\s+/);
+  const keywords: Partial<ParsedKeywords> = {};
+  const remainingParts: string[] = [];
+
+  for (const part of parts) {
+    // Check if this is a keyword (contains colon)
+    if (part.includes(':')) {
+      // Validate no spaces around colon (spaces would have been split already,
+      // but we need to ensure the format is correct)
+      const [key, ...valueParts] = part.split(':');
+
+      if (valueParts.length === 0 || key === '' || valueParts.join(':') === '') {
+        throw new InvalidKeywordSyntaxError(
+          rawInput,
+          part,
+          'Invalid keyword syntax: no spaces allowed around colon'
+        );
+      }
+
+      const value = valueParts.join(':');
+
+      // Check if keyword is allowed
+      if (!allowedKeys.includes(key)) {
+        throw new UnknownKeywordError(rawInput, key);
+      }
+
+      // Parse based on key
+      switch (key) {
+        case 'date':
+          keywords.date = value;
+          break;
+        case 'league':
+          keywords.league = value;
+          break;
+        case 'freebet':
+          if (value !== 'true') {
+            throw new InvalidKeywordValueError(
+              rawInput,
+              key,
+              value,
+              'Invalid freebet value: must be "true"'
+            );
+          }
+          keywords.freebet = true;
+          break;
+      }
+    } else {
+      // Not a keyword, keep in remaining parts
+      remainingParts.push(part);
+    }
+  }
+
+  return {
+    ...keywords,
+    cleanedText: remainingParts.join(' '),
+  };
 }

@@ -17,6 +17,8 @@ import { TestCase, ErrorTestCase } from '../fixtures/types';
 // Import test fixtures directly from individual files
 import { edgeCaseTestCases } from '../fixtures/edge-cases.fixtures';
 import { errorTestCases, writeinErrorTestCases } from '../fixtures/error-cases.fixtures';
+import { eventDateTestCases } from '../fixtures/event-date.fixtures';
+import { eventDateErrorTestCases } from '../fixtures/event-date-errors.fixtures';
 import { gameSequenceTestCases, enhancedGameNumberTestCases } from '../fixtures/game-sequence.fixtures';
 import { gameTotalsTestCases } from '../fixtures/game-totals.fixtures';
 import { individualContestantTestCases } from '../fixtures/individual-contestants.fixtures';
@@ -36,7 +38,8 @@ import { writeinTestCases } from '../fixtures/writein.fixtures';
  * Generic test function that validates a parsed result against expected values
  */
 function validateTestCase(testCase: TestCase) {
-  const result = parseChat(testCase.input);
+  const options = testCase.referenceDate ? { referenceDate: testCase.referenceDate } : undefined;
+  const result = parseChat(testCase.input, options);
 
   // Basic result structure
   expect(result.chatType).toBe(testCase.expectedChatType);
@@ -72,9 +75,6 @@ function validateTestCase(testCase: TestCase) {
     if (testCase.expectedTeam2 !== undefined) {
       expect(result.contract.Match.Team2).toBe(testCase.expectedTeam2);
     }
-
-    // Match.Date should always be undefined since we don't parse dates from chat
-    expect(result.contract.Match.Date).toBeUndefined();
 
     // Day sequence
     if (testCase.expectedDaySequence !== undefined) {
@@ -150,14 +150,33 @@ function validateTestCase(testCase: TestCase) {
     }
   }
 
-  // Sport and League fields (not applicable to Writein contracts)
+  // Sport and League fields
   if (!isWritein(result.contract)) {
+    // Regular contracts
     if (testCase.expectedSport !== undefined) {
       expect(result.contract.Sport).toBe(testCase.expectedSport);
     }
     if (testCase.expectedLeague !== undefined) {
       expect(result.contract.League).toBe(testCase.expectedLeague);
     }
+  } else {
+    // Writein contracts can also have Sport and League
+    if (testCase.expectedSport !== undefined) {
+      expect(result.contract.Sport).toBe(testCase.expectedSport);
+    }
+    if (testCase.expectedLeague !== undefined) {
+      expect(result.contract.League).toBe(testCase.expectedLeague);
+    }
+  }
+
+  // Event date for regular contracts (in addition to writeins)
+  if (!isWritein(result.contract) && testCase.expectedEventDate !== undefined) {
+    expect(result.contract.Match.Date).toEqual(testCase.expectedEventDate);
+  }
+
+  // Free bet flag
+  if (testCase.expectedFreeBet !== undefined) {
+    expect(result.bet.IsFreeBet).toBe(testCase.expectedFreeBet);
   }
 }
 
@@ -182,6 +201,11 @@ describe('Chat Bet Parsing', () => {
   // Edge Cases
   describe('Edge Cases', () => {
     test.each(edgeCaseTestCases)('$description', validateTestCase);
+  });
+
+  // Event Dates
+  describe('Event Dates', () => {
+    test.each(eventDateTestCases)('$description', validateTestCase);
   });
 
   // Game Sequence
@@ -272,6 +296,11 @@ describe('Chat Bet Parsing', () => {
   // Error Cases
   describe('Error Cases', () => {
     test.each(errorTestCases)('$description', validateErrorTestCase);
+  });
+
+  // Event Date Error Cases
+  describe('Event Date Error Cases', () => {
+    test.each(eventDateErrorTestCases)('$description', validateErrorTestCase);
   });
 
   // Writein Error Cases

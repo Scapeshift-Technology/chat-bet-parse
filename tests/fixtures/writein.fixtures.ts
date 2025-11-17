@@ -116,5 +116,124 @@ export const writeinTestCases: TestCase[] = [
     expectedSize: 3000,
     expectedEventDate: new Date(2024, 10, 5),
     expectedDescription: 'Trump to win presidency',
+  },
+
+  // ==============================================================================
+  // WRITEIN WITH LEAGUE SUPPORT (Positional)
+  // ==============================================================================
+  {
+    description: 'YGW with league before date',
+    input: 'YGW MLB 2025-05-14 Cardinals win in extra innings @ +150 = 1.0',
+    expectedChatType: 'fill',
+    expectedContractType: 'Writein',
+    expectedPrice: 150,
+    expectedSize: 1000,
+    expectedEventDate: new Date(2025, 4, 14),
+    expectedDescription: 'Cardinals win in extra innings',
+    expectedSport: 'Baseball',
+    expectedLeague: 'MLB'
+  },
+  {
+    description: 'YGW with league after date',
+    input: 'YGW 2025-05-14 MLB Cardinals win in extra innings @ +150 = 1.0',
+    expectedChatType: 'fill',
+    expectedContractType: 'Writein',
+    expectedPrice: 150,
+    expectedSize: 1000,
+    expectedEventDate: new Date(2025, 4, 14),
+    expectedDescription: 'Cardinals win in extra innings',
+    expectedSport: 'Baseball',
+    expectedLeague: 'MLB'
+  },
+  {
+    description: 'IWW with league before date',
+    input: 'IWW NBA 12/25 Lakers score 120+ points @ +200',
+    expectedChatType: 'order',
+    expectedContractType: 'Writein',
+    expectedPrice: 200,
+    expectedEventDate: new Date(new Date().getFullYear(), 11, 25),
+    expectedDescription: 'Lakers score 120+ points',
+    expectedSport: 'Basketball',
+    expectedLeague: 'NBA'
+  },
+  {
+    description: 'IWW with league after date',
+    input: 'IWW 12/25 NBA Lakers score 120+ points @ +200',
+    expectedChatType: 'order',
+    expectedContractType: 'Writein',
+    expectedPrice: 200,
+    expectedEventDate: new Date(new Date().getFullYear(), 11, 25),
+    expectedDescription: 'Lakers score 120+ points',
+    expectedSport: 'Basketball',
+    expectedLeague: 'NBA'
+  },
+
+  // ==============================================================================
+  // WRITEIN WITH LEAGUE SUPPORT (Keyword)
+  // ==============================================================================
+  {
+    description: 'YGW with league keyword',
+    input: 'YGW league:MLB 2025-05-14 Cardinals win @ +150 = 1.0',
+    expectedChatType: 'fill',
+    expectedContractType: 'Writein',
+    expectedPrice: 150,
+    expectedSize: 1000,
+    expectedEventDate: new Date(2025, 4, 14),
+    expectedDescription: 'Cardinals win',
+    expectedSport: 'Baseball',
+    expectedLeague: 'MLB'
+  },
+  {
+    description: 'YGW with date and league keywords',
+    input: 'YGW date:5/14/25 league:MLB Cardinals win @ +150 = 1.0',
+    expectedChatType: 'fill',
+    expectedContractType: 'Writein',
+    expectedPrice: 150,
+    expectedSize: 1000,
+    expectedEventDate: new Date(2025, 4, 14),
+    expectedDescription: 'Cardinals win',
+    expectedSport: 'Baseball',
+    expectedLeague: 'MLB'
+  },
+  {
+    description: 'YGW with league keyword after date keyword',
+    input: 'YGW league:MLB date:5/14/25 Cardinals win @ +150 = 1.0',
+    expectedChatType: 'fill',
+    expectedContractType: 'Writein',
+    expectedPrice: 150,
+    expectedSize: 1000,
+    expectedEventDate: new Date(2025, 4, 14),
+    expectedDescription: 'Cardinals win',
+    expectedSport: 'Baseball',
+    expectedLeague: 'MLB'
+  },
+
+  // ==============================================================================
+  // WRITEIN WITH FREE BET
+  // ==============================================================================
+  {
+    description: 'YGW with freebet flag',
+    input: 'YGW freebet:true 5/14/25 MLB Cardinals win @ +150 = 1.0',
+    expectedChatType: 'fill',
+    expectedContractType: 'Writein',
+    expectedPrice: 150,
+    expectedSize: 1000,
+    expectedEventDate: new Date(2025, 4, 14),
+    expectedDescription: 'Cardinals win',
+    expectedSport: 'Baseball',
+    expectedLeague: 'MLB',
+    expectedFreeBet: true
+  },
+  {
+    description: 'IWW with league and freebet',
+    input: 'IWW 12/25 freebet:true Lakers score 120+ points league:NBA @ +200',
+    expectedChatType: 'order',
+    expectedContractType: 'Writein',
+    expectedPrice: 200,
+    expectedEventDate: new Date(new Date().getFullYear(), 11, 25),
+    expectedDescription: 'Lakers score 120+ points',
+    expectedSport: 'Basketball',
+    expectedLeague: 'NBA',
+    expectedFreeBet: true
   }
 ];

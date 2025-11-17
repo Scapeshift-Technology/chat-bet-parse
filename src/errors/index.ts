@@ -149,6 +149,16 @@ export class AmbiguousContractError extends ChatBetParseError {
   }
 }
 
+export class InvalidDateError extends ChatBetParseError {
+  constructor(rawInput: string, dateStr: string, reason: string) {
+    super(
+      `Invalid date: "${dateStr}". ${reason}. Expected formats: YYYY-MM-DD, MM/DD/YYYY, YYYY/MM/DD, MM-DD-YYYY, or equivalents without year. Input: "${rawInput}"`,
+      rawInput
+    );
+    this.name = 'InvalidDateError';
+  }
+}
+
 export class InvalidWriteinDateError extends ChatBetParseError {
   constructor(rawInput: string, dateStr: string, reason: string) {
     super(
@@ -176,6 +186,27 @@ export class InvalidWriteinFormatError extends ChatBetParseError {
       rawInput
     );
     this.name = 'InvalidWriteinFormatError';
+  }
+}
+
+export class InvalidKeywordSyntaxError extends ChatBetParseError {
+  constructor(rawInput: string, _keyword: string, message: string) {
+    super(message, rawInput);
+    this.name = 'InvalidKeywordSyntaxError';
+  }
+}
+
+export class InvalidKeywordValueError extends ChatBetParseError {
+  constructor(rawInput: string, _keyword: string, _value: string, message: string) {
+    super(message, rawInput);
+    this.name = 'InvalidKeywordValueError';
+  }
+}
+
+export class UnknownKeywordError extends ChatBetParseError {
+  constructor(rawInput: string, keyword: string) {
+    super(`Unknown keyword: ${keyword}`, rawInput);
+    this.name = 'UnknownKeywordError';
   }
 }
 
