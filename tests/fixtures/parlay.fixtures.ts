@@ -400,4 +400,100 @@ date:5/15 701 Lakers @ +120
     ],
     referenceDate: new Date(2024, 11, 1)
   },
+
+  // ==============================================================================
+  // PARLAY WITH WRITEIN LEGS
+  // ==============================================================================
+  {
+    description: 'YGP with writein leg and regular leg',
+    input: 'YGP writein 12/25/2024 Christmas Day game goes to overtime @ +200 & Lakers @ +120 = $100',
+    expectedChatType: 'fill',
+    expectedRisk: 100,
+    expectedUseFair: true,
+    expectedLegs: [
+      {
+        contractType: 'Writein',
+        price: 200,
+        description: 'Christmas Day game goes to overtime',
+        writeinEventDate: new Date(2024, 11, 25)
+      },
+      { contractType: 'HandicapContestantML', price: 120, team: 'Lakers' }
+    ]
+  },
+  {
+    description: 'YGP with multiple writein legs',
+    input: 'YGP writein 12/25/2024 Event A happens @ +150 & writein 12/26/2024 Event B happens @ +200 & Warriors @ -110 = $100',
+    expectedChatType: 'fill',
+    expectedRisk: 100,
+    expectedUseFair: true,
+    expectedLegs: [
+      {
+        contractType: 'Writein',
+        price: 150,
+        description: 'Event A happens',
+        writeinEventDate: new Date(2024, 11, 25)
+      },
+      {
+        contractType: 'Writein',
+        price: 200,
+        description: 'Event B happens',
+        writeinEventDate: new Date(2024, 11, 26)
+      },
+      { contractType: 'HandicapContestantML', price: -110, team: 'Warriors' }
+    ]
+  },
+  {
+    description: 'IWP order with writein leg (no size)',
+    input: 'IWP writein 12/25/2024 Trump wins presidency @ +150 & Warriors @ -110',
+    expectedChatType: 'order',
+    expectedUseFair: true,
+    expectedLegs: [
+      {
+        contractType: 'Writein',
+        price: 150,
+        description: 'Trump wins presidency',
+        writeinEventDate: new Date(2024, 11, 25)
+      },
+      { contractType: 'HandicapContestantML', price: -110, team: 'Warriors' }
+    ]
+  },
+  {
+    description: 'YGP with writein and multiple regular legs',
+    input: 'YGP writein 1/1/2025 New Year special event @ +300 & Lakers @ +120 & Warriors @ -110 & Celtics @ +105 = $50',
+    expectedChatType: 'fill',
+    expectedRisk: 50,
+    expectedUseFair: true,
+    expectedLegs: [
+      {
+        contractType: 'Writein',
+        price: 300,
+        description: 'New Year special event',
+        writeinEventDate: new Date(2025, 0, 1)
+      },
+      { contractType: 'HandicapContestantML', price: 120, team: 'Lakers' },
+      { contractType: 'HandicapContestantML', price: -110, team: 'Warriors' },
+      { contractType: 'HandicapContestantML', price: 105, team: 'Celtics' }
+    ]
+  },
+  {
+    description: 'YGP multiline with writein leg',
+    input: `YGP
+writein 12/25/2024 Special event occurs @ +200
+Lakers @ +120
+Warriors @ -110
+= $100`,
+    expectedChatType: 'fill',
+    expectedRisk: 100,
+    expectedUseFair: true,
+    expectedLegs: [
+      {
+        contractType: 'Writein',
+        price: 200,
+        description: 'Special event occurs',
+        writeinEventDate: new Date(2024, 11, 25)
+      },
+      { contractType: 'HandicapContestantML', price: 120, team: 'Lakers' },
+      { contractType: 'HandicapContestantML', price: -110, team: 'Warriors' }
+    ]
+  },
 ];

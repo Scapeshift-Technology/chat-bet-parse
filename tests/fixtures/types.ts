@@ -59,6 +59,9 @@ export interface ParlayTestCase {
     sport?: string;
     league?: string;
     eventDate?: Date;
+    // Writein-specific fields
+    description?: string;
+    writeinEventDate?: Date; // For writeins, use contract.EventDate instead of contract.Match.Date
   }>;
   // Reference date for year inference testing (optional)
   referenceDate?: Date;
@@ -84,6 +87,9 @@ export interface RoundRobinTestCase {
     teams?: string[];
     line?: number;
     isOver?: boolean;
+    // Writein-specific fields
+    description?: string;
+    writeinEventDate?: Date;
   }>;
 }
 

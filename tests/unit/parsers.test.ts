@@ -285,6 +285,13 @@ function validateParlayTestCase(testCase: ParlayTestCase) {
     if (expectedLeg.eventDate) {
       expect(actualLeg.contract.Match.Date).toEqual(expectedLeg.eventDate);
     }
+    // Writein-specific validations
+    if (expectedLeg.description) {
+      expect('Description' in actualLeg.contract && actualLeg.contract.Description).toBe(expectedLeg.description);
+    }
+    if (expectedLeg.writeinEventDate) {
+      expect('EventDate' in actualLeg.contract && actualLeg.contract.EventDate).toEqual(expectedLeg.writeinEventDate);
+    }
   }
 }
 
@@ -371,6 +378,13 @@ function validateRoundRobinTestCase(testCase: RoundRobinTestCase) {
     }
     if (expectedLeg.isOver !== undefined) {
       expect('IsOver' in actualLeg.contract && actualLeg.contract.IsOver).toBe(expectedLeg.isOver);
+    }
+    // Writein-specific validations
+    if (expectedLeg.description) {
+      expect('Description' in actualLeg.contract && actualLeg.contract.Description).toBe(expectedLeg.description);
+    }
+    if (expectedLeg.writeinEventDate) {
+      expect('EventDate' in actualLeg.contract && actualLeg.contract.EventDate).toEqual(expectedLeg.writeinEventDate);
     }
   }
 }

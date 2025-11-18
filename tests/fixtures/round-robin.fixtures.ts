@@ -329,4 +329,29 @@ Heat @ -105
       { contractType: 'HandicapContestantML', price: 105, team: 'Celtics' }
     ]
   },
+
+  // ==============================================================================
+  // ROUND ROBIN WITH WRITEIN LEGS
+  // ==============================================================================
+  {
+    description: 'YGRR with writein leg',
+    input: 'YGRR 4c2 writein 12/25/2024 Special holiday event @ +200 & Lakers @ +120 & Warriors @ -110 & Celtics @ +105 = $100 per',
+    expectedChatType: 'fill',
+    expectedParlaySize: 2,
+    expectedIsAtMost: false,
+    expectedRiskType: 'perSelection',
+    expectedRisk: 100,
+    expectedUseFair: true,
+    expectedLegs: [
+      {
+        contractType: 'Writein',
+        price: 200,
+        description: 'Special holiday event',
+        writeinEventDate: new Date(2024, 11, 25)
+      },
+      { contractType: 'HandicapContestantML', price: 120, team: 'Lakers' },
+      { contractType: 'HandicapContestantML', price: -110, team: 'Warriors' },
+      { contractType: 'HandicapContestantML', price: 105, team: 'Celtics' }
+    ]
+  },
 ];
