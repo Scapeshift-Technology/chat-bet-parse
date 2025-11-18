@@ -200,11 +200,13 @@ describe('ContractLegSpec Mapping', () => {
 
       const contractSpec = mapParseResultToContractLegSpec(parseResult);
 
-      // Should be today's date (execution date)
-      const today = new Date();
-      expect(contractSpec.EventDate.getFullYear()).toBe(today.getFullYear());
-      expect(contractSpec.EventDate.getMonth()).toBe(today.getMonth());
-      expect(contractSpec.EventDate.getDate()).toBe(today.getDate());
+      // Should be today's date in Eastern time (execution date)
+      // Convert to Eastern time to match the mapper's logic
+      const now = new Date();
+      const easternTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+      expect(contractSpec.EventDate.getFullYear()).toBe(easternTime.getFullYear());
+      expect(contractSpec.EventDate.getMonth()).toBe(easternTime.getMonth());
+      expect(contractSpec.EventDate.getDate()).toBe(easternTime.getDate());
     });
 
     test('should default to today for orders when no eventDate provided', () => {
