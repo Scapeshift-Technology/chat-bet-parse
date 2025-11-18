@@ -11,6 +11,7 @@ import type {
 import { isWritein, isStraight } from '../types/index';
 import type { GradingSqlParameters, GradingOptions } from './types';
 import { GradingDataError } from './types';
+import { validateContractStructure } from '../shared/contractValidation';
 
 // ==============================================================================
 // MAIN MAPPING FUNCTION
@@ -169,17 +170,15 @@ function extractPeriodInfo(
  * Map TotalPoints (game totals) contract
  */
 function mapTotalPoints(contract: Contract): Partial<GradingSqlParameters> {
-  if (
-    !('ContractSportCompetitionMatchType' in contract) ||
-    contract.ContractSportCompetitionMatchType !== 'TotalPoints' ||
-    contract.HasContestant !== false
-  ) {
-    throw new GradingDataError('Invalid TotalPoints contract structure');
-  }
+  validateContractStructure(
+    contract,
+    { expectedType: 'TotalPoints', expectedHasContestant: false },
+    msg => new GradingDataError(msg)
+  );
 
   return {
-    Line: contract.Line,
-    IsOver: contract.IsOver,
+    Line: (contract as any).Line,
+    IsOver: (contract as any).IsOver,
   };
 }
 
@@ -187,18 +186,16 @@ function mapTotalPoints(contract: Contract): Partial<GradingSqlParameters> {
  * Map TotalPointsContestant (team totals) contract
  */
 function mapTotalPointsContestant(contract: Contract): Partial<GradingSqlParameters> {
-  if (
-    !('ContractSportCompetitionMatchType' in contract) ||
-    contract.ContractSportCompetitionMatchType !== 'TotalPoints' ||
-    contract.HasContestant !== true
-  ) {
-    throw new GradingDataError('Invalid TotalPointsContestant contract structure');
-  }
+  validateContractStructure(
+    contract,
+    { expectedType: 'TotalPoints', expectedHasContestant: true },
+    msg => new GradingDataError(msg)
+  );
 
   return {
-    Line: contract.Line,
-    IsOver: contract.IsOver,
-    SelectedContestant: contract.Contestant,
+    Line: (contract as any).Line,
+    IsOver: (contract as any).IsOver,
+    SelectedContestant: (contract as any).Contestant,
   };
 }
 
@@ -206,18 +203,15 @@ function mapTotalPointsContestant(contract: Contract): Partial<GradingSqlParamet
  * Map HandicapContestantML (moneyline) contract
  */
 function mapHandicapML(contract: Contract): Partial<GradingSqlParameters> {
-  if (
-    !('ContractSportCompetitionMatchType' in contract) ||
-    contract.ContractSportCompetitionMatchType !== 'Handicap' ||
-    contract.HasContestant !== true ||
-    contract.HasLine !== false
-  ) {
-    throw new GradingDataError('Invalid HandicapContestantML contract structure');
-  }
+  validateContractStructure(
+    contract,
+    { expectedType: 'Handicap', expectedHasContestant: true, expectedHasLine: false },
+    msg => new GradingDataError(msg)
+  );
 
   return {
-    SelectedContestant: contract.Contestant,
-    TiesLose: contract.TiesLose,
+    SelectedContestant: (contract as any).Contestant,
+    TiesLose: (contract as any).TiesLose,
   };
 }
 
@@ -225,18 +219,15 @@ function mapHandicapML(contract: Contract): Partial<GradingSqlParameters> {
  * Map HandicapContestantLine (spread) contract
  */
 function mapHandicapLine(contract: Contract): Partial<GradingSqlParameters> {
-  if (
-    !('ContractSportCompetitionMatchType' in contract) ||
-    contract.ContractSportCompetitionMatchType !== 'Handicap' ||
-    contract.HasContestant !== true ||
-    contract.HasLine !== true
-  ) {
-    throw new GradingDataError('Invalid HandicapContestantLine contract structure');
-  }
+  validateContractStructure(
+    contract,
+    { expectedType: 'Handicap', expectedHasContestant: true, expectedHasLine: true },
+    msg => new GradingDataError(msg)
+  );
 
   return {
-    SelectedContestant: contract.Contestant,
-    Line: contract.Line,
+    SelectedContestant: (contract as any).Contestant,
+    Line: (contract as any).Line,
   };
 }
 
@@ -244,21 +235,18 @@ function mapHandicapLine(contract: Contract): Partial<GradingSqlParameters> {
  * Map PropOU (prop over/under) contract
  */
 function mapPropOU(contract: Contract): Partial<GradingSqlParameters> {
-  if (
-    !('ContractSportCompetitionMatchType' in contract) ||
-    contract.ContractSportCompetitionMatchType !== 'Prop' ||
-    contract.HasContestant !== true ||
-    contract.HasLine !== true
-  ) {
-    throw new GradingDataError('Invalid PropOU contract structure');
-  }
+  validateContractStructure(
+    contract,
+    { expectedType: 'Prop', expectedHasContestant: true, expectedHasLine: true },
+    msg => new GradingDataError(msg)
+  );
 
   return {
-    SelectedContestant: contract.Contestant,
-    Line: contract.Line,
-    IsOver: contract.IsOver,
-    Prop: contract.Prop,
-    PropContestantType: contract.ContestantType,
+    SelectedContestant: (contract as any).Contestant,
+    Line: (contract as any).Line,
+    IsOver: (contract as any).IsOver,
+    Prop: (contract as any).Prop,
+    PropContestantType: (contract as any).ContestantType,
   };
 }
 
@@ -266,20 +254,17 @@ function mapPropOU(contract: Contract): Partial<GradingSqlParameters> {
  * Map PropYN (prop yes/no) contract
  */
 function mapPropYN(contract: Contract): Partial<GradingSqlParameters> {
-  if (
-    !('ContractSportCompetitionMatchType' in contract) ||
-    contract.ContractSportCompetitionMatchType !== 'Prop' ||
-    contract.HasContestant !== true ||
-    contract.HasLine !== false
-  ) {
-    throw new GradingDataError('Invalid PropYN contract structure');
-  }
+  validateContractStructure(
+    contract,
+    { expectedType: 'Prop', expectedHasContestant: true, expectedHasLine: false },
+    msg => new GradingDataError(msg)
+  );
 
   return {
-    SelectedContestant: contract.Contestant,
-    IsYes: contract.IsYes,
-    Prop: contract.Prop,
-    PropContestantType: contract.ContestantType,
+    SelectedContestant: (contract as any).Contestant,
+    IsYes: (contract as any).IsYes,
+    Prop: (contract as any).Prop,
+    PropContestantType: (contract as any).ContestantType,
   };
 }
 

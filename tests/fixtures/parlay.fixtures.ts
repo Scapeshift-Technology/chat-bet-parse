@@ -84,6 +84,40 @@ export const parlayTestCases: ParlayTestCase[] = [
       { contractType: 'HandicapContestantML', price: 120, team: 'Celtics' }
     ]
   },
+  {
+    description: 'YGP with decimal thousands size',
+    input: 'YGP Lakers @ +120 & Warriors @ -110 = 2.5',
+    expectedChatType: 'fill',
+    expectedRisk: 2500,
+    expectedUseFair: true,
+    expectedLegs: [
+      { contractType: 'HandicapContestantML', price: 120, team: 'Lakers' },
+      { contractType: 'HandicapContestantML', price: -110, team: 'Warriors' }
+    ]
+  },
+  {
+    description: 'YGP with k-notation size',
+    input: 'YGP Lakers @ +120 & Warriors @ -110 = 3k',
+    expectedChatType: 'fill',
+    expectedRisk: 3000,
+    expectedUseFair: true,
+    expectedLegs: [
+      { contractType: 'HandicapContestantML', price: 120, team: 'Lakers' },
+      { contractType: 'HandicapContestantML', price: -110, team: 'Warriors' }
+    ]
+  },
+  {
+    description: 'YGP with decimal and k-notation to-win',
+    input: 'YGP Lakers @ +120 & Warriors @ -110 = 2.5 tw 3k',
+    expectedChatType: 'fill',
+    expectedRisk: 2500,
+    expectedToWin: 3000,
+    expectedUseFair: false,
+    expectedLegs: [
+      { contractType: 'HandicapContestantML', price: 120, team: 'Lakers' },
+      { contractType: 'HandicapContestantML', price: -110, team: 'Warriors' }
+    ]
+  },
 
   // ==============================================================================
   // PARLAY WITH OPTIONAL FLAGS

@@ -1371,6 +1371,70 @@ function parseMatchInfo(
 }
 
 // ==============================================================================
+// CONTRACT PARSER FACTORY
+// ==============================================================================
+
+/**
+ * Contract parser function type
+ */
+type ContractParserFn = (
+  contractText: string,
+  rawInput: string,
+  sport?: Sport,
+  league?: League,
+  gameNumber?: number,
+  eventDate?: Date
+) => Contract;
+
+/**
+ * Map of contract types to their parser functions
+ */
+const CONTRACT_PARSERS: Record<ContractType, ContractParserFn> = {
+  TotalPoints: parseGameTotal,
+  TotalPointsContestant: parseTeamTotal,
+  HandicapContestantML: parseMoneyline,
+  HandicapContestantLine: parseSpread,
+  PropOU: parsePropOU,
+  PropYN: parsePropYN,
+  Series: parseSeries,
+  Writein: () => {
+    throw new Error('Writein contracts should have been handled earlier');
+  },
+};
+
+/**
+ * Parse contract using factory pattern
+ */
+function parseContractByType(
+  contractType: ContractType,
+  tokens: ParsedTokens,
+  sport?: Sport,
+  league?: League
+): Contract {
+  const parser = CONTRACT_PARSERS[contractType];
+
+  if (!parser) {
+    throw new InvalidContractTypeError(tokens.rawInput, tokens.contractText);
+  }
+
+  if (contractType === 'Writein') {
+    throw new InvalidContractTypeError(
+      tokens.rawInput,
+      'Writein contracts should have been handled earlier'
+    );
+  }
+
+  return parser(
+    tokens.contractText,
+    tokens.rawInput,
+    sport,
+    league,
+    tokens.gameNumber,
+    tokens.eventDate
+  );
+}
+
+// ==============================================================================
 // MAIN PARSING FUNCTIONS
 // ==============================================================================
 
@@ -1417,87 +1481,8 @@ export function parseChatOrder(message: string, options?: ParseOptions): ParseRe
     tokens.explicitSport
   );
 
-  let contract: Contract;
-
-  switch (contractType) {
-    case 'TotalPoints':
-      contract = parseGameTotal(
-        tokens.contractText,
-        tokens.rawInput,
-        sport,
-        league,
-        tokens.gameNumber,
-        tokens.eventDate
-      );
-      break;
-    case 'TotalPointsContestant':
-      contract = parseTeamTotal(
-        tokens.contractText,
-        tokens.rawInput,
-        sport,
-        league,
-        tokens.gameNumber,
-        tokens.eventDate
-      );
-      break;
-    case 'HandicapContestantML':
-      contract = parseMoneyline(
-        tokens.contractText,
-        tokens.rawInput,
-        sport,
-        league,
-        tokens.gameNumber,
-        tokens.eventDate
-      );
-      break;
-    case 'HandicapContestantLine':
-      contract = parseSpread(
-        tokens.contractText,
-        tokens.rawInput,
-        sport,
-        league,
-        tokens.gameNumber,
-        tokens.eventDate
-      );
-      break;
-    case 'PropOU':
-      contract = parsePropOU(
-        tokens.contractText,
-        tokens.rawInput,
-        sport,
-        league,
-        tokens.gameNumber,
-        tokens.eventDate
-      );
-      break;
-    case 'PropYN':
-      contract = parsePropYN(
-        tokens.contractText,
-        tokens.rawInput,
-        sport,
-        league,
-        tokens.gameNumber,
-        tokens.eventDate
-      );
-      break;
-    case 'Series':
-      contract = parseSeries(
-        tokens.contractText,
-        tokens.rawInput,
-        sport,
-        league,
-        tokens.gameNumber,
-        tokens.eventDate
-      );
-      break;
-    case 'Writein':
-      throw new InvalidContractTypeError(
-        tokens.rawInput,
-        'Writein contracts should have been handled earlier'
-      );
-    default:
-      throw new InvalidContractTypeError(tokens.rawInput, tokens.contractText);
-  }
+  // Parse contract using factory
+  const contract = parseContractByType(contractType, tokens, sport, league);
 
   // Add rotation number to contract if present
   if (tokens.rotationNumber && 'RotationNumber' in contract) {
@@ -1562,87 +1547,8 @@ export function parseChatFill(message: string, options?: ParseOptions): ParseRes
     tokens.explicitSport
   );
 
-  let contract: Contract;
-
-  switch (contractType) {
-    case 'TotalPoints':
-      contract = parseGameTotal(
-        tokens.contractText,
-        tokens.rawInput,
-        sport,
-        league,
-        tokens.gameNumber,
-        tokens.eventDate
-      );
-      break;
-    case 'TotalPointsContestant':
-      contract = parseTeamTotal(
-        tokens.contractText,
-        tokens.rawInput,
-        sport,
-        league,
-        tokens.gameNumber,
-        tokens.eventDate
-      );
-      break;
-    case 'HandicapContestantML':
-      contract = parseMoneyline(
-        tokens.contractText,
-        tokens.rawInput,
-        sport,
-        league,
-        tokens.gameNumber,
-        tokens.eventDate
-      );
-      break;
-    case 'HandicapContestantLine':
-      contract = parseSpread(
-        tokens.contractText,
-        tokens.rawInput,
-        sport,
-        league,
-        tokens.gameNumber,
-        tokens.eventDate
-      );
-      break;
-    case 'PropOU':
-      contract = parsePropOU(
-        tokens.contractText,
-        tokens.rawInput,
-        sport,
-        league,
-        tokens.gameNumber,
-        tokens.eventDate
-      );
-      break;
-    case 'PropYN':
-      contract = parsePropYN(
-        tokens.contractText,
-        tokens.rawInput,
-        sport,
-        league,
-        tokens.gameNumber,
-        tokens.eventDate
-      );
-      break;
-    case 'Series':
-      contract = parseSeries(
-        tokens.contractText,
-        tokens.rawInput,
-        sport,
-        league,
-        tokens.gameNumber,
-        tokens.eventDate
-      );
-      break;
-    case 'Writein':
-      throw new InvalidContractTypeError(
-        tokens.rawInput,
-        'Writein contracts should have been handled earlier'
-      );
-    default:
-      throw new InvalidContractTypeError(tokens.rawInput, tokens.contractText);
-  }
+  // Parse contract using factory
+  const contract = parseContractByType(contractType, tokens, sport, league);
 
   // Add rotation number to contract if present
   if (tokens.rotationNumber && 'RotationNumber' in contract) {

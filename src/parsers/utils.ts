@@ -70,9 +70,15 @@ export interface ParsedSize {
 }
 
 /**
- * Parse size for chat orders (unit interpretation)
+ * Shared size parsing implementation
  */
-export function parseOrderSize(sizeStr: string, rawInput: string): ParsedSize {
+type SizeInterpretation = 'unit' | 'decimal_thousands';
+
+interface SizeParsingConfig {
+  interpretation: SizeInterpretation;
+}
+
+function parseSize(sizeStr: string, rawInput: string, config: SizeParsingConfig): ParsedSize {
   const cleaned = sizeStr.trim();
 
   // Dollar format: $200, $2.5
@@ -97,60 +103,38 @@ export function parseOrderSize(sizeStr: string, rawInput: string): ParsedSize {
     return { value: value * 1000, format: 'k_notation' };
   }
 
-  // Unit format: literal decimal
+  // Plain number or decimal format
   const value = parseFloat(cleaned);
   if (isNaN(value) || value < 0) {
-    throw new InvalidSizeFormatError(rawInput, sizeStr, 'positive decimal number like 2.0 or 0.50');
+    const errorHint =
+      config.interpretation === 'decimal_thousands'
+        ? 'positive number like 100 (=$100) or 2.5 (=$2500)'
+        : 'positive decimal number like 2.0 or 0.50';
+    throw new InvalidSizeFormatError(rawInput, sizeStr, errorHint);
   }
 
-  return { value, format: 'unit' };
+  // Apply interpretation based on config
+  if (config.interpretation === 'decimal_thousands' && cleaned.includes('.')) {
+    return { value: value * 1000, format: 'decimal_thousands' };
+  } else if (config.interpretation === 'decimal_thousands') {
+    return { value, format: 'plain_number' };
+  } else {
+    return { value, format: 'unit' };
+  }
+}
+
+/**
+ * Parse size for chat orders (unit interpretation)
+ */
+export function parseOrderSize(sizeStr: string, rawInput: string): ParsedSize {
+  return parseSize(sizeStr, rawInput, { interpretation: 'unit' });
 }
 
 /**
  * Parse size for chat fills (thousands interpretation for decimals)
  */
 export function parseFillSize(sizeStr: string, rawInput: string): ParsedSize {
-  const cleaned = sizeStr.trim();
-
-  // Dollar format: $200, $2.0 (literal)
-  if (cleaned.startsWith('$')) {
-    const value = parseFloat(cleaned.substring(1));
-    if (isNaN(value) || value < 0) {
-      throw new InvalidSizeFormatError(
-        rawInput,
-        sizeStr,
-        'positive dollar amount like $100 or $2.00'
-      );
-    }
-    return { value, format: 'dollar' };
-  }
-
-  // K-notation: 4k, 2.5k
-  if (cleaned.toLowerCase().endsWith('k')) {
-    const value = parseFloat(cleaned.slice(0, -1));
-    if (isNaN(value) || value < 0) {
-      throw new InvalidSizeFormatError(rawInput, sizeStr, 'positive number with k like 4k or 2.5k');
-    }
-    return { value: value * 1000, format: 'k_notation' };
-  }
-
-  // Plain number or decimal thousands format
-  const value = parseFloat(cleaned);
-  if (isNaN(value) || value < 0) {
-    throw new InvalidSizeFormatError(
-      rawInput,
-      sizeStr,
-      'positive number like 100 (=$100) or 2.5 (=$2500)'
-    );
-  }
-
-  // Only multiply by 1000 if there's a decimal point in the input
-  // e.g., "2.0" -> 2000, "2.5" -> 2500, but "100" -> 100, "999" -> 999
-  if (cleaned.includes('.')) {
-    return { value: value * 1000, format: 'decimal_thousands' };
-  } else {
-    return { value: value, format: 'plain_number' };
-  }
+  return parseSize(sizeStr, rawInput, { interpretation: 'decimal_thousands' });
 }
 
 // ==============================================================================
@@ -735,22 +719,30 @@ export interface ParsedKeywords {
  * Format: key:value (no spaces around colon)
  * Returns parsed keywords and text with keywords removed
  */
-export function parseKeywords(
+/**
+ * Shared keyword extraction and validation logic
+ * Returns parsed keywords and remaining text parts
+ */
+interface KeywordParsingResult<T> {
+  keywords: Partial<T>;
+  remainingParts: string[];
+}
+
+function extractAndValidateKeywords<T extends Record<string, any>>(
   text: string,
   rawInput: string,
-  allowedKeys: string[]
-): ParsedKeywords {
+  allowedKeys: string[],
+  parser: (key: string, value: string, keywords: Partial<T>) => void
+): KeywordParsingResult<T> {
   const parts = text.trim().split(/\s+/);
-  const keywords: Partial<ParsedKeywords> = {};
+  const keywords: Partial<T> = {};
   const remainingParts: string[] = [];
 
   for (const part of parts) {
-    // Check if this is a keyword (contains colon)
     if (part.includes(':')) {
-      // Validate no spaces around colon (spaces would have been split already,
-      // but we need to ensure the format is correct)
       const [key, ...valueParts] = part.split(':');
 
+      // Validate keyword syntax
       if (valueParts.length === 0 || key === '' || valueParts.join(':') === '') {
         throw new InvalidKeywordSyntaxError(
           rawInput,
@@ -766,7 +758,27 @@ export function parseKeywords(
         throw new UnknownKeywordError(rawInput, key);
       }
 
-      // Parse based on key
+      // Let the parser handle the specific keyword
+      parser(key, value, keywords);
+    } else {
+      // Not a keyword, keep in remaining parts
+      remainingParts.push(part);
+    }
+  }
+
+  return { keywords, remainingParts };
+}
+
+export function parseKeywords(
+  text: string,
+  rawInput: string,
+  allowedKeys: string[]
+): ParsedKeywords {
+  const { keywords, remainingParts } = extractAndValidateKeywords<ParsedKeywords>(
+    text,
+    rawInput,
+    allowedKeys,
+    (key, value, keywords) => {
       switch (key) {
         case 'date':
           keywords.date = value;
@@ -786,11 +798,8 @@ export function parseKeywords(
           keywords.freebet = true;
           break;
       }
-    } else {
-      // Not a keyword, keep in remaining parts
-      remainingParts.push(part);
     }
-  }
+  );
 
   return {
     ...keywords,
@@ -824,30 +833,12 @@ export function parseParlayKeywords(
   const firstLine = lines[0];
   const remainingLines = lines.slice(1);
 
-  // Parse keywords from first line
-  const parts = firstLine.trim().split(/\s+/);
-  const keywords: Partial<ParsedParlayKeywords> = {};
-  const remainingParts: string[] = [];
-
-  for (const part of parts) {
-    if (part.includes(':')) {
-      // Validate syntax (same as Stage 1)
-      const [key, ...valueParts] = part.split(':');
-
-      if (valueParts.length === 0 || key === '' || valueParts.join(':') === '') {
-        throw new InvalidKeywordSyntaxError(
-          rawInput,
-          part,
-          'Invalid keyword syntax: no spaces allowed around colon'
-        );
-      }
-
-      const value = valueParts.join(':');
-
-      if (!allowedKeys.includes(key)) {
-        throw new UnknownKeywordError(rawInput, key);
-      }
-
+  // Use shared keyword extraction logic
+  const { keywords, remainingParts } = extractAndValidateKeywords<ParsedParlayKeywords>(
+    firstLine,
+    rawInput,
+    allowedKeys,
+    (key, value, keywords) => {
       switch (key) {
         case 'pusheslose':
         case 'tieslose':
@@ -863,12 +854,10 @@ export function parseParlayKeywords(
           keywords[key] = true;
           break;
       }
-    } else {
-      remainingParts.push(part);
     }
-  }
+  );
 
-  // Rebuild cleaned text
+  // Rebuild cleaned text (multiline)
   const cleanedFirstLine = remainingParts.join(' ');
   const allLines = cleanedFirstLine ? [cleanedFirstLine, ...remainingLines] : remainingLines;
 
@@ -915,22 +904,18 @@ export function parseParlaySize(sizeText: string, rawInput: string): ParsedParla
     );
   }
 
-  // Check for to-win override
-  const twMatch = text.match(/^(\$?[\d.]+)\s+tw\s+(\$?[\d.]+)$/i);
+  // Check for to-win override (supports $, k-notation, and decimal thousands)
+  const twMatch = text.match(/^([$\d.]+k?)\s+tw\s+([$\d.]+k?)$/i);
 
   if (twMatch) {
-    // Has to-win override
-    const risk = parseFloat(twMatch[1].replace('$', ''));
-    const toWin = parseFloat(twMatch[2].replace('$', ''));
+    // Has to-win override - use parseFillSize for consistent parsing
+    const riskStr = twMatch[1];
+    const toWinStr = twMatch[2];
 
-    if (isNaN(risk) || risk < 0) {
-      throw new InvalidSizeFormatError(rawInput, sizeText, 'positive risk amount');
-    }
-    if (isNaN(toWin) || toWin < 0) {
-      throw new InvalidParlayToWinError(rawInput, 'Invalid to-win amount');
-    }
+    const riskParsed = parseFillSize(riskStr, rawInput);
+    const toWinParsed = parseFillSize(toWinStr, rawInput);
 
-    return { risk, toWin, useFair: false };
+    return { risk: riskParsed.value, toWin: toWinParsed.value, useFair: false };
   }
 
   // Check for multiple tw (error case)
@@ -939,7 +924,7 @@ export function parseParlaySize(sizeText: string, rawInput: string): ParsedParla
   }
 
   // Check for invalid tw usage (missing keyword)
-  if (text.match(/^\$?[\d.]+\s+\$[\d.]+$/)) {
+  if (text.match(/^[$\d.]+k?\s+[$\d.]+k?$/i)) {
     throw new InvalidSizeFormatError(
       rawInput,
       sizeText,
@@ -947,18 +932,19 @@ export function parseParlaySize(sizeText: string, rawInput: string): ParsedParla
     );
   }
 
-  // No to-win, calculate from fair odds
-  const riskMatch = text.match(/^\$?([\d.]+)$/);
+  // No to-win, calculate from fair odds - use parseFillSize for consistent parsing
+  const riskMatch = text.match(/^([$\d.]+k?)$/i);
   if (!riskMatch) {
-    throw new InvalidSizeFormatError(rawInput, sizeText, 'Format: "= $100" or "= $100 tw $500"');
+    throw new InvalidSizeFormatError(
+      rawInput,
+      sizeText,
+      'Format: "= $100", "= 2.5", "= 3k" or "= $100 tw $500"'
+    );
   }
 
-  const risk = parseFloat(riskMatch[1]);
-  if (isNaN(risk) || risk < 0) {
-    throw new InvalidSizeFormatError(rawInput, sizeText, 'positive risk amount');
-  }
+  const riskParsed = parseFillSize(riskMatch[1], rawInput);
 
-  return { risk, toWin: undefined, useFair: true };
+  return { risk: riskParsed.value, toWin: undefined, useFair: true };
 }
 
 /**
@@ -989,21 +975,17 @@ export function parseRoundRobinSize(sizeText: string, rawInput: string): ParsedR
     throw new InvalidSizeFormatError(rawInput, sizeText, 'Risk type must come after size amount');
   }
 
-  // Check for to-win override
-  const twMatch = text.match(/^(\$?[\d.]+)\s+(per|total)\s+tw\s+(\$?[\d.]+)$/i);
+  // Check for to-win override (supports $, k-notation, and decimal thousands)
+  const twMatch = text.match(/^([$\d.]+k?)\s+(per|total)\s+tw\s+([$\d.]+k?)$/i);
 
   if (twMatch) {
-    // Has to-win override
-    const risk = parseFloat(twMatch[1].replace('$', ''));
+    // Has to-win override - use parseFillSize for consistent parsing
+    const riskStr = twMatch[1];
     const riskTypeRaw = twMatch[2].toLowerCase();
-    const toWin = parseFloat(twMatch[3].replace('$', ''));
+    const toWinStr = twMatch[3];
 
-    if (isNaN(risk) || risk < 0) {
-      throw new InvalidSizeFormatError(rawInput, sizeText, 'positive risk amount');
-    }
-    if (isNaN(toWin) || toWin < 0) {
-      throw new InvalidSizeFormatError(rawInput, sizeText, 'positive to-win amount');
-    }
+    const riskParsed = parseFillSize(riskStr, rawInput);
+    const toWinParsed = parseFillSize(toWinStr, rawInput);
 
     // Validate and normalize risk type
     if (riskTypeRaw !== 'per' && riskTypeRaw !== 'total') {
@@ -1013,11 +995,11 @@ export function parseRoundRobinSize(sizeText: string, rawInput: string): ParsedR
     // Normalize "per" to "perSelection"
     const riskType = riskTypeRaw === 'per' ? 'perSelection' : 'total';
 
-    return { risk, toWin, useFair: false, riskType };
+    return { risk: riskParsed.value, toWin: toWinParsed.value, useFair: false, riskType };
   }
 
   // Check for missing tw keyword (e.g., "$100 per $500")
-  if (text.match(/^(\$?[\d.]+)\s+(per|total)\s+\$[\d.]+$/i)) {
+  if (text.match(/^[$\d.]+k?\s+(per|total)\s+[$\d.]+k?$/i)) {
     throw new InvalidSizeFormatError(
       rawInput,
       sizeText,
@@ -1025,31 +1007,31 @@ export function parseRoundRobinSize(sizeText: string, rawInput: string): ParsedR
     );
   }
 
-  // No to-win, parse risk and type
-  const sizeMatch = text.match(/^(\$?[\d.]+)\s+(per|total)$/i);
+  // No to-win, parse risk and type (supports $, k-notation, and decimal thousands)
+  const sizeMatch = text.match(/^([$\d.]+k?)\s+(per|total)$/i);
 
   if (!sizeMatch) {
     // Check if risk type is missing
-    const hasRiskOnly = text.match(/^\$?[\d.]+$/);
+    const hasRiskOnly = text.match(/^[$\d.]+k?$/i);
     if (hasRiskOnly) {
       throw new MissingRiskTypeError(rawInput);
     }
 
     // Check for invalid risk type (not "per" or "total")
-    const hasInvalidType = text.match(/^(\$?[\d.]+)\s+(\w+)$/i);
+    const hasInvalidType = text.match(/^([$\d.]+k?)\s+(\w+)$/i);
     if (hasInvalidType) {
       throw new InvalidRiskTypeError(rawInput, hasInvalidType[2]);
     }
 
-    throw new InvalidSizeFormatError(rawInput, sizeText, 'Format: "= $100 per" or "= $600 total"');
+    throw new InvalidSizeFormatError(
+      rawInput,
+      sizeText,
+      'Format: "= $100 per", "= 2.5 total", "= 3k per"'
+    );
   }
 
-  const risk = parseFloat(sizeMatch[1].replace('$', ''));
+  const riskParsed = parseFillSize(sizeMatch[1], rawInput);
   const riskTypeRaw = sizeMatch[2].toLowerCase();
-
-  if (isNaN(risk) || risk < 0) {
-    throw new InvalidSizeFormatError(rawInput, sizeText, 'positive risk amount');
-  }
 
   // Validate risk type
   if (riskTypeRaw !== 'per' && riskTypeRaw !== 'total') {
@@ -1059,5 +1041,5 @@ export function parseRoundRobinSize(sizeText: string, rawInput: string): ParsedR
   // Normalize "per" to "perSelection"
   const riskType = riskTypeRaw === 'per' ? 'perSelection' : 'total';
 
-  return { risk, toWin: undefined, useFair: true, riskType };
+  return { risk: riskParsed.value, toWin: undefined, useFair: true, riskType };
 }

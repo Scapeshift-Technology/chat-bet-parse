@@ -11,6 +11,7 @@ import type {
 import { isWritein, isStraight } from '../types/index';
 import type { ContractLegSpec, ContractMappingOptions } from './types';
 import { ContractMappingError } from './types';
+import { validateContractStructure } from '../shared/contractValidation';
 
 /**
  * Convert a ParseResult to ContractLegSpec for SQL Server
@@ -258,17 +259,15 @@ function extractContestantType(contract: Contract): string | undefined {
  * Map TotalPoints (game totals) contract
  */
 function mapTotalPoints(contract: Contract): Partial<ContractLegSpec> {
-  if (
-    !('ContractSportCompetitionMatchType' in contract) ||
-    contract.ContractSportCompetitionMatchType !== 'TotalPoints' ||
-    contract.HasContestant !== false
-  ) {
-    throw new ContractMappingError('Invalid TotalPoints contract structure', 'TotalPoints');
-  }
+  validateContractStructure(
+    contract,
+    { expectedType: 'TotalPoints', expectedHasContestant: false },
+    msg => new ContractMappingError(msg, 'TotalPoints')
+  );
 
   return {
-    Line: contract.Line,
-    IsOver: contract.IsOver,
+    Line: (contract as any).Line,
+    IsOver: (contract as any).IsOver,
   };
 }
 
@@ -276,22 +275,17 @@ function mapTotalPoints(contract: Contract): Partial<ContractLegSpec> {
  * Map TotalPointsContestant (team totals) contract
  */
 function mapTotalPointsContestant(contract: Contract): Partial<ContractLegSpec> {
-  if (
-    !('ContractSportCompetitionMatchType' in contract) ||
-    contract.ContractSportCompetitionMatchType !== 'TotalPoints' ||
-    contract.HasContestant !== true
-  ) {
-    throw new ContractMappingError(
-      'Invalid TotalPointsContestant contract structure',
-      'TotalPointsContestant'
-    );
-  }
+  validateContractStructure(
+    contract,
+    { expectedType: 'TotalPoints', expectedHasContestant: true },
+    msg => new ContractMappingError(msg, 'TotalPointsContestant')
+  );
 
   return {
-    Line: contract.Line,
-    IsOver: contract.IsOver,
-    SelectedContestant_RawName: contract.Contestant,
-    ContestantType: extractContestantType(contract),
+    Line: (contract as any).Line,
+    IsOver: (contract as any).IsOver,
+    SelectedContestant_RawName: (contract as any).Contestant,
+    ContestantType: extractContestantType(contract as any),
   };
 }
 
@@ -299,22 +293,16 @@ function mapTotalPointsContestant(contract: Contract): Partial<ContractLegSpec> 
  * Map HandicapContestantML (moneyline) contract
  */
 function mapHandicapML(contract: Contract): Partial<ContractLegSpec> {
-  if (
-    !('ContractSportCompetitionMatchType' in contract) ||
-    contract.ContractSportCompetitionMatchType !== 'Handicap' ||
-    contract.HasContestant !== true ||
-    contract.HasLine !== false
-  ) {
-    throw new ContractMappingError(
-      'Invalid HandicapContestantML contract structure',
-      'HandicapContestantML'
-    );
-  }
+  validateContractStructure(
+    contract,
+    { expectedType: 'Handicap', expectedHasContestant: true, expectedHasLine: false },
+    msg => new ContractMappingError(msg, 'HandicapContestantML')
+  );
 
   return {
-    SelectedContestant_RawName: contract.Contestant,
-    TiesLose: contract.TiesLose,
-    ContestantType: extractContestantType(contract),
+    SelectedContestant_RawName: (contract as any).Contestant,
+    TiesLose: (contract as any).TiesLose,
+    ContestantType: extractContestantType(contract as any),
   };
 }
 
@@ -322,22 +310,16 @@ function mapHandicapML(contract: Contract): Partial<ContractLegSpec> {
  * Map HandicapContestantLine (spread) contract
  */
 function mapHandicapLine(contract: Contract): Partial<ContractLegSpec> {
-  if (
-    !('ContractSportCompetitionMatchType' in contract) ||
-    contract.ContractSportCompetitionMatchType !== 'Handicap' ||
-    contract.HasContestant !== true ||
-    contract.HasLine !== true
-  ) {
-    throw new ContractMappingError(
-      'Invalid HandicapContestantLine contract structure',
-      'HandicapContestantLine'
-    );
-  }
+  validateContractStructure(
+    contract,
+    { expectedType: 'Handicap', expectedHasContestant: true, expectedHasLine: true },
+    msg => new ContractMappingError(msg, 'HandicapContestantLine')
+  );
 
   return {
-    SelectedContestant_RawName: contract.Contestant,
-    Line: contract.Line,
-    ContestantType: extractContestantType(contract),
+    SelectedContestant_RawName: (contract as any).Contestant,
+    Line: (contract as any).Line,
+    ContestantType: extractContestantType(contract as any),
   };
 }
 
@@ -345,21 +327,18 @@ function mapHandicapLine(contract: Contract): Partial<ContractLegSpec> {
  * Map PropOU (prop over/under) contract
  */
 function mapPropOU(contract: Contract): Partial<ContractLegSpec> {
-  if (
-    !('ContractSportCompetitionMatchType' in contract) ||
-    contract.ContractSportCompetitionMatchType !== 'Prop' ||
-    contract.HasContestant !== true ||
-    contract.HasLine !== true
-  ) {
-    throw new ContractMappingError('Invalid PropOU contract structure', 'PropOU');
-  }
+  validateContractStructure(
+    contract,
+    { expectedType: 'Prop', expectedHasContestant: true, expectedHasLine: true },
+    msg => new ContractMappingError(msg, 'PropOU')
+  );
 
   return {
-    SelectedContestant_RawName: contract.Contestant,
-    Line: contract.Line,
-    IsOver: contract.IsOver,
-    Prop: contract.Prop,
-    PropContestantType: contract.ContestantType,
+    SelectedContestant_RawName: (contract as any).Contestant,
+    Line: (contract as any).Line,
+    IsOver: (contract as any).IsOver,
+    Prop: (contract as any).Prop,
+    PropContestantType: (contract as any).ContestantType,
   };
 }
 
@@ -367,20 +346,17 @@ function mapPropOU(contract: Contract): Partial<ContractLegSpec> {
  * Map PropYN (prop yes/no) contract
  */
 function mapPropYN(contract: Contract): Partial<ContractLegSpec> {
-  if (
-    !('ContractSportCompetitionMatchType' in contract) ||
-    contract.ContractSportCompetitionMatchType !== 'Prop' ||
-    contract.HasContestant !== true ||
-    contract.HasLine !== false
-  ) {
-    throw new ContractMappingError('Invalid PropYN contract structure', 'PropYN');
-  }
+  validateContractStructure(
+    contract,
+    { expectedType: 'Prop', expectedHasContestant: true, expectedHasLine: false },
+    msg => new ContractMappingError(msg, 'PropYN')
+  );
 
   return {
-    SelectedContestant_RawName: contract.Contestant,
-    IsYes: contract.IsYes,
-    Prop: contract.Prop,
-    PropContestantType: contract.ContestantType,
+    SelectedContestant_RawName: (contract as any).Contestant,
+    IsYes: (contract as any).IsYes,
+    Prop: (contract as any).Prop,
+    PropContestantType: (contract as any).ContestantType,
   };
 }
 
