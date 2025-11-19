@@ -41,13 +41,13 @@ export const errorTestCases: ErrorTestCase[] = [
     description: 'Invalid size format for order',
     input: 'IW LAA TT o3.5 @ -110 = invalid',
     expectedErrorType: 'InvalidSizeFormatError',
-    expectedErrorMessage: 'Invalid size format: "invalid"'
+    expectedErrorMessage: 'Invalid size format: "= invalid"'
   },
   {
     description: 'Negative size',
     input: 'YG LAA TT o3.5 @ -110 = -1.0',
     expectedErrorType: 'InvalidSizeFormatError',
-    expectedErrorMessage: 'Invalid size format: "-1.0"'
+    expectedErrorMessage: 'Invalid size format: "= -1.0"'
   },
 
   // Invalid lines

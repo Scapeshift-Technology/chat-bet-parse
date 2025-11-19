@@ -461,6 +461,72 @@ describe('Chat Bet Parsing', () => {
     test.each(fillSizeTestCases)('$description', validateTestCase);
   });
 
+  // Extended Size Parsing (tw, tp, risk, towin) - checks bet.Risk/ToWin instead of bet.Size
+  describe('Extended Size Parsing', () => {
+    test('tw syntax - risk with to-win override', () => {
+      const result = parseChat('YG Lakers ML @ -105 = $110 tw $100');
+      expect(result.chatType).toBe('fill');
+      expect(result.bet.Price).toBe(-105);
+      expect(result.bet.Risk).toBe(110);
+      expect(result.bet.ToWin).toBe(100);
+      expect(result.bet.Size).toBeUndefined();
+    });
+
+    test('"to win" syntax - same as tw', () => {
+      const result = parseChat('YG Celtics -1.5 @ -110 = $115 to win $100');
+      expect(result.chatType).toBe('fill');
+      expect(result.bet.Price).toBe(-110);
+      expect(result.bet.Risk).toBe(115);
+      expect(result.bet.ToWin).toBe(100);
+      expect(result.bet.Size).toBeUndefined();
+    });
+
+    test('tp syntax - calculates to-win from to-pay', () => {
+      const result = parseChat('YG Warriors ML @ -121 = $120 tp $220');
+      expect(result.chatType).toBe('fill');
+      expect(result.bet.Price).toBe(-121);
+      expect(result.bet.Risk).toBe(120);
+      expect(result.bet.ToWin).toBe(100); // $220 - $120
+      expect(result.bet.Size).toBeUndefined();
+    });
+
+    test('"to pay" syntax - same as tp', () => {
+      const result = parseChat('YG Heat ML @ -111 = $110 to pay 0.230');
+      expect(result.chatType).toBe('fill');
+      expect(result.bet.Price).toBe(-111);
+      expect(result.bet.Risk).toBe(110);
+      expect(result.bet.ToWin).toBe(120); // $210 - $110
+      expect(result.bet.Size).toBeUndefined();
+    });
+
+    test('risk keyword - explicit risk amount only, calculates toWin from price', () => {
+      const result = parseChat('YG Knicks -2.5 @ -110 = risk $110');
+      expect(result.chatType).toBe('fill');
+      expect(result.bet.Price).toBe(-110);
+      expect(result.bet.Risk).toBe(110);
+      expect(result.bet.ToWin).toBe(100); // calculated from -110 odds
+      expect(result.bet.Size).toBeUndefined();
+    });
+
+    test('towin keyword - explicit to-win amount only, calculates risk from price', () => {
+      const result = parseChat('YG Bulls ML @ +150 = towin 0.150');
+      expect(result.chatType).toBe('fill');
+      expect(result.bet.Price).toBe(150);
+      expect(result.bet.Risk).toBe(100); // calculated from +150 odds
+      expect(result.bet.ToWin).toBe(150);
+      expect(result.bet.Size).toBeUndefined();
+    });
+
+    test('backward compat - simple size syntax still works and populates Risk/ToWin', () => {
+      const result = parseChat('YG Lakers ML @ -110 = 2.5');
+      expect(result.chatType).toBe('fill');
+      expect(result.bet.Price).toBe(-110);
+      expect(result.bet.Size).toBe(2500); // decimal thousands
+      expect(result.bet.Risk).toBe(2750); // 2500 * 110/100
+      expect(result.bet.ToWin).toBe(2500);
+    });
+  });
+
   // Special Formats
   describe('Special Formats', () => {
     test.each(specialFormatsTestCases)('$description', validateTestCase);

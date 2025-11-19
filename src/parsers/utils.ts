@@ -59,6 +59,74 @@ export function parsePrice(priceStr: string, rawInput: string): number {
 }
 
 // ==============================================================================
+// RISK AND TOWIN CALCULATION
+// ==============================================================================
+
+/**
+ * Calculate risk and toWin amounts from American odds price and size
+ *
+ * American odds work as follows:
+ * - Positive odds (e.g., +150): Size is risk amount → risk = size, toWin = size * odds / 100
+ * - Negative odds (e.g., -150): Size is to-win amount → risk = size * abs(odds) / 100, toWin = size
+ *
+ * @param price - American odds price (must be >= 100 or <= -100)
+ * @param size - The bet size/stake amount (interpreted based on odds sign)
+ * @returns Object containing risk and toWin amounts, both rounded to 2 decimal places
+ */
+export function calculateRiskAndToWin(
+  price: number,
+  size: number
+): { risk: number; toWin: number } {
+  if (price >= 100) {
+    // Positive odds: risk the size to win (size * odds / 100)
+    const risk = size;
+    const toWin = Math.round(((size * price) / 100) * 100) / 100;
+    return { risk, toWin };
+  } else if (price <= -100) {
+    // Negative odds: risk (size * abs(odds) / 100) to win size
+    const absOdds = Math.abs(price);
+    const risk = Math.round(((size * absOdds) / 100) * 100) / 100;
+    const toWin = size;
+    return { risk, toWin };
+  } else {
+    // Price between -99 and 99 is invalid for American odds
+    throw new Error(`Invalid price ${price}: must be >= 100 or <= -100`);
+  }
+}
+
+/**
+ * Calculate toWin from risk amount and price
+ */
+export function calculateToWinFromRisk(price: number, risk: number): number {
+  if (price >= 100) {
+    // Positive odds: toWin = risk * odds / 100
+    return Math.round(((risk * price) / 100) * 100) / 100;
+  } else if (price <= -100) {
+    // Negative odds: toWin = risk / (abs(odds) / 100)
+    const absOdds = Math.abs(price);
+    return Math.round((risk / (absOdds / 100)) * 100) / 100;
+  } else {
+    throw new Error(`Invalid price ${price}: must be >= 100 or <= -100`);
+  }
+}
+
+/**
+ * Calculate risk from toWin amount and price
+ */
+export function calculateRiskFromToWin(price: number, toWin: number): number {
+  if (price >= 100) {
+    // Positive odds: risk = toWin / (odds / 100)
+    return Math.round((toWin / (price / 100)) * 100) / 100;
+  } else if (price <= -100) {
+    // Negative odds: risk = toWin * (abs(odds) / 100)
+    const absOdds = Math.abs(price);
+    return Math.round(toWin * (absOdds / 100) * 100) / 100;
+  } else {
+    throw new Error(`Invalid price ${price}: must be >= 100 or <= -100`);
+  }
+}
+
+// ==============================================================================
 // SIZE PARSING
 // ==============================================================================
 
@@ -149,6 +217,90 @@ export function parseOrderSize(sizeStr: string, rawInput: string): ParsedSize {
  */
 export function parseFillSize(sizeStr: string, rawInput: string): ParsedSize {
   return parseSize(sizeStr, rawInput, { interpretation: 'decimal_thousands' });
+}
+
+// ==============================================================================
+// STRAIGHT BET SIZE PARSING (Extended Syntax)
+// ==============================================================================
+
+export interface ParsedStraightSize {
+  risk?: number;
+  toWin?: number;
+  size?: number; // For backward compatibility when using simple size syntax
+}
+
+/**
+ * Parse straight bet size specification with support for extended syntax
+ * Formats:
+ *   Simple: "= 2.5" or "= $100" (sets size, caller infers risk/toWin from price)
+ *   Risk + ToWin: "= $110 tw $100" or "= $110 to win $100"
+ *   Risk + ToPay: "= $120 tp $220" or "= $120 to pay $220" (calculates toWin = toPay - risk)
+ *   Risk only: "= risk $110" (caller calculates toWin from price)
+ *   ToWin only: "= towin $150" (caller calculates risk from price)
+ */
+export function parseStraightSize(
+  sizeText: string,
+  rawInput: string,
+  interpretation: SizeInterpretation
+): ParsedStraightSize {
+  // Remove leading '='
+  if (!sizeText.startsWith('=')) {
+    throw new InvalidSizeFormatError(rawInput, sizeText, 'Size must start with =');
+  }
+
+  const text = sizeText.slice(1).trim();
+
+  // Check for "tw" or "to win" syntax: "= $110 tw $100" or "= $110 to win $100"
+  const twMatch = text.match(/^([$\d.]+k?)\s+(?:tw|to\s+win)\s+([$\d.]+k?)$/i);
+  if (twMatch) {
+    const riskParsed = parseSize(twMatch[1], rawInput, { interpretation });
+    const toWinParsed = parseSize(twMatch[2], rawInput, { interpretation });
+    return { risk: riskParsed.value, toWin: toWinParsed.value };
+  }
+
+  // Check for "tp" or "to pay" syntax: "= $120 tp $220" or "= $120 to pay $220"
+  const tpMatch = text.match(/^([$\d.]+k?)\s+(?:tp|to\s+pay)\s+([$\d.]+k?)$/i);
+  if (tpMatch) {
+    const riskParsed = parseSize(tpMatch[1], rawInput, { interpretation });
+    const toPayParsed = parseSize(tpMatch[2], rawInput, { interpretation });
+    const toWin = toPayParsed.value - riskParsed.value;
+    if (toWin < 0) {
+      throw new InvalidSizeFormatError(
+        rawInput,
+        sizeText,
+        'To-pay amount must be greater than risk amount'
+      );
+    }
+    return { risk: riskParsed.value, toWin: Math.round(toWin * 100) / 100 };
+  }
+
+  // Check for "risk" keyword: "= risk $110"
+  const riskMatch = text.match(/^risk\s+([$\d.]+k?)$/i);
+  if (riskMatch) {
+    const riskParsed = parseSize(riskMatch[1], rawInput, { interpretation });
+    return { risk: riskParsed.value };
+  }
+
+  // Check for "towin" keyword: "= towin $150"
+  const toWinMatch = text.match(/^towin\s+([$\d.]+k?)$/i);
+  if (toWinMatch) {
+    const toWinParsed = parseSize(toWinMatch[1], rawInput, { interpretation });
+    return { toWin: toWinParsed.value };
+  }
+
+  // Simple size format (backward compatibility): "= 2.5" or "= $100"
+  const sizeMatch = text.match(/^([$\d.]+k?)$/);
+  if (sizeMatch) {
+    const sizeParsed = parseSize(sizeMatch[1], rawInput, { interpretation });
+    return { size: sizeParsed.value };
+  }
+
+  // No valid format matched
+  throw new InvalidSizeFormatError(
+    rawInput,
+    sizeText,
+    'Format: "= $100", "= $110 tw $100", "= $120 tp $220", "= risk $110", or "= towin $150"'
+  );
 }
 
 // ==============================================================================

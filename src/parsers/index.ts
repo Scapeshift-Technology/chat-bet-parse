@@ -53,6 +53,10 @@ import {
   parsePrice,
   parseOrderSize,
   parseFillSize,
+  parseStraightSize,
+  calculateRiskAndToWin,
+  calculateToWinFromRisk,
+  calculateRiskFromToWin,
   parsePeriod,
   parseGameNumber,
   parseRotationNumber,
@@ -84,7 +88,9 @@ interface ParsedTokens {
   eventDate?: Date; // Parsed event date
   isFreeBet?: boolean; // Free bet flag
   price?: number;
-  size?: number;
+  size?: number; // Backward compat: when simple size syntax used
+  risk?: number; // When risk specified explicitly or via tw/tp syntax
+  toWin?: number; // When toWin specified explicitly or via tw/tp syntax
   rawInput: string;
 }
 
@@ -97,7 +103,9 @@ interface WriteInTokens {
   sport?: Sport;
   isFreeBet?: boolean; // Free bet flag
   price?: number;
-  size?: number;
+  size?: number; // Backward compat: when simple size syntax used
+  risk?: number; // When risk specified explicitly or via tw/tp syntax
+  toWin?: number; // When toWin specified explicitly or via tw/tp syntax
   rawInput: string;
 }
 
@@ -581,21 +589,39 @@ function tokenizeChat(message: string, options?: ParseOptions): TokenResult {
     }
   }
 
-  // Parse size if present
+  // Parse size if present (using extended syntax support)
   let size: number | undefined;
+  let risk: number | undefined;
+  let toWin: number | undefined;
+
   if (sizeIndex > 0 && sizeIndex < parts.length) {
-    const sizeStr = parts[sizeIndex];
-    if (chatType === 'order') {
-      const parsed = parseOrderSize(sizeStr, rawInput);
-      size = parsed.value;
+    // Check if there's a '=' sign before the size (normal syntax vs k-notation shorthand)
+    if (sizeIndex > 0 && parts[sizeIndex - 1] === '=') {
+      // Extended syntax with '=' sign: "= $110 tw $100", "= $120 tp $220", "= risk $110", etc.
+      // Collect all parts from '=' onwards
+      const sizeStr = parts.slice(sizeIndex - 1).join(' ');
+      const interpretation = chatType === 'order' ? 'unit' : 'decimal_thousands';
+      const parsed = parseStraightSize(sizeStr, rawInput, interpretation);
+
+      size = parsed.size;
+      risk = parsed.risk;
+      toWin = parsed.toWin;
     } else {
-      const parsed = parseFillSize(sizeStr, rawInput);
-      size = parsed.value;
+      // K-notation shorthand without '=' (e.g., "@ 4k")
+      // Use old simple parsing
+      const sizeStr = parts[sizeIndex];
+      if (chatType === 'order') {
+        const parsed = parseOrderSize(sizeStr, rawInput);
+        size = parsed.value;
+      } else {
+        const parsed = parseFillSize(sizeStr, rawInput);
+        size = parsed.value;
+      }
     }
   }
 
   // Validate fill requirements
-  if (chatType === 'fill' && size === undefined) {
+  if (chatType === 'fill' && size === undefined && risk === undefined && toWin === undefined) {
     throw new MissingSizeForFillError(rawInput);
   }
 
@@ -703,6 +729,8 @@ function tokenizeChat(message: string, options?: ParseOptions): TokenResult {
     explicitLeague,
     explicitSport,
     size,
+    risk,
+    toWin,
     rawInput,
   };
 }
@@ -1468,6 +1496,40 @@ function parseContractByType(
 // ==============================================================================
 
 /**
+ * Calculate final Risk and ToWin from parsed size tokens and price
+ */
+function calculateFinalRiskAndToWin(
+  price: number,
+  size?: number,
+  risk?: number,
+  toWin?: number
+): { risk?: number; toWin?: number; size?: number } {
+  // If both risk and toWin are specified, use them as-is
+  if (risk !== undefined && toWin !== undefined) {
+    return { risk, toWin };
+  }
+
+  // If only risk is specified, calculate toWin from price
+  if (risk !== undefined && toWin === undefined) {
+    return { risk, toWin: calculateToWinFromRisk(price, risk) };
+  }
+
+  // If only toWin is specified, calculate risk from price
+  if (toWin !== undefined && risk === undefined) {
+    return { risk: calculateRiskFromToWin(price, toWin), toWin };
+  }
+
+  // If only size is specified (backward compat), calculate both risk and toWin
+  if (size !== undefined) {
+    const calculated = calculateRiskAndToWin(price, size);
+    return { risk: calculated.risk, toWin: calculated.toWin, size };
+  }
+
+  // No size info provided
+  return {};
+}
+
+/**
  * Parse a chat order (IW message)
  */
 export function parseChatOrder(message: string, options?: ParseOptions): ParseResultStraight {
@@ -1476,6 +1538,9 @@ export function parseChatOrder(message: string, options?: ParseOptions): ParseRe
   if (tokens.chatType !== 'order') {
     throw new InvalidChatFormatError(tokens.rawInput, 'Expected order (IW) message');
   }
+
+  // Calculate final risk and toWin from tokens
+  const amounts = calculateFinalRiskAndToWin(tokens.price!, tokens.size, tokens.risk, tokens.toWin);
 
   // Handle writein contracts
   if (isWriteinTokens(tokens)) {
@@ -1496,7 +1561,9 @@ export function parseChatOrder(message: string, options?: ParseOptions): ParseRe
       rotationNumber: undefined,
       bet: {
         Price: tokens.price!,
-        Size: tokens.size,
+        Size: amounts.size,
+        Risk: amounts.risk,
+        ToWin: amounts.toWin,
         IsFreeBet: tokens.isFreeBet,
       },
     };
@@ -1526,7 +1593,9 @@ export function parseChatOrder(message: string, options?: ParseOptions): ParseRe
     rotationNumber: tokens.rotationNumber,
     bet: {
       Price: tokens.price!,
-      Size: tokens.size,
+      Size: amounts.size,
+      Risk: amounts.risk,
+      ToWin: amounts.toWin,
       IsFreeBet: tokens.isFreeBet,
     },
   };
@@ -1541,6 +1610,9 @@ export function parseChatFill(message: string, options?: ParseOptions): ParseRes
   if (tokens.chatType !== 'fill') {
     throw new InvalidChatFormatError(tokens.rawInput, 'Expected fill (YG) message');
   }
+
+  // Calculate final risk and toWin from tokens
+  const amounts = calculateFinalRiskAndToWin(tokens.price!, tokens.size, tokens.risk, tokens.toWin);
 
   // Handle writein contracts
   if (isWriteinTokens(tokens)) {
@@ -1562,7 +1634,9 @@ export function parseChatFill(message: string, options?: ParseOptions): ParseRes
       bet: {
         ExecutionDtm: new Date(), // Current time for fills
         Price: tokens.price!,
-        Size: tokens.size!,
+        Size: amounts.size,
+        Risk: amounts.risk,
+        ToWin: amounts.toWin,
         IsFreeBet: tokens.isFreeBet,
       },
     };
@@ -1593,7 +1667,9 @@ export function parseChatFill(message: string, options?: ParseOptions): ParseRes
     bet: {
       ExecutionDtm: new Date(), // Current time for fills
       Price: tokens.price!,
-      Size: tokens.size!,
+      Size: amounts.size,
+      Risk: amounts.risk,
+      ToWin: amounts.toWin,
       IsFreeBet: tokens.isFreeBet,
     },
   };
