@@ -394,8 +394,12 @@ export function inferSportAndLeague(
   if (explicitLeague && !sport) {
     sport = leagueSportMap[explicitLeague];
   }
+  // Normalize league aliases to their canonical forms
   if (league === 'FCS') {
     league = 'CFB';
+  }
+  if (league === 'CBB') {
+    league = 'CBK';
   }
 
   // Infer from rotation if needed

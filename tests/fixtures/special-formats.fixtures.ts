@@ -201,5 +201,101 @@ export const specialFormatsTestCases: TestCase[] = [
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
     expectedLeague: 'CFB',
     expectedSport: 'Football'
+  },
+
+  // Case-insensitive league detection
+  {
+    description: 'YG NBA uppercase league with $k notation',
+    input: 'YG NBA spurs o237 @ -111 = $11k',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: -111,
+    expectedSize: 11000,
+    expectedTeam1: 'spurs',
+    expectedLine: 237,
+    expectedIsOver: true,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+    expectedLeague: 'NBA',
+    expectedSport: 'Basketball'
+  },
+  {
+    description: 'YG nba lowercase league with $k notation',
+    input: 'YG nba spurs o237 @ -111 = $11k',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: -111,
+    expectedSize: 11000,
+    expectedTeam1: 'spurs',
+    expectedLine: 237,
+    expectedIsOver: true,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+    expectedLeague: 'NBA',
+    expectedSport: 'Basketball'
+  },
+  {
+    description: 'YG mLB mixed-case league detection',
+    input: 'YG mLB cardinals @ +150 = 2k',
+    expectedChatType: 'fill',
+    expectedContractType: 'HandicapContestantML',
+    expectedPrice: 150,
+    expectedSize: 2000,
+    expectedTeam1: 'cardinals',
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+    expectedLeague: 'MLB',
+    expectedSport: 'Baseball',
+    expectedTiesLose: false
+  },
+  {
+    description: 'YG Cfb mixed-case league detection',
+    input: 'YG Cfb michigan -7 @ -110 = 1.5k',
+    expectedChatType: 'fill',
+    expectedContractType: 'HandicapContestantLine',
+    expectedPrice: -110,
+    expectedSize: 1500,
+    expectedTeam1: 'michigan',
+    expectedLine: -7,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+    expectedLeague: 'CFB',
+    expectedSport: 'Football'
+  },
+  {
+    description: 'YG Cbk mixed-case league detection',
+    input: 'YG Cbk duke o145.5 @ -115 = 3k',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: -115,
+    expectedSize: 3000,
+    expectedTeam1: 'duke',
+    expectedLine: 145.5,
+    expectedIsOver: true,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+    expectedLeague: 'CBK',
+    expectedSport: 'Basketball'
+  },
+  {
+    description: 'YG cbb lowercase CBK league detection',
+    input: 'YG cbb duke +5.5 @ +110 = 2k',
+    expectedChatType: 'fill',
+    expectedContractType: 'HandicapContestantLine',
+    expectedPrice: 110,
+    expectedSize: 2000,
+    expectedTeam1: 'duke',
+    expectedLine: 5.5,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+    expectedLeague: 'CBK',
+    expectedSport: 'Basketball'
+  },
+  {
+    description: 'YG CBB uppercase CBK league detection',
+    input: 'YG CBB kentucky @ -120 = 1k',
+    expectedChatType: 'fill',
+    expectedContractType: 'HandicapContestantML',
+    expectedPrice: -120,
+    expectedSize: 1000,
+    expectedTeam1: 'kentucky',
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+    expectedLeague: 'CBK',
+    expectedSport: 'Basketball',
+    expectedTiesLose: false
   }
 ];

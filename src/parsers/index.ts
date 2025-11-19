@@ -638,9 +638,9 @@ function tokenizeChat(message: string, options?: ParseOptions): TokenResult {
   // Prefer keyword league over positional league
   let explicitLeague: KnownLeague | undefined = keywordLeague;
   if (!explicitLeague) {
-    const leagueMatch = contractText.match(/^([A-Z]{2,3})\s+(.+)$/);
-    if (leagueMatch && knownLeagues.has(leagueMatch[1] as any)) {
-      explicitLeague = leagueMatch[1] as KnownLeague;
+    const leagueMatch = contractText.match(/^([A-Za-z]{2,3})\s+(.+)$/);
+    if (leagueMatch && knownLeagues.has(leagueMatch[1].toUpperCase() as any)) {
+      explicitLeague = leagueMatch[1].toUpperCase() as KnownLeague;
       contractText = leagueMatch[2];
     }
   }

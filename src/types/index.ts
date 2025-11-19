@@ -24,12 +24,13 @@ export type League =
   | 'MLB' // Baseball
   | 'WNBA' // Basketball
   | 'CBK' // Basketball (NCAA)
+  | 'CBB' // Basketball (NCAA - alias for CBK)
   | 'NBA' // Basketball
   | 'CFL' // Football (Canadian)
   | 'CFB' // Football (NCAA)
   | 'NFL' // Football
   | 'UFL' // Football
-  | 'FCS' // Football (NCAA)
+  | 'FCS' // Football (NCAA - alias for CFB)
   | 'LPGA' // Golf
   | 'PGA' // Golf
   | 'NHL' // Hockey
@@ -41,6 +42,7 @@ export const leagueSportMap: Record<League, Sport> = {
   MLB: 'Baseball',
   WNBA: 'Basketball',
   CBK: 'Basketball',
+  CBB: 'Basketball',
   NBA: 'Basketball',
   CFL: 'Football',
   CFB: 'Football',
