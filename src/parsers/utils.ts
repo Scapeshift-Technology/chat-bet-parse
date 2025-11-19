@@ -81,6 +81,20 @@ interface SizeParsingConfig {
 function parseSize(sizeStr: string, rawInput: string, config: SizeParsingConfig): ParsedSize {
   const cleaned = sizeStr.trim();
 
+  // Dollar + K-notation combination: $11k, $2.5k
+  if (cleaned.startsWith('$') && cleaned.toLowerCase().endsWith('k')) {
+    const numPart = cleaned.substring(1, cleaned.length - 1);
+    const value = parseFloat(numPart);
+    if (isNaN(value) || value < 0) {
+      throw new InvalidSizeFormatError(
+        rawInput,
+        sizeStr,
+        'positive dollar amount with k like $11k or $2.5k'
+      );
+    }
+    return { value: value * 1000, format: 'k_notation' };
+  }
+
   // Dollar format: $200, $2.5
   if (cleaned.startsWith('$')) {
     const value = parseFloat(cleaned.substring(1));

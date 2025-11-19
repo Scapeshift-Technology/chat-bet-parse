@@ -167,6 +167,22 @@ export const roundRobinTestCases: RoundRobinTestCase[] = [
       { contractType: 'HandicapContestantML', price: -105, team: 'Heat' }
     ]
   },
+  {
+    description: 'YGRR with dollar+k-notation size ($11k per)',
+    input: 'YGRR 4c2 Lakers @ +120 & Warriors @ -110 & Celtics @ +105 & Nets @ +115 = $11k per',
+    expectedChatType: 'fill',
+    expectedParlaySize: 2,
+    expectedIsAtMost: false,
+    expectedRiskType: 'perSelection',
+    expectedRisk: 11000,
+    expectedUseFair: true,
+    expectedLegs: [
+      { contractType: 'HandicapContestantML', price: 120, team: 'Lakers' },
+      { contractType: 'HandicapContestantML', price: -110, team: 'Warriors' },
+      { contractType: 'HandicapContestantML', price: 105, team: 'Celtics' },
+      { contractType: 'HandicapContestantML', price: 115, team: 'Nets' }
+    ]
+  },
 
   // ==============================================================================
   // ROUND ROBIN WITH OPTIONAL FLAGS

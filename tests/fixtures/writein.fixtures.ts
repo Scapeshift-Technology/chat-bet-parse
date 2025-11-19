@@ -98,6 +98,16 @@ export const writeinTestCases: TestCase[] = [
     expectedDescription: 'Bitcoin to reach 100k by end of year',
   },
   {
+    description: 'YG Writein with dollar+k-notation ($11k)',
+    input: 'YG writein 11/05/2024 Bitcoin to reach 100k by end of year @ +200 = $11k',
+    expectedChatType: 'fill',
+    expectedContractType: 'Writein',
+    expectedPrice: 200,
+    expectedSize: 11000,
+    expectedEventDate: new Date(2024, 10, 5),
+    expectedDescription: 'Bitcoin to reach 100k by end of year',
+  },
+  {
     description: 'YG Writein with MM-DD format and default price',
     input: 'YG writein 12-25 Christmas Day snow in NYC = 1.5',
     expectedChatType: 'fill',

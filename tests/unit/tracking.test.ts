@@ -54,6 +54,11 @@ function validateContractLegSpecMapping(testCase: TestCase) {
     expect(contractSpec.League).toBe(testCase.expectedLeague);
   }
 
+  // Sport mapping
+  if (testCase.expectedSport !== undefined) {
+    expect(contractSpec.Sport).toBe(testCase.expectedSport);
+  }
+
   // Period mapping
   if (testCase.expectedPeriod && testCase.expectedContractType !== 'Series' && testCase.expectedContractType !== 'Writein') {
     expect(contractSpec.PeriodTypeCode).toBe(testCase.expectedPeriod.PeriodTypeCode);

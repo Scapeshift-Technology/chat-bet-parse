@@ -164,5 +164,29 @@ export const fillSizeTestCases: TestCase[] = [
     expectedProp: 'FirstToScore',
     expectedIsYes: true,
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
+  },
+  {
+    description: 'Fill size - dollar+k-notation ($11k)',
+    input: 'YG LAA TT o3.5 @ -115 = $11k',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPointsContestant',
+    expectedPrice: -115,
+    expectedSize: 11000,
+    expectedTeam1: 'LAA',
+    expectedLine: 3.5,
+    expectedIsOver: true,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
+  },
+  {
+    description: 'Fill size - dollar+k-notation with decimal ($2.5k)',
+    input: 'YG LAA TT o3.5 @ -115 = $2.5k',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPointsContestant',
+    expectedPrice: -115,
+    expectedSize: 2500,
+    expectedTeam1: 'LAA',
+    expectedLine: 3.5,
+    expectedIsOver: true,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
   }
 ];

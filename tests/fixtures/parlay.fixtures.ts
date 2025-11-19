@@ -118,6 +118,17 @@ export const parlayTestCases: ParlayTestCase[] = [
       { contractType: 'HandicapContestantML', price: -110, team: 'Warriors' }
     ]
   },
+  {
+    description: 'YGP with dollar+k-notation size ($11k)',
+    input: 'YGP spurs o237 @ -111 & magic ml @ -114 = $11k',
+    expectedChatType: 'fill',
+    expectedRisk: 11000,
+    expectedUseFair: true,
+    expectedLegs: [
+      { contractType: 'TotalPoints', price: -111, teams: ['spurs'], line: 237, isOver: true },
+      { contractType: 'HandicapContestantML', price: -114, team: 'magic' }
+    ]
+  },
 
   // ==============================================================================
   // PARLAY WITH OPTIONAL FLAGS
