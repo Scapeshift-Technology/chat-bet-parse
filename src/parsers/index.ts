@@ -736,6 +736,7 @@ function detectContractType(contractText: string, rawInput: string): ContractTyp
   }
 
   // Props: detect specific prop types and check for over/under lines
+  // Check these BEFORE generic game totals to avoid false matches
   const propInfo = detectPropType(text);
   if (propInfo) {
     // Check if the text contains an over/under line pattern (with or without attached prices)
@@ -1107,8 +1108,8 @@ function parsePropOU(
     throw new InvalidContractTypeError(rawInput, `Invalid PropOU type: ${propText}`);
   }
 
-  // Detect contestant type
-  const contestantType = detectContestantType(contestant);
+  // Detect contestant type - use keyword-based type first, fallback to pattern detection
+  const contestantType = propInfo.contestantType || detectContestantType(contestant);
 
   return {
     Sport: finalSport,
@@ -1147,16 +1148,44 @@ function parsePropYN(
     throw new InvalidContractTypeError(rawInput, `Invalid PropYN type: ${contractText}`);
   }
 
-  // Extract the team/game info by removing the prop text from the end
-  const propPatterns = [
-    /\s+(1st team to score|first team to score|to score first|first to score)$/i,
-    /\s+(last team to score|to score last|last to score)$/i,
-  ];
+  // Extract the team/game info by removing the prop keyword from the contract text
+  // Build a list of all PropYN keywords sorted by length (longest first)
+  const propYNKeywords = [
+    'first team to score',
+    '1st team to score',
+    'to score first',
+    'first to score',
+    'last team to score',
+    'to score last',
+    'last to score',
+    'anytime td',
+    'anytime touchdown',
+    'to score a touchdown',
+    'first td',
+    'first touchdown',
+    'last td',
+    'last touchdown',
+    '2+ tds',
+    '3+ tds',
+    'to record a hit',
+    'to get a hit',
+    'to hit a home run',
+    'to hit a hr',
+    'to steal a base',
+    'to record a win',
+    'double double',
+    'to record a double double',
+    'triple double',
+    'to record a triple double',
+  ].sort((a, b) => b.length - a.length);
 
   let teamAndGameInfo = contractText;
-  for (const pattern of propPatterns) {
-    if (pattern.test(contractText)) {
-      teamAndGameInfo = contractText.replace(pattern, '').trim();
+
+  // Find and remove the prop keyword from the end
+  for (const keyword of propYNKeywords) {
+    const regex = new RegExp(`\\s+${keyword.replace(/\s+/g, '\\s+')}$`, 'i');
+    if (regex.test(contractText)) {
+      teamAndGameInfo = contractText.replace(regex, '').trim();
       break;
     }
   }
@@ -1175,8 +1204,8 @@ function parsePropYN(
     eventDate
   );
 
-  // Detect contestant type
-  const contestantType = detectContestantType(teams.team1);
+  // Detect contestant type - use keyword-based type first, fallback to pattern detection
+  const contestantType = propInfo.contestantType || detectContestantType(teams.team1);
 
   // Determine IsYes value based on prop type
   let isYes: boolean;

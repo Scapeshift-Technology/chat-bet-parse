@@ -481,43 +481,369 @@ export type PropCategory = 'PropOU' | 'PropYN';
 export interface PropTypeInfo {
   standardName: string;
   category: PropCategory;
+  contestantType?: 'Individual' | 'TeamLeague';
 }
 
 /**
- * Map of prop keywords to their standardized names and categories
- * Based on the provided prop type table
+ * Map of prop keywords to their standardized names, categories, and contestant types
+ * Based on the provided prop type table and comprehensive sports betting research
  */
 const PROP_TYPE_MAP: Record<string, PropTypeInfo> = {
-  // PropOU (Over/Under) - MUST have line
-  'passing yards': { standardName: 'PassingYards', category: 'PropOU' },
-  passingyards: { standardName: 'PassingYards', category: 'PropOU' },
-  rbi: { standardName: 'RBI', category: 'PropOU' },
-  rbis: { standardName: 'RBI', category: 'PropOU' },
-  rebounds: { standardName: 'Rebounds', category: 'PropOU' },
-  rebs: { standardName: 'Rebounds', category: 'PropOU' },
-  'receiving yards': { standardName: 'ReceivingYards', category: 'PropOU' },
-  receivingyards: { standardName: 'ReceivingYards', category: 'PropOU' },
-  ks: { standardName: 'Ks', category: 'PropOU' },
-  strikeouts: { standardName: 'Ks', category: 'PropOU' },
+  // ============================================================================
+  // BASEBALL PROPS
+  // ============================================================================
 
-  // PropYN (Yes/No) - MAY NOT have line
-  'first team to score': { standardName: 'FirstToScore', category: 'PropYN' },
-  '1st team to score': { standardName: 'FirstToScore', category: 'PropYN' },
-  'first to score': { standardName: 'FirstToScore', category: 'PropYN' },
-  'to score first': { standardName: 'FirstToScore', category: 'PropYN' },
-  'last team to score': { standardName: 'LastToScore', category: 'PropYN' },
-  'last to score': { standardName: 'LastToScore', category: 'PropYN' },
-  'to score last': { standardName: 'LastToScore', category: 'PropYN' },
+  // Baseball - Hitting (Individual)
+  hits: { standardName: 'Hits', category: 'PropOU', contestantType: 'Individual' },
+  'total bases': { standardName: 'TotalBases', category: 'PropOU', contestantType: 'Individual' },
+  singles: { standardName: 'Singles', category: 'PropOU', contestantType: 'Individual' },
+  doubles: { standardName: 'Doubles', category: 'PropOU', contestantType: 'Individual' },
+  triples: { standardName: 'Triples', category: 'PropOU', contestantType: 'Individual' },
+  'home runs': { standardName: 'HomeRuns', category: 'PropOU', contestantType: 'Individual' },
+  hrs: { standardName: 'HomeRuns', category: 'PropOU', contestantType: 'Individual' },
+  'runs scored': { standardName: 'RunsScored', category: 'PropOU', contestantType: 'Individual' },
+  // Note: "runs" is ambiguous (appears in game totals like "o0.5 runs"), so it's excluded
+  rbi: { standardName: 'RBI', category: 'PropOU', contestantType: 'Individual' },
+  rbis: { standardName: 'RBI', category: 'PropOU', contestantType: 'Individual' },
+  walks: { standardName: 'Walks', category: 'PropOU', contestantType: 'Individual' },
+  bb: { standardName: 'Walks', category: 'PropOU', contestantType: 'Individual' },
+  'stolen bases': { standardName: 'StolenBases', category: 'PropOU', contestantType: 'Individual' },
+  sb: { standardName: 'StolenBases', category: 'PropOU', contestantType: 'Individual' },
+
+  // Baseball - Pitching (Individual)
+  ks: { standardName: 'Ks', category: 'PropOU', contestantType: 'Individual' },
+  strikeouts: { standardName: 'Ks', category: 'PropOU', contestantType: 'Individual' },
+  'earned runs': { standardName: 'EarnedRuns', category: 'PropOU', contestantType: 'Individual' },
+  er: { standardName: 'EarnedRuns', category: 'PropOU', contestantType: 'Individual' },
+  'hits allowed': { standardName: 'HitsAllowed', category: 'PropOU', contestantType: 'Individual' },
+  'walks allowed': {
+    standardName: 'WalksAllowed',
+    category: 'PropOU',
+    contestantType: 'Individual',
+  },
+  'innings pitched': {
+    standardName: 'InningsPitched',
+    category: 'PropOU',
+    contestantType: 'Individual',
+  },
+  ip: { standardName: 'InningsPitched', category: 'PropOU', contestantType: 'Individual' },
+  'pitches thrown': {
+    standardName: 'PitchesThrown',
+    category: 'PropOU',
+    contestantType: 'Individual',
+  },
+  pitches: { standardName: 'PitchesThrown', category: 'PropOU', contestantType: 'Individual' },
+  'outs recorded': {
+    standardName: 'OutsRecorded',
+    category: 'PropOU',
+    contestantType: 'Individual',
+  },
+
+  // Baseball - Yes/No (Individual)
+  'to record a hit': {
+    standardName: 'ToRecordAHit',
+    category: 'PropYN',
+    contestantType: 'Individual',
+  },
+  'to get a hit': {
+    standardName: 'ToRecordAHit',
+    category: 'PropYN',
+    contestantType: 'Individual',
+  },
+  'to hit a home run': {
+    standardName: 'ToHitHomeRun',
+    category: 'PropYN',
+    contestantType: 'Individual',
+  },
+  'to hit a hr': { standardName: 'ToHitHomeRun', category: 'PropYN', contestantType: 'Individual' },
+  'to steal a base': {
+    standardName: 'ToStealBase',
+    category: 'PropYN',
+    contestantType: 'Individual',
+  },
+  'to record a win': {
+    standardName: 'ToRecordWin',
+    category: 'PropYN',
+    contestantType: 'Individual',
+  },
+
+  // ============================================================================
+  // FOOTBALL PROPS
+  // ============================================================================
+
+  // Football - Passing (Individual)
+  'passing yards': {
+    standardName: 'PassingYards',
+    category: 'PropOU',
+    contestantType: 'Individual',
+  },
+  passingyards: { standardName: 'PassingYards', category: 'PropOU', contestantType: 'Individual' },
+  'pass yards': { standardName: 'PassingYards', category: 'PropOU', contestantType: 'Individual' },
+  'pass yds': { standardName: 'PassingYards', category: 'PropOU', contestantType: 'Individual' },
+  'passing tds': { standardName: 'PassingTDs', category: 'PropOU', contestantType: 'Individual' },
+  'pass tds': { standardName: 'PassingTDs', category: 'PropOU', contestantType: 'Individual' },
+  completions: { standardName: 'Completions', category: 'PropOU', contestantType: 'Individual' },
+  'pass completions': {
+    standardName: 'Completions',
+    category: 'PropOU',
+    contestantType: 'Individual',
+  },
+  'pass attempts': {
+    standardName: 'PassAttempts',
+    category: 'PropOU',
+    contestantType: 'Individual',
+  },
+  interceptions: {
+    standardName: 'Interceptions',
+    category: 'PropOU',
+    contestantType: 'Individual',
+  },
+  ints: { standardName: 'Interceptions', category: 'PropOU', contestantType: 'Individual' },
+  'longest completion': {
+    standardName: 'LongestCompletion',
+    category: 'PropOU',
+    contestantType: 'Individual',
+  },
+
+  // Football - Rushing (Individual)
+  'rushing yards': {
+    standardName: 'RushingYards',
+    category: 'PropOU',
+    contestantType: 'Individual',
+  },
+  'rush yards': { standardName: 'RushingYards', category: 'PropOU', contestantType: 'Individual' },
+  'rush yds': { standardName: 'RushingYards', category: 'PropOU', contestantType: 'Individual' },
+  'rushing tds': { standardName: 'RushingTDs', category: 'PropOU', contestantType: 'Individual' },
+  'rush tds': { standardName: 'RushingTDs', category: 'PropOU', contestantType: 'Individual' },
+  'rush attempts': {
+    standardName: 'RushAttempts',
+    category: 'PropOU',
+    contestantType: 'Individual',
+  },
+  carries: { standardName: 'RushAttempts', category: 'PropOU', contestantType: 'Individual' },
+  'longest rush': { standardName: 'LongestRush', category: 'PropOU', contestantType: 'Individual' },
+
+  // Football - Receiving (Individual)
+  'receiving yards': {
+    standardName: 'ReceivingYards',
+    category: 'PropOU',
+    contestantType: 'Individual',
+  },
+  receivingyards: {
+    standardName: 'ReceivingYards',
+    category: 'PropOU',
+    contestantType: 'Individual',
+  },
+  'rec yards': { standardName: 'ReceivingYards', category: 'PropOU', contestantType: 'Individual' },
+  'rec yds': { standardName: 'ReceivingYards', category: 'PropOU', contestantType: 'Individual' },
+  'receiving tds': {
+    standardName: 'ReceivingTDs',
+    category: 'PropOU',
+    contestantType: 'Individual',
+  },
+  'rec tds': { standardName: 'ReceivingTDs', category: 'PropOU', contestantType: 'Individual' },
+  receptions: { standardName: 'Receptions', category: 'PropOU', contestantType: 'Individual' },
+  catches: { standardName: 'Receptions', category: 'PropOU', contestantType: 'Individual' },
+  'longest reception': {
+    standardName: 'LongestReception',
+    category: 'PropOU',
+    contestantType: 'Individual',
+  },
+
+  // Football - Defense/Special Teams (Individual)
+  tackles: { standardName: 'Tackles', category: 'PropOU', contestantType: 'Individual' },
+  sacks: { standardName: 'Sacks', category: 'PropOU', contestantType: 'Individual' },
+  'tackles and assists': {
+    standardName: 'TacklesAndAssists',
+    category: 'PropOU',
+    contestantType: 'Individual',
+  },
+  'field goals made': {
+    standardName: 'FieldGoalsMade',
+    category: 'PropOU',
+    contestantType: 'Individual',
+  },
+  'fgs made': { standardName: 'FieldGoalsMade', category: 'PropOU', contestantType: 'Individual' },
+  'extra points': { standardName: 'ExtraPoints', category: 'PropOU', contestantType: 'Individual' },
+  xp: { standardName: 'ExtraPoints', category: 'PropOU', contestantType: 'Individual' },
+  'kicking points': {
+    standardName: 'KickingPoints',
+    category: 'PropOU',
+    contestantType: 'Individual',
+  },
+
+  // Football - Yes/No (Individual)
+  'anytime td': { standardName: 'AnytimeTD', category: 'PropYN', contestantType: 'Individual' },
+  'anytime touchdown': {
+    standardName: 'AnytimeTD',
+    category: 'PropYN',
+    contestantType: 'Individual',
+  },
+  'to score a touchdown': {
+    standardName: 'AnytimeTD',
+    category: 'PropYN',
+    contestantType: 'Individual',
+  },
+  'first td': { standardName: 'FirstTD', category: 'PropYN', contestantType: 'Individual' },
+  'first touchdown': { standardName: 'FirstTD', category: 'PropYN', contestantType: 'Individual' },
+  'last td': { standardName: 'LastTD', category: 'PropYN', contestantType: 'Individual' },
+  'last touchdown': { standardName: 'LastTD', category: 'PropYN', contestantType: 'Individual' },
+  '2+ tds': { standardName: 'TwoOrMoreTDs', category: 'PropYN', contestantType: 'Individual' },
+  '3+ tds': { standardName: 'ThreeOrMoreTDs', category: 'PropYN', contestantType: 'Individual' },
+
+  // Football - Team Stats (TeamLeague)
+  'team passing yards': {
+    standardName: 'TeamPassingYards',
+    category: 'PropOU',
+    contestantType: 'TeamLeague',
+  },
+  'team rushing yards': {
+    standardName: 'TeamRushingYards',
+    category: 'PropOU',
+    contestantType: 'TeamLeague',
+  },
+  'team sacks': { standardName: 'TeamSacks', category: 'PropOU', contestantType: 'TeamLeague' },
+
+  // ============================================================================
+  // BASKETBALL PROPS
+  // ============================================================================
+
+  // Basketball - Scoring (Individual)
+  points: { standardName: 'Points', category: 'PropOU', contestantType: 'Individual' },
+  pts: { standardName: 'Points', category: 'PropOU', contestantType: 'Individual' },
+
+  // Basketball - Rebounding (Individual)
+  rebounds: { standardName: 'Rebounds', category: 'PropOU', contestantType: 'Individual' },
+  rebs: { standardName: 'Rebounds', category: 'PropOU', contestantType: 'Individual' },
+  'total rebounds': { standardName: 'Rebounds', category: 'PropOU', contestantType: 'Individual' },
+
+  // Basketball - Assists (Individual)
+  assists: { standardName: 'Assists', category: 'PropOU', contestantType: 'Individual' },
+  ast: { standardName: 'Assists', category: 'PropOU', contestantType: 'Individual' },
+  asts: { standardName: 'Assists', category: 'PropOU', contestantType: 'Individual' },
+
+  // Basketball - Defense (Individual)
+  steals: { standardName: 'Steals', category: 'PropOU', contestantType: 'Individual' },
+  stls: { standardName: 'Steals', category: 'PropOU', contestantType: 'Individual' },
+  blocks: { standardName: 'Blocks', category: 'PropOU', contestantType: 'Individual' },
+  blks: { standardName: 'Blocks', category: 'PropOU', contestantType: 'Individual' },
+  'steals and blocks': {
+    standardName: 'StealsAndBlocks',
+    category: 'PropOU',
+    contestantType: 'Individual',
+  },
+
+  // Basketball - Other (Individual)
+  turnovers: { standardName: 'Turnovers', category: 'PropOU', contestantType: 'Individual' },
+  tos: { standardName: 'Turnovers', category: 'PropOU', contestantType: 'Individual' },
+  'three pointers made': {
+    standardName: 'ThreePointersMade',
+    category: 'PropOU',
+    contestantType: 'Individual',
+  },
+  threes: { standardName: 'ThreePointersMade', category: 'PropOU', contestantType: 'Individual' },
+  '3pm': { standardName: 'ThreePointersMade', category: 'PropOU', contestantType: 'Individual' },
+  '3-pointers': {
+    standardName: 'ThreePointersMade',
+    category: 'PropOU',
+    contestantType: 'Individual',
+  },
+  'free throws made': {
+    standardName: 'FreeThrowsMade',
+    category: 'PropOU',
+    contestantType: 'Individual',
+  },
+  ftm: { standardName: 'FreeThrowsMade', category: 'PropOU', contestantType: 'Individual' },
+
+  // Basketball - Combo Stats (Individual)
+  'points rebounds assists': {
+    standardName: 'PRA',
+    category: 'PropOU',
+    contestantType: 'Individual',
+  },
+  pra: { standardName: 'PRA', category: 'PropOU', contestantType: 'Individual' },
+  'points and rebounds': { standardName: 'PR', category: 'PropOU', contestantType: 'Individual' },
+  'pts+rebs': { standardName: 'PR', category: 'PropOU', contestantType: 'Individual' },
+  'points and assists': { standardName: 'PA', category: 'PropOU', contestantType: 'Individual' },
+  'pts+ast': { standardName: 'PA', category: 'PropOU', contestantType: 'Individual' },
+  'rebounds and assists': { standardName: 'RA', category: 'PropOU', contestantType: 'Individual' },
+  'rebs+ast': { standardName: 'RA', category: 'PropOU', contestantType: 'Individual' },
+
+  // Basketball - Yes/No (Individual)
+  'double double': {
+    standardName: 'DoubleDouble',
+    category: 'PropYN',
+    contestantType: 'Individual',
+  },
+  'to record a double double': {
+    standardName: 'DoubleDouble',
+    category: 'PropYN',
+    contestantType: 'Individual',
+  },
+  'triple double': {
+    standardName: 'TripleDouble',
+    category: 'PropYN',
+    contestantType: 'Individual',
+  },
+  'to record a triple double': {
+    standardName: 'TripleDouble',
+    category: 'PropYN',
+    contestantType: 'Individual',
+  },
+
+  // ============================================================================
+  // CROSS-SPORT TEAM PROPS (TeamLeague)
+  // ============================================================================
+
+  'first team to score': {
+    standardName: 'FirstToScore',
+    category: 'PropYN',
+    contestantType: 'TeamLeague',
+  },
+  '1st team to score': {
+    standardName: 'FirstToScore',
+    category: 'PropYN',
+    contestantType: 'TeamLeague',
+  },
+  'first to score': {
+    standardName: 'FirstToScore',
+    category: 'PropYN',
+    contestantType: 'TeamLeague',
+  },
+  'to score first': {
+    standardName: 'FirstToScore',
+    category: 'PropYN',
+    contestantType: 'TeamLeague',
+  },
+  'last team to score': {
+    standardName: 'LastToScore',
+    category: 'PropYN',
+    contestantType: 'TeamLeague',
+  },
+  'last to score': {
+    standardName: 'LastToScore',
+    category: 'PropYN',
+    contestantType: 'TeamLeague',
+  },
+  'to score last': {
+    standardName: 'LastToScore',
+    category: 'PropYN',
+    contestantType: 'TeamLeague',
+  },
 };
 
 /**
  * Detect prop type from text and return standardized info
+ * Note: Matches longest phrases first to avoid partial matches
  */
 export function detectPropType(propText: string): PropTypeInfo | null {
   const cleanText = propText.toLowerCase().trim();
 
-  // Check for exact matches first
-  for (const [keyword, info] of Object.entries(PROP_TYPE_MAP)) {
+  // Sort keywords by length (longest first) to match "team passing yards" before "passing yards"
+  const sortedKeywords = Object.entries(PROP_TYPE_MAP).sort(([a], [b]) => b.length - a.length);
+
+  // Check for exact matches, longest first
+  for (const [keyword, info] of sortedKeywords) {
     // Use word boundaries to ensure we match the complete phrase, not just substrings
     // This prevents "1st inning" from matching "1st team to score"
     const regex = new RegExp(`\\b${keyword.replace(/\s+/g, '\\s+')}\\b`);

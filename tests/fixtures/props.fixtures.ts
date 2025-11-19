@@ -60,7 +60,20 @@ export const propsYNTestCases: TestCase[] = [
     expectedTeam1: 'CIN',
     expectedProp: 'LastToScore',
     expectedIsYes: true,
-    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+    expectedContestantType: 'TeamLeague'
+  },
+  {
+    description: 'IW Player anytime touchdown (football)',
+    input: 'IW Hill anytime td @ +120',
+    expectedChatType: 'order',
+    expectedContractType: 'PropYN',
+    expectedPrice: 120,
+    expectedTeam1: 'Hill',
+    expectedProp: 'AnytimeTD',
+    expectedIsYes: true,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+    expectedContestantType: 'Individual'
   },
 
   // Fills (YG)
@@ -89,7 +102,32 @@ export const propsOUTestCases: TestCase[] = [
     expectedTeam1: 'Player456',
     expectedLine: 12.5,
     expectedIsOver: false,
-    expectedProp: 'Rebounds'
+    expectedProp: 'Rebounds',
+    expectedContestantType: 'Individual'
+  },
+  {
+    description: 'IW Player points over (basketball)',
+    input: 'IW LeBron points o25.5 @ -115',
+    expectedChatType: 'order',
+    expectedContractType: 'PropOU',
+    expectedPrice: -115,
+    expectedTeam1: 'LeBron',
+    expectedLine: 25.5,
+    expectedIsOver: true,
+    expectedProp: 'Points',
+    expectedContestantType: 'Individual'
+  },
+  {
+    description: 'IW Team passing yards over (football)',
+    input: 'IW Chiefs team passing yards o275.5 @ -110',
+    expectedChatType: 'order',
+    expectedContractType: 'PropOU',
+    expectedPrice: -110,
+    expectedTeam1: 'Chiefs',
+    expectedLine: 275.5,
+    expectedIsOver: true,
+    expectedProp: 'TeamPassingYards',
+    expectedContestantType: 'TeamLeague'
   },
 
   // Fills (YG)
