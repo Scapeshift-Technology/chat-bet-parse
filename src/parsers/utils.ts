@@ -1119,8 +1119,11 @@ export function parseWriteinDate(
   // Try parsing various date formats
   let parsedDate: Date | null = null;
   const refDate = referenceDate || new Date();
-  const currentYear = refDate.getFullYear();
-  const today = refDate;
+  const currentYear = refDate.getUTCFullYear();
+  // Normalize reference date to midnight UTC for date-only comparison
+  const today = new Date(
+    Date.UTC(refDate.getUTCFullYear(), refDate.getUTCMonth(), refDate.getUTCDate())
+  );
 
   // Format patterns to try
   const patterns = [
@@ -1165,8 +1168,8 @@ export function parseWriteinDate(
         month = parseInt(match[1]);
         day = parseInt(match[2]);
 
-        // Create a date with current year first
-        const dateThisYear = new Date(currentYear, month - 1, day);
+        // Create a date with current year first (using UTC to be timezone-agnostic)
+        const dateThisYear = new Date(Date.UTC(currentYear, month - 1, day));
 
         if (dateThisYear >= today) {
           // If date is today or in the future, use current year
@@ -1187,14 +1190,15 @@ export function parseWriteinDate(
         );
       }
 
-      // Create and validate the date
-      const testDate = new Date(year, month - 1, day);
+      // Create and validate the date (using UTC to be timezone-agnostic)
+      const testDate = new Date(Date.UTC(year, month - 1, day));
 
       // Check if the date is valid (handles invalid dates like Feb 30)
+      // Use UTC methods for validation to match how we created the date
       if (
-        testDate.getFullYear() === year &&
-        testDate.getMonth() === month - 1 &&
-        testDate.getDate() === day
+        testDate.getUTCFullYear() === year &&
+        testDate.getUTCMonth() === month - 1 &&
+        testDate.getUTCDate() === day
       ) {
         parsedDate = testDate;
         break;

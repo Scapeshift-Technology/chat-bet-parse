@@ -175,7 +175,7 @@ export const gameTotalsTestCases: TestCase[] = [
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
     expectedSport: 'Basketball',
     expectedLeague: 'NBA',
-    expectedEventDate: new Date('2025-10-26T04:00:00.000Z')
+    expectedEventDate: new Date('2025-10-26T00:00:00.000Z')
   },
   // NBA game total with full date (10/26/2025) with referenceDate
   {
@@ -192,7 +192,7 @@ export const gameTotalsTestCases: TestCase[] = [
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
     expectedSport: 'Basketball',
     expectedLeague: 'NBA',
-    expectedEventDate: new Date('2025-10-26T04:00:00.000Z')
+    expectedEventDate: new Date('2025-10-26T00:00:00.000Z')
   },
   // NBA game total with partial date (10/26) with referenceDate
   {
@@ -209,6 +209,6 @@ export const gameTotalsTestCases: TestCase[] = [
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
     expectedSport: 'Basketball',
     expectedLeague: 'NBA',
-    expectedEventDate: new Date('2025-10-26T04:00:00.000Z')
+    expectedEventDate: new Date('2025-10-26T00:00:00.000Z')
   }
 ];

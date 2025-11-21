@@ -154,9 +154,10 @@ describe('Grading Mappers (DEPRECATED - Backward Compatibility)', () => {
         expect(Array.isArray(params)).toBe(false);
         const p = params as GradingSqlParameters;
         expect(p.ContractType).toBe('Writein');
-        expect(p.EventDate?.getFullYear()).toBe(2024);
-        expect(p.EventDate?.getMonth()).toBe(11); // December is month 11
-        expect(p.EventDate?.getDate()).toBe(25);
+        // Use UTC methods since dates are now created at midnight UTC (timezone-agnostic)
+        expect(p.EventDate?.getUTCFullYear()).toBe(2024);
+        expect(p.EventDate?.getUTCMonth()).toBe(11); // December is month 11
+        expect(p.EventDate?.getUTCDate()).toBe(25);
         expect(p.WriteInDescription).toBe('Christmas Event');
       });
     });

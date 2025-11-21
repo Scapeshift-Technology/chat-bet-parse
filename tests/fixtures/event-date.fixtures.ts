@@ -19,7 +19,7 @@ export const eventDateTestCases: TestCase[] = [
     expectedTeam1: 'Lakers',
     expectedSport: 'Basketball',
     expectedLeague: 'NBA',
-    expectedEventDate: new Date(2025, 6, 1), // July 1, 2025
+    expectedEventDate: new Date(Date.UTC(2025, 6, 1)), // July 1, 2025
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
     expectedTiesLose: false
   },
@@ -33,7 +33,7 @@ export const eventDateTestCases: TestCase[] = [
     expectedTeam1: 'Lakers',
     expectedSport: 'Basketball',
     expectedLeague: 'NBA',
-    expectedEventDate: new Date(2025, 6, 1),
+    expectedEventDate: new Date(Date.UTC(2025, 6, 1)),
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
     expectedTiesLose: false
   },
@@ -45,7 +45,7 @@ export const eventDateTestCases: TestCase[] = [
     expectedPrice: 120,
     expectedSize: 2500,
     expectedTeam1: 'Lakers',
-    expectedEventDate: new Date(2025, 4, 14), // May 14, 2025
+    expectedEventDate: new Date(Date.UTC(2025, 4, 14)), // May 14, 2025
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
     expectedTiesLose: false
   },
@@ -61,7 +61,7 @@ export const eventDateTestCases: TestCase[] = [
     expectedLine: 8.5,
     expectedIsOver: true,
     expectedSport: 'Baseball',
-    expectedEventDate: new Date(2025, 6, 1),
+    expectedEventDate: new Date(Date.UTC(2025, 6, 1)),
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
   },
   {
@@ -73,7 +73,7 @@ export const eventDateTestCases: TestCase[] = [
     expectedTeam1: 'Cardinals',
     expectedSport: 'Baseball',
     expectedLeague: 'MLB',
-    expectedEventDate: new Date(2025, 4, 14),
+    expectedEventDate: new Date(Date.UTC(2025, 4, 14)),
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
     expectedTiesLose: false
   },
@@ -89,7 +89,7 @@ export const eventDateTestCases: TestCase[] = [
     expectedPrice: 120,
     expectedSize: 2500,
     expectedTeam1: 'Lakers',
-    expectedEventDate: new Date(2025, 6, 1),
+    expectedEventDate: new Date(Date.UTC(2025, 6, 1)),
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
     expectedTiesLose: false
   },
@@ -103,7 +103,7 @@ export const eventDateTestCases: TestCase[] = [
     expectedTeam1: 'Cardinals',
     expectedSport: 'Baseball',
     expectedLeague: 'MLB',
-    expectedEventDate: new Date(2025, 4, 14),
+    expectedEventDate: new Date(Date.UTC(2025, 4, 14)),
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
     expectedTiesLose: false
   },
@@ -117,7 +117,7 @@ export const eventDateTestCases: TestCase[] = [
     expectedTeam1: 'Lakers',
     expectedSport: 'Basketball',
     expectedLeague: 'NBA',
-    expectedEventDate: new Date(2025, 6, 1),
+    expectedEventDate: new Date(Date.UTC(2025, 6, 1)),
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
     expectedTiesLose: false
   },
@@ -129,7 +129,7 @@ export const eventDateTestCases: TestCase[] = [
     expectedPrice: 120,
     expectedSize: 2500,
     expectedTeam1: 'Lakers',
-    expectedEventDate: new Date(2025, 4, 14),
+    expectedEventDate: new Date(Date.UTC(2025, 4, 14)),
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
     expectedTiesLose: false
   },
@@ -143,7 +143,7 @@ export const eventDateTestCases: TestCase[] = [
     expectedTeam2: 'Cubs',
     expectedLine: 8.5,
     expectedIsOver: true,
-    expectedEventDate: new Date(2025, 4, 14), // Smart year inference - May 14 is in past relative to reference date
+    expectedEventDate: new Date(Date.UTC(2025, 4, 14)), // Smart year inference - May 14 is in past relative to reference date
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
     referenceDate: new Date(2024, 11, 1) // December 1, 2024
   },
@@ -159,7 +159,7 @@ export const eventDateTestCases: TestCase[] = [
     expectedPrice: 120,
     expectedSize: 2500,
     expectedTeam1: 'Lakers',
-    expectedEventDate: new Date(2025, 6, 1),
+    expectedEventDate: new Date(Date.UTC(2025, 6, 1)),
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
     expectedTiesLose: false
   },
@@ -171,7 +171,7 @@ export const eventDateTestCases: TestCase[] = [
     expectedPrice: 120,
     expectedSize: 2500,
     expectedTeam1: 'Lakers',
-    expectedEventDate: new Date(2025, 6, 1),
+    expectedEventDate: new Date(Date.UTC(2025, 6, 1)),
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
     expectedTiesLose: false
   },
@@ -183,7 +183,7 @@ export const eventDateTestCases: TestCase[] = [
     expectedPrice: 120,
     expectedSize: 2500,
     expectedTeam1: 'Lakers',
-    expectedEventDate: new Date(2025, 6, 1),
+    expectedEventDate: new Date(Date.UTC(2025, 6, 1)),
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
     expectedTiesLose: false
   },
@@ -195,7 +195,7 @@ export const eventDateTestCases: TestCase[] = [
     expectedPrice: 120,
     expectedSize: 2500,
     expectedTeam1: 'Lakers',
-    expectedEventDate: new Date(2025, 6, 1),
+    expectedEventDate: new Date(Date.UTC(2025, 6, 1)),
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
     expectedTiesLose: false
   },
@@ -207,7 +207,7 @@ export const eventDateTestCases: TestCase[] = [
     expectedPrice: 120,
     expectedSize: 2500,
     expectedTeam1: 'Lakers',
-    expectedEventDate: new Date(2025, 6, 1), // Smart year inference - July 1 is in past relative to reference date
+    expectedEventDate: new Date(Date.UTC(2025, 6, 1)), // Smart year inference - July 1 is in past relative to reference date
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
     expectedTiesLose: false,
     referenceDate: new Date(2024, 11, 1) // December 1, 2024
@@ -220,7 +220,7 @@ export const eventDateTestCases: TestCase[] = [
     expectedPrice: 120,
     expectedSize: 2500,
     expectedTeam1: 'Lakers',
-    expectedEventDate: new Date(2025, 6, 1), // Smart year inference - July 1 is in past relative to reference date
+    expectedEventDate: new Date(Date.UTC(2025, 6, 1)), // Smart year inference - July 1 is in past relative to reference date
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
     expectedTiesLose: false,
     referenceDate: new Date(2024, 11, 1) // December 1, 2024
@@ -249,7 +249,7 @@ export const eventDateTestCases: TestCase[] = [
     expectedPrice: 120,
     expectedSize: 1000,
     expectedTeam1: 'Lakers',
-    expectedEventDate: new Date(2025, 4, 14), // Smart year inference - May 14 is in past relative to reference date
+    expectedEventDate: new Date(Date.UTC(2025, 4, 14)), // Smart year inference - May 14 is in past relative to reference date
     expectedFreeBet: true,
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
     expectedTiesLose: false,
@@ -276,7 +276,7 @@ export const eventDateTestCases: TestCase[] = [
     expectedTeam1: 'Cardinals',
     expectedSport: 'Baseball',
     expectedLeague: 'MLB',
-    expectedEventDate: new Date(2025, 4, 14),
+    expectedEventDate: new Date(Date.UTC(2025, 4, 14)),
     expectedFreeBet: true,
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
     expectedTiesLose: false

@@ -238,8 +238,8 @@ export const parlayTestCases: ParlayTestCase[] = [
     expectedRisk: 100,
     expectedUseFair: true,
     expectedLegs: [
-      { contractType: 'HandicapContestantML', price: 120, team: 'Lakers', eventDate: new Date(2025, 4, 14) },
-      { contractType: 'HandicapContestantML', price: -110, team: 'Warriors', eventDate: new Date(2025, 4, 15) }
+      { contractType: 'HandicapContestantML', price: 120, team: 'Lakers', eventDate: new Date(Date.UTC(2025, 4, 14)) },
+      { contractType: 'HandicapContestantML', price: -110, team: 'Warriors', eventDate: new Date(Date.UTC(2025, 4, 15)) }
     ],
     referenceDate: new Date(2024, 11, 1)
   },
@@ -250,8 +250,8 @@ export const parlayTestCases: ParlayTestCase[] = [
     expectedRisk: 100,
     expectedUseFair: true,
     expectedLegs: [
-      { contractType: 'HandicapContestantML', price: 120, team: 'Lakers', eventDate: new Date(2025, 4, 14) },
-      { contractType: 'HandicapContestantML', price: -110, team: 'Warriors', eventDate: new Date(2025, 4, 15) }
+      { contractType: 'HandicapContestantML', price: 120, team: 'Lakers', eventDate: new Date(Date.UTC(2025, 4, 14)) },
+      { contractType: 'HandicapContestantML', price: -110, team: 'Warriors', eventDate: new Date(Date.UTC(2025, 4, 15)) }
     ],
     referenceDate: new Date(2024, 11, 1)
   },
@@ -279,14 +279,14 @@ export const parlayTestCases: ParlayTestCase[] = [
         team: 'Cardinals',
         league: 'MLB',
         sport: 'Baseball',
-        eventDate: new Date(2025, 4, 14)
+        eventDate: new Date(Date.UTC(2025, 4, 14))
       },
       {
         contractType: 'HandicapContestantML',
         price: 120,
         team: 'Lakers',
         rotationNumber: 701,
-        eventDate: new Date(2025, 4, 15)
+        eventDate: new Date(Date.UTC(2025, 4, 15))
       }
     ],
     referenceDate: new Date(2024, 11, 1)
@@ -393,20 +393,20 @@ date:5/15 701 Lakers @ +120
         team: 'Cardinals',
         league: 'MLB',
         sport: 'Baseball',
-        eventDate: new Date(2025, 4, 14)
+        eventDate: new Date(Date.UTC(2025, 4, 14))
       },
       {
         contractType: 'HandicapContestantML',
         price: 120,
         team: 'Lakers',
         rotationNumber: 701,
-        eventDate: new Date(2025, 4, 15)
+        eventDate: new Date(Date.UTC(2025, 4, 15))
       },
       {
         contractType: 'HandicapContestantML',
         price: -110,
         team: 'Warriors',
-        eventDate: new Date(2025, 4, 16)
+        eventDate: new Date(Date.UTC(2025, 4, 16))
       }
     ],
     referenceDate: new Date(2024, 11, 1)
@@ -426,7 +426,7 @@ date:5/15 701 Lakers @ +120
         contractType: 'Writein',
         price: 200,
         description: 'Christmas Day game goes to overtime',
-        writeinEventDate: new Date(2024, 11, 25)
+        writeinEventDate: new Date(Date.UTC(2024, 11, 25))
       },
       { contractType: 'HandicapContestantML', price: 120, team: 'Lakers' }
     ]
@@ -442,13 +442,13 @@ date:5/15 701 Lakers @ +120
         contractType: 'Writein',
         price: 150,
         description: 'Event A happens',
-        writeinEventDate: new Date(2024, 11, 25)
+        writeinEventDate: new Date(Date.UTC(2024, 11, 25))
       },
       {
         contractType: 'Writein',
         price: 200,
         description: 'Event B happens',
-        writeinEventDate: new Date(2024, 11, 26)
+        writeinEventDate: new Date(Date.UTC(2024, 11, 26))
       },
       { contractType: 'HandicapContestantML', price: -110, team: 'Warriors' }
     ]
@@ -463,7 +463,7 @@ date:5/15 701 Lakers @ +120
         contractType: 'Writein',
         price: 150,
         description: 'Trump wins presidency',
-        writeinEventDate: new Date(2024, 11, 25)
+        writeinEventDate: new Date(Date.UTC(2024, 11, 25))
       },
       { contractType: 'HandicapContestantML', price: -110, team: 'Warriors' }
     ]
@@ -479,7 +479,7 @@ date:5/15 701 Lakers @ +120
         contractType: 'Writein',
         price: 300,
         description: 'New Year special event',
-        writeinEventDate: new Date(2025, 0, 1)
+        writeinEventDate: new Date(Date.UTC(2025, 0, 1))
       },
       { contractType: 'HandicapContestantML', price: 120, team: 'Lakers' },
       { contractType: 'HandicapContestantML', price: -110, team: 'Warriors' },
@@ -501,7 +501,7 @@ Warriors @ -110
         contractType: 'Writein',
         price: 200,
         description: 'Special event occurs',
-        writeinEventDate: new Date(2024, 11, 25)
+        writeinEventDate: new Date(Date.UTC(2024, 11, 25))
       },
       { contractType: 'HandicapContestantML', price: 120, team: 'Lakers' },
       { contractType: 'HandicapContestantML', price: -110, team: 'Warriors' }

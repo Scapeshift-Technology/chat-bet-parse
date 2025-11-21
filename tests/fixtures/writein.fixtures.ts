@@ -13,7 +13,7 @@ export const writeinTestCases: TestCase[] = [
     expectedChatType: 'order',
     expectedContractType: 'Writein',
     expectedPrice: 150,
-    expectedEventDate: new Date(2024, 10, 5),
+    expectedEventDate: new Date(Date.UTC(2024, 10, 5)),
     expectedDescription: 'Trump to win presidency',
   },
   {
@@ -23,7 +23,7 @@ export const writeinTestCases: TestCase[] = [
     expectedContractType: 'Writein',
     expectedPrice: -120,
     expectedSize: 5.0,
-    expectedEventDate: new Date(2024, 10, 5),
+    expectedEventDate: new Date(Date.UTC(2024, 10, 5)),
     expectedDescription: 'Stock market to close above 40000',
   },
   {
@@ -33,7 +33,7 @@ export const writeinTestCases: TestCase[] = [
     expectedContractType: 'Writein',
     expectedPrice: -120,
     expectedSize: 5,
-    expectedEventDate: new Date(2024, 10, 5),
+    expectedEventDate: new Date(Date.UTC(2024, 10, 5)),
     expectedDescription: 'Stock market to close above 40000',
   },
   
@@ -43,7 +43,7 @@ export const writeinTestCases: TestCase[] = [
     expectedChatType: 'order',
     expectedContractType: 'Writein',
     expectedPrice: 200,
-    expectedEventDate: new Date(2024, 10, 5),
+    expectedEventDate: new Date(Date.UTC(2024, 10, 5)),
     expectedDescription: 'Bitcoin to reach 100k by end of year',
   },
   {
@@ -53,7 +53,7 @@ export const writeinTestCases: TestCase[] = [
     expectedContractType: 'Writein',
     expectedPrice: 300,
     expectedSize: 2.5,
-    expectedEventDate: new Date(new Date().getFullYear(), 11, 25), // Current year, December 25
+    expectedEventDate: new Date(Date.UTC(new Date().getUTCFullYear(), 11, 25)), // Current year, December 25
     expectedDescription: 'Christmas Day snow in NYC',
   },
   {
@@ -62,7 +62,7 @@ export const writeinTestCases: TestCase[] = [
     expectedChatType: 'order',
     expectedContractType: 'Writein',
     expectedPrice: 150,
-    expectedEventDate: new Date(2024, 10, 5),
+    expectedEventDate: new Date(Date.UTC(2024, 10, 5)),
     expectedDescription: 'Trump to win presidency',
   },
 
@@ -74,7 +74,7 @@ export const writeinTestCases: TestCase[] = [
     expectedContractType: 'Writein',
     expectedPrice: 150,
     expectedSize: 3000, // 3.0 as decimal thousands for fills
-    expectedEventDate: new Date(2024, 10, 5),
+    expectedEventDate: new Date(Date.UTC(2024, 10, 5)),
     expectedDescription: 'Trump to win presidency',
   },
   {
@@ -84,7 +84,7 @@ export const writeinTestCases: TestCase[] = [
     expectedContractType: 'Writein',
     expectedPrice: -120,
     expectedSize: 2000,
-    expectedEventDate: new Date(2024, 10, 5),
+    expectedEventDate: new Date(Date.UTC(2024, 10, 5)),
     expectedDescription: 'Stock market to close above 40000',
   },
   {
@@ -94,7 +94,7 @@ export const writeinTestCases: TestCase[] = [
     expectedContractType: 'Writein',
     expectedPrice: 200,
     expectedSize: 500, // Dollar amounts are literal
-    expectedEventDate: new Date(2024, 10, 5),
+    expectedEventDate: new Date(Date.UTC(2024, 10, 5)),
     expectedDescription: 'Bitcoin to reach 100k by end of year',
   },
   {
@@ -104,7 +104,7 @@ export const writeinTestCases: TestCase[] = [
     expectedContractType: 'Writein',
     expectedPrice: 200,
     expectedSize: 11000,
-    expectedEventDate: new Date(2024, 10, 5),
+    expectedEventDate: new Date(Date.UTC(2024, 10, 5)),
     expectedDescription: 'Bitcoin to reach 100k by end of year',
   },
   {
@@ -114,7 +114,7 @@ export const writeinTestCases: TestCase[] = [
     expectedContractType: 'Writein',
     expectedPrice: -110, // Default price
     expectedSize: 1500, // 1.5 as decimal thousands
-    expectedEventDate: new Date(new Date().getFullYear(), 11, 25),
+    expectedEventDate: new Date(Date.UTC(new Date().getUTCFullYear(), 11, 25)),
     expectedDescription: 'Christmas Day snow in NYC',
   },
   {
@@ -124,7 +124,7 @@ export const writeinTestCases: TestCase[] = [
     expectedContractType: 'Writein',
     expectedPrice: 150,
     expectedSize: 3000,
-    expectedEventDate: new Date(2024, 10, 5),
+    expectedEventDate: new Date(Date.UTC(2024, 10, 5)),
     expectedDescription: 'Trump to win presidency',
   },
 
@@ -138,7 +138,7 @@ export const writeinTestCases: TestCase[] = [
     expectedContractType: 'Writein',
     expectedPrice: 150,
     expectedSize: 1000,
-    expectedEventDate: new Date(2025, 4, 14),
+    expectedEventDate: new Date(Date.UTC(2025, 4, 14)),
     expectedDescription: 'Cardinals win in extra innings',
     expectedSport: 'Baseball',
     expectedLeague: 'MLB'
@@ -150,7 +150,7 @@ export const writeinTestCases: TestCase[] = [
     expectedContractType: 'Writein',
     expectedPrice: 150,
     expectedSize: 1000,
-    expectedEventDate: new Date(2025, 4, 14),
+    expectedEventDate: new Date(Date.UTC(2025, 4, 14)),
     expectedDescription: 'Cardinals win in extra innings',
     expectedSport: 'Baseball',
     expectedLeague: 'MLB'
@@ -161,7 +161,7 @@ export const writeinTestCases: TestCase[] = [
     expectedChatType: 'order',
     expectedContractType: 'Writein',
     expectedPrice: 200,
-    expectedEventDate: new Date(new Date().getFullYear(), 11, 25),
+    expectedEventDate: new Date(Date.UTC(new Date().getUTCFullYear(), 11, 25)),
     expectedDescription: 'Lakers score 120+ points',
     expectedSport: 'Basketball',
     expectedLeague: 'NBA'
@@ -172,7 +172,7 @@ export const writeinTestCases: TestCase[] = [
     expectedChatType: 'order',
     expectedContractType: 'Writein',
     expectedPrice: 200,
-    expectedEventDate: new Date(new Date().getFullYear(), 11, 25),
+    expectedEventDate: new Date(Date.UTC(new Date().getUTCFullYear(), 11, 25)),
     expectedDescription: 'Lakers score 120+ points',
     expectedSport: 'Basketball',
     expectedLeague: 'NBA'
@@ -188,7 +188,7 @@ export const writeinTestCases: TestCase[] = [
     expectedContractType: 'Writein',
     expectedPrice: 150,
     expectedSize: 1000,
-    expectedEventDate: new Date(2025, 4, 14),
+    expectedEventDate: new Date(Date.UTC(2025, 4, 14)),
     expectedDescription: 'Cardinals win',
     expectedSport: 'Baseball',
     expectedLeague: 'MLB'
@@ -200,7 +200,7 @@ export const writeinTestCases: TestCase[] = [
     expectedContractType: 'Writein',
     expectedPrice: 150,
     expectedSize: 1000,
-    expectedEventDate: new Date(2025, 4, 14),
+    expectedEventDate: new Date(Date.UTC(2025, 4, 14)),
     expectedDescription: 'Cardinals win',
     expectedSport: 'Baseball',
     expectedLeague: 'MLB'
@@ -212,7 +212,7 @@ export const writeinTestCases: TestCase[] = [
     expectedContractType: 'Writein',
     expectedPrice: 150,
     expectedSize: 1000,
-    expectedEventDate: new Date(2025, 4, 14),
+    expectedEventDate: new Date(Date.UTC(2025, 4, 14)),
     expectedDescription: 'Cardinals win',
     expectedSport: 'Baseball',
     expectedLeague: 'MLB'
@@ -228,7 +228,7 @@ export const writeinTestCases: TestCase[] = [
     expectedContractType: 'Writein',
     expectedPrice: 150,
     expectedSize: 1000,
-    expectedEventDate: new Date(2025, 4, 14),
+    expectedEventDate: new Date(Date.UTC(2025, 4, 14)),
     expectedDescription: 'Cardinals win',
     expectedSport: 'Baseball',
     expectedLeague: 'MLB',
@@ -240,7 +240,7 @@ export const writeinTestCases: TestCase[] = [
     expectedChatType: 'order',
     expectedContractType: 'Writein',
     expectedPrice: 200,
-    expectedEventDate: new Date(new Date().getFullYear(), 11, 25),
+    expectedEventDate: new Date(Date.UTC(new Date().getUTCFullYear(), 11, 25)),
     expectedDescription: 'Lakers score 120+ points',
     expectedSport: 'Basketball',
     expectedLeague: 'NBA',

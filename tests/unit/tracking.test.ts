@@ -221,7 +221,8 @@ describe('ContractLegSpec Mapping', () => {
 
       expect(Array.isArray(result)).toBe(false);
       const contractSpec = result as ContractLegSpec;
-      expect(contractSpec.EventDate).toEqual(new Date(2024, 10, 5)); // Month is 0-indexed
+      // Use Date.UTC since dates are now timezone-agnostic (midnight UTC)
+      expect(contractSpec.EventDate).toEqual(new Date(Date.UTC(2024, 10, 5))); // Month is 0-indexed
     });
 
     test('should use contract.Match.Date when available (date from bet text)', () => {
@@ -233,8 +234,8 @@ describe('ContractLegSpec Mapping', () => {
       expect(Array.isArray(result)).toBe(false);
       const contractSpec = result as ContractLegSpec;
       // EventDate should come from the date in bet text (10/26/2025), not ExecutionDtm
-      // The parser sets Match.Date to 2025-10-26T04:00:00.000Z (4am UTC for Eastern time)
-      const expectedDate = new Date('2025-10-26T04:00:00.000Z');
+      // The parser sets Match.Date to 2025-10-26T00:00:00.000Z (midnight UTC - timezone-agnostic)
+      const expectedDate = new Date('2025-10-26T00:00:00.000Z');
       expect(contractSpec.EventDate.getFullYear()).toBe(expectedDate.getFullYear());
       expect(contractSpec.EventDate.getMonth()).toBe(expectedDate.getMonth());
       expect(contractSpec.EventDate.getDate()).toBe(expectedDate.getDate());
@@ -251,7 +252,7 @@ describe('ContractLegSpec Mapping', () => {
       expect(Array.isArray(result)).toBe(false);
       const contractSpec = result as ContractLegSpec;
       // EventDate should be 10/26/2025 (inferred from referenceDate)
-      const expectedDate = new Date('2025-10-26T04:00:00.000Z');
+      const expectedDate = new Date('2025-10-26T00:00:00.000Z');
       expect(contractSpec.EventDate.getFullYear()).toBe(expectedDate.getFullYear());
       expect(contractSpec.EventDate.getMonth()).toBe(expectedDate.getMonth());
       expect(contractSpec.EventDate.getDate()).toBe(expectedDate.getDate());
@@ -268,7 +269,7 @@ describe('ContractLegSpec Mapping', () => {
       expect(Array.isArray(result)).toBe(false);
       const contractSpec = result as ContractLegSpec;
       // EventDate should be 10/26/2025
-      const expectedDate = new Date('2025-10-26T04:00:00.000Z');
+      const expectedDate = new Date('2025-10-26T00:00:00.000Z');
       expect(contractSpec.EventDate.getFullYear()).toBe(expectedDate.getFullYear());
       expect(contractSpec.EventDate.getMonth()).toBe(expectedDate.getMonth());
       expect(contractSpec.EventDate.getDate()).toBe(expectedDate.getDate());
@@ -285,7 +286,7 @@ describe('ContractLegSpec Mapping', () => {
       expect(Array.isArray(result)).toBe(false);
       const contractSpec = result as ContractLegSpec;
       // EventDate should be 10/26/2026 (next year, since 10/26/2025 is in the past)
-      const expectedDate = new Date('2026-10-26T04:00:00.000Z');
+      const expectedDate = new Date('2026-10-26T00:00:00.000Z');
       expect(contractSpec.EventDate.getFullYear()).toBe(expectedDate.getFullYear());
       expect(contractSpec.EventDate.getMonth()).toBe(expectedDate.getMonth());
       expect(contractSpec.EventDate.getDate()).toBe(expectedDate.getDate());
@@ -340,7 +341,7 @@ describe('ContractLegSpec Mapping', () => {
       expect(Array.isArray(result)).toBe(false);
       const contractSpec = result as ContractLegSpec;
       // EventDate should be from bet text (10/26/2025), NOT from ExecutionDtm (11/15/2025)
-      const expectedDate = new Date('2025-10-26T04:00:00.000Z');
+      const expectedDate = new Date('2025-10-26T00:00:00.000Z');
       expect(contractSpec.EventDate.getFullYear()).toBe(expectedDate.getFullYear());
       expect(contractSpec.EventDate.getMonth()).toBe(expectedDate.getMonth());
       expect(contractSpec.EventDate.getDate()).toBe(expectedDate.getDate());
@@ -357,9 +358,10 @@ describe('ContractLegSpec Mapping', () => {
       // Convert to Eastern time to match the mapper's logic
       const now = new Date();
       const easternTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-      expect(contractSpec.EventDate.getFullYear()).toBe(easternTime.getFullYear());
-      expect(contractSpec.EventDate.getMonth()).toBe(easternTime.getMonth());
-      expect(contractSpec.EventDate.getDate()).toBe(easternTime.getDate());
+      // Use UTC methods since EventDate is now created at UTC midnight
+      expect(contractSpec.EventDate.getUTCFullYear()).toBe(easternTime.getFullYear());
+      expect(contractSpec.EventDate.getUTCMonth()).toBe(easternTime.getMonth());
+      expect(contractSpec.EventDate.getUTCDate()).toBe(easternTime.getDate());
     });
 
     test('should default to today for orders when no eventDate provided', () => {
@@ -369,10 +371,11 @@ describe('ContractLegSpec Mapping', () => {
 
       expect(Array.isArray(result)).toBe(false);
       const contractSpec = result as ContractLegSpec;
-      const today = new Date();
-      expect(contractSpec.EventDate.getFullYear()).toBe(today.getFullYear());
-      expect(contractSpec.EventDate.getMonth()).toBe(today.getMonth());
-      expect(contractSpec.EventDate.getDate()).toBe(today.getDate());
+      const now = new Date();
+      // Use UTC methods since EventDate is now created at UTC midnight
+      expect(contractSpec.EventDate.getUTCFullYear()).toBe(now.getUTCFullYear());
+      expect(contractSpec.EventDate.getUTCMonth()).toBe(now.getUTCMonth());
+      expect(contractSpec.EventDate.getUTCDate()).toBe(now.getUTCDate());
     });
   });
 

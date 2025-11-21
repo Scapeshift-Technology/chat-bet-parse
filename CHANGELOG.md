@@ -1,5 +1,41 @@
 # chat-bet-parse
 
+## 0.6.3
+
+### Patch Changes
+
+- **Timezone-Agnostic Date Handling**: All date parsing and creation now uses UTC to ensure consistent behavior across different server timezones
+
+  ### 🎯 Problem Solved
+
+  Previously, dates were created using local timezone (e.g., `new Date(year, month, day)`), which caused test failures when running in different timezones:
+  - **Local (Eastern timezone)**: `2025-10-26T04:00:00.000Z` (midnight Eastern = 4am UTC)
+  - **CI/CD (UTC timezone)**: `2025-10-26T00:00:00.000Z` (midnight UTC)
+
+  ### 🚀 Solution
+
+  All date creation now uses `Date.UTC()` to produce timezone-agnostic dates at midnight UTC:
+  ```typescript
+  // Before (timezone-dependent)
+  new Date(2025, 9, 26) // Different results in different timezones
+
+  // After (timezone-agnostic)
+  new Date(Date.UTC(2025, 9, 26)) // Always 2025-10-26T00:00:00.000Z
+  ```
+
+  ### 📚 Files Modified
+
+  - `src/parsers/utils.ts`: Updated date creation and validation to use UTC
+  - `src/tracking/mappers.ts`: Updated ExecutionDtm extraction and fallback logic to use UTC
+  - Test files: Updated expectations to use `Date.UTC()` and UTC getter methods
+  - Test fixtures: Updated all date expectations from local time to UTC midnight
+
+  ### ✅ Impact
+
+  - Tests now pass consistently in any timezone (Eastern, UTC, PST, etc.)
+  - Parser produces identical results regardless of server location
+  - All 485 tests passing in both local and CI/CD environments
+
 ## 0.6.2
 
 ### Patch Changes

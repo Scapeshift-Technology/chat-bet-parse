@@ -363,7 +363,7 @@ Heat @ -105
         contractType: 'Writein',
         price: 200,
         description: 'Special holiday event',
-        writeinEventDate: new Date(2024, 11, 25)
+        writeinEventDate: new Date(Date.UTC(2024, 11, 25))
       },
       { contractType: 'HandicapContestantML', price: 120, team: 'Lakers' },
       { contractType: 'HandicapContestantML', price: -110, team: 'Warriors' },

@@ -58,11 +58,14 @@ export function mapParseResultToContractLegSpec(
     const easternTime = new Date(
       result.bet.ExecutionDtm.toLocaleString('en-US', { timeZone: 'America/New_York' })
     );
-    eventDate = new Date(easternTime.getFullYear(), easternTime.getMonth(), easternTime.getDate());
+    // Use UTC to create timezone-agnostic date
+    eventDate = new Date(
+      Date.UTC(easternTime.getFullYear(), easternTime.getMonth(), easternTime.getDate())
+    );
   } else {
-    // Fallback to today
-    eventDate = new Date();
-    eventDate.setHours(0, 0, 0, 0);
+    // Fallback to today (using UTC to be timezone-agnostic)
+    const now = new Date();
+    eventDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
   }
 
   // Extract common match and period info
