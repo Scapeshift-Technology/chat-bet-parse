@@ -1,6 +1,15 @@
 /**
- * Unit tests for grading mappers
- * These tests don't require a database connection
+ * Unit tests for DEPRECATED grading mappers (backward compatibility wrapper)
+ *
+ * NOTE: The grading mapper is deprecated. These tests ensure backward compatibility
+ * for existing code using mapParseResultToSqlParameters and validateGradingParameters.
+ *
+ * The grading mapper now wraps the tracking mapper internally. For comprehensive
+ * mapping tests, see tests/unit/tracking.test.ts which has 94+ test cases.
+ *
+ * New code should use:
+ * - mapParseResultToContractLegSpec (from tracking module)
+ * - validateContractLegSpec (from tracking module)
  */
 
 import { parseChat } from '../../src/index';
@@ -11,7 +20,7 @@ import {
 import { GradingDataError } from '../../src/grading/types';
 import type { GradingSqlParameters } from '../../src/grading/types';
 
-describe('Grading Mappers', () => {
+describe('Grading Mappers (DEPRECATED - Backward Compatibility)', () => {
   const defaultDate = new Date('2025-06-01');
 
   describe('mapParseResultToSqlParameters', () => {
@@ -22,13 +31,15 @@ describe('Grading Mappers', () => {
           matchScheduledDate: defaultDate,
         });
 
-        expect(params.ContractType).toBe('TotalPoints');
-        expect(params.Contestant1).toBe('Padres');
-        expect(params.Contestant2).toBe('Pirates');
-        expect(params.Line).toBe(8.5);
-        expect(params.IsOver).toBe(true);
-        expect(params.PeriodTypeCode).toBe('M');
-        expect(params.PeriodNumber).toBe(0);
+        expect(Array.isArray(params)).toBe(false);
+        const p = params as GradingSqlParameters;
+        expect(p.ContractType).toBe('TotalPoints');
+        expect(p.Contestant1).toBe('Padres');
+        expect(p.Contestant2).toBe('Pirates');
+        expect(p.Line).toBe(8.5);
+        expect(p.IsOver).toBe(true);
+        expect(p.PeriodTypeCode).toBe('M');
+        expect(p.PeriodNumber).toBe(0);
       });
 
       it('should map TotalPointsContestant (team total)', () => {
@@ -37,11 +48,13 @@ describe('Grading Mappers', () => {
           matchScheduledDate: defaultDate,
         });
 
-        expect(params.ContractType).toBe('TotalPointsContestant');
-        expect(params.Contestant1).toBe('Padres');
-        expect(params.SelectedContestant).toBe('Padres');
-        expect(params.Line).toBe(4.5);
-        expect(params.IsOver).toBe(false);
+        expect(Array.isArray(params)).toBe(false);
+        const p = params as GradingSqlParameters;
+        expect(p.ContractType).toBe('TotalPointsContestant');
+        expect(p.Contestant1).toBe('Padres');
+        expect(p.SelectedContestant).toBe('Padres');
+        expect(p.Line).toBe(4.5);
+        expect(p.IsOver).toBe(false);
       });
 
       it('should map HandicapContestantML (moneyline)', () => {
@@ -50,10 +63,12 @@ describe('Grading Mappers', () => {
           matchScheduledDate: defaultDate,
         });
 
-        expect(params.ContractType).toBe('HandicapContestantML');
-        expect(params.Contestant1).toBe('Pirates');
-        expect(params.SelectedContestant).toBe('Pirates');
-        expect(params.TiesLose).toBe(false);
+        expect(Array.isArray(params)).toBe(false);
+        const p = params as GradingSqlParameters;
+        expect(p.ContractType).toBe('HandicapContestantML');
+        expect(p.Contestant1).toBe('Pirates');
+        expect(p.SelectedContestant).toBe('Pirates');
+        expect(p.TiesLose).toBe(false);
       });
 
       it('should map HandicapContestantLine (spread)', () => {
@@ -62,9 +77,11 @@ describe('Grading Mappers', () => {
           matchScheduledDate: defaultDate,
         });
 
-        expect(params.ContractType).toBe('HandicapContestantLine');
-        expect(params.SelectedContestant).toBe('Pirates');
-        expect(params.Line).toBe(2.5);
+        expect(Array.isArray(params)).toBe(false);
+        const p = params as GradingSqlParameters;
+        expect(p.ContractType).toBe('HandicapContestantLine');
+        expect(p.SelectedContestant).toBe('Pirates');
+        expect(p.Line).toBe(2.5);
       });
 
       it('should map PropOU with individual player', () => {
@@ -73,13 +90,15 @@ describe('Grading Mappers', () => {
           matchScheduledDate: defaultDate,
         });
 
-        expect(params.ContractType).toBe('PropOU');
-        expect(params.Contestant1).toBeUndefined();
-        expect(params.SelectedContestant).toBe('B. Falter');
-        expect(params.Prop).toBe('Ks');
-        expect(params.PropContestantType).toBe('Individual');
-        expect(params.Line).toBe(1.5);
-        expect(params.IsOver).toBe(true);
+        expect(Array.isArray(params)).toBe(false);
+        const p = params as GradingSqlParameters;
+        expect(p.ContractType).toBe('PropOU');
+        expect(p.Contestant1).toBeUndefined();
+        expect(p.SelectedContestant).toBe('B. Falter');
+        expect(p.Prop).toBe('Ks');
+        expect(p.PropContestantType).toBe('Individual');
+        expect(p.Line).toBe(1.5);
+        expect(p.IsOver).toBe(true);
       });
 
       it('should map PropOU with team', () => {
@@ -88,9 +107,11 @@ describe('Grading Mappers', () => {
           matchScheduledDate: defaultDate,
         });
 
-        expect(params.ContractType).toBe('PropOU');
-        expect(params.Contestant1).toBe('Chiefs');
-        expect(params.PropContestantType).toBe('TeamLeague');
+        expect(Array.isArray(params)).toBe(false);
+        const p = params as GradingSqlParameters;
+        expect(p.ContractType).toBe('PropOU');
+        expect(p.Contestant1).toBe('Chiefs');
+        expect(p.PropContestantType).toBe('TeamLeague');
       });
 
       it('should map PropYN', () => {
@@ -99,11 +120,13 @@ describe('Grading Mappers', () => {
           matchScheduledDate: defaultDate,
         });
 
-        expect(params.ContractType).toBe('PropYN');
-        expect(params.Contestant1).toBeUndefined(); // Individual prop - no team
-        expect(params.SelectedContestant).toBe('Hill');
-        expect(params.Prop).toBe('AnytimeTD');
-        expect(params.IsYes).toBe(true);
+        expect(Array.isArray(params)).toBe(false);
+        const p = params as GradingSqlParameters;
+        expect(p.ContractType).toBe('PropYN');
+        expect(p.Contestant1).toBeUndefined(); // Individual prop - no team
+        expect(p.SelectedContestant).toBe('Hill');
+        expect(p.Prop).toBe('AnytimeTD');
+        expect(p.IsYes).toBe(true);
       });
 
       it('should map Series', () => {
@@ -112,10 +135,12 @@ describe('Grading Mappers', () => {
           matchScheduledDate: defaultDate,
         });
 
-        expect(params.ContractType).toBe('Series');
-        expect(params.Contestant1).toBe('Brewers');
-        expect(params.SelectedContestant).toBe('Brewers');
-        expect(params.SeriesLength).toBe(4);
+        expect(Array.isArray(params)).toBe(false);
+        const p = params as GradingSqlParameters;
+        expect(p.ContractType).toBe('Series');
+        expect(p.Contestant1).toBe('Brewers');
+        expect(p.SelectedContestant).toBe('Brewers');
+        expect(p.SeriesLength).toBe(4);
       });
 
       it('should map Writein', () => {
@@ -126,11 +151,13 @@ describe('Grading Mappers', () => {
           matchScheduledDate: defaultDate,
         });
 
-        expect(params.ContractType).toBe('Writein');
-        expect(params.EventDate?.getFullYear()).toBe(2024);
-        expect(params.EventDate?.getMonth()).toBe(11); // December is month 11
-        expect(params.EventDate?.getDate()).toBe(25);
-        expect(params.WriteInDescription).toBe('Christmas Event');
+        expect(Array.isArray(params)).toBe(false);
+        const p = params as GradingSqlParameters;
+        expect(p.ContractType).toBe('Writein');
+        expect(p.EventDate?.getFullYear()).toBe(2024);
+        expect(p.EventDate?.getMonth()).toBe(11); // December is month 11
+        expect(p.EventDate?.getDate()).toBe(25);
+        expect(p.WriteInDescription).toBe('Christmas Event');
       });
     });
 
@@ -141,9 +168,11 @@ describe('Grading Mappers', () => {
           matchScheduledDate: defaultDate,
         });
 
+        expect(Array.isArray(params)).toBe(false);
+        const p = params as GradingSqlParameters;
         // Individual props should use the Player field
-        expect(params.Contestant1).toBe('DAL');
-        expect(params.SelectedContestant).toBe('Cooper Flagg');
+        expect(p.Contestant1).toBe('DAL');
+        expect(p.SelectedContestant).toBe('Cooper Flagg');
       });
 
       it('should extract Team1 for team-based contracts', () => {
@@ -152,8 +181,10 @@ describe('Grading Mappers', () => {
           matchScheduledDate: defaultDate,
         });
 
-        expect(params.Contestant1).toBe('Lakers');
-        expect(params.Contestant2).toBe('Warriors');
+        expect(Array.isArray(params)).toBe(false);
+        const p = params as GradingSqlParameters;
+        expect(p.Contestant1).toBe('Lakers');
+        expect(p.Contestant2).toBe('Warriors');
       });
 
       it('should handle game number (DaySequence)', () => {
@@ -162,7 +193,9 @@ describe('Grading Mappers', () => {
           matchScheduledDate: defaultDate,
         });
 
-        expect(params.DaySequence).toBe(2);
+        expect(Array.isArray(params)).toBe(false);
+        const p = params as GradingSqlParameters;
+        expect(p.DaySequence).toBe(2);
       });
     });
 
@@ -173,8 +206,10 @@ describe('Grading Mappers', () => {
           matchScheduledDate: defaultDate,
         });
 
-        expect(params.PeriodTypeCode).toBe('H');
-        expect(params.PeriodNumber).toBe(1);
+        expect(Array.isArray(params)).toBe(false);
+        const p = params as GradingSqlParameters;
+        expect(p.PeriodTypeCode).toBe('H');
+        expect(p.PeriodNumber).toBe(1);
       });
 
       it('should extract second half period', () => {
@@ -183,8 +218,10 @@ describe('Grading Mappers', () => {
           matchScheduledDate: defaultDate,
         });
 
-        expect(params.PeriodTypeCode).toBe('H');
-        expect(params.PeriodNumber).toBe(2);
+        expect(Array.isArray(params)).toBe(false);
+        const p = params as GradingSqlParameters;
+        expect(p.PeriodTypeCode).toBe('H');
+        expect(p.PeriodNumber).toBe(2);
       });
 
       it('should default to full game', () => {
@@ -193,8 +230,10 @@ describe('Grading Mappers', () => {
           matchScheduledDate: defaultDate,
         });
 
-        expect(params.PeriodTypeCode).toBe('M');
-        expect(params.PeriodNumber).toBe(0);
+        expect(Array.isArray(params)).toBe(false);
+        const p = params as GradingSqlParameters;
+        expect(p.PeriodTypeCode).toBe('M');
+        expect(p.PeriodNumber).toBe(0);
       });
     });
 
@@ -207,19 +246,20 @@ describe('Grading Mappers', () => {
 
         // Should return an array with one entry per leg
         expect(Array.isArray(params)).toBe(true);
-        expect(params).toHaveLength(2);
+        const p = params as GradingSqlParameters[];
+        expect(p).toHaveLength(2);
 
         // First leg - Lakers ML
-        expect(params[0].ContractType).toBe('HandicapContestantML');
-        expect(params[0].Contestant1).toBe('Lakers');
-        expect(params[0].SelectedContestant).toBe('Lakers');
-        expect(params[0].MatchScheduledDate).toEqual(defaultDate);
+        expect(p[0].ContractType).toBe('HandicapContestantML');
+        expect(p[0].Contestant1).toBe('Lakers');
+        expect(p[0].SelectedContestant).toBe('Lakers');
+        expect(p[0].MatchScheduledDate).toEqual(defaultDate);
 
         // Second leg - Warriors ML
-        expect(params[1].ContractType).toBe('HandicapContestantML');
-        expect(params[1].Contestant1).toBe('Warriors');
-        expect(params[1].SelectedContestant).toBe('Warriors');
-        expect(params[1].MatchScheduledDate).toEqual(defaultDate);
+        expect(p[1].ContractType).toBe('HandicapContestantML');
+        expect(p[1].Contestant1).toBe('Warriors');
+        expect(p[1].SelectedContestant).toBe('Warriors');
+        expect(p[1].MatchScheduledDate).toEqual(defaultDate);
       });
 
       it('should map round robin contracts to array of parameters', () => {
@@ -232,22 +272,23 @@ describe('Grading Mappers', () => {
 
         // Should return an array with one entry per leg
         expect(Array.isArray(params)).toBe(true);
-        expect(params).toHaveLength(3);
+        const p = params as GradingSqlParameters[];
+        expect(p).toHaveLength(3);
 
         // First leg - Lakers ML
-        expect(params[0].ContractType).toBe('HandicapContestantML');
-        expect(params[0].Contestant1).toBe('Lakers');
-        expect(params[0].SelectedContestant).toBe('Lakers');
+        expect(p[0].ContractType).toBe('HandicapContestantML');
+        expect(p[0].Contestant1).toBe('Lakers');
+        expect(p[0].SelectedContestant).toBe('Lakers');
 
         // Second leg - Warriors ML
-        expect(params[1].ContractType).toBe('HandicapContestantML');
-        expect(params[1].Contestant1).toBe('Warriors');
-        expect(params[1].SelectedContestant).toBe('Warriors');
+        expect(p[1].ContractType).toBe('HandicapContestantML');
+        expect(p[1].Contestant1).toBe('Warriors');
+        expect(p[1].SelectedContestant).toBe('Warriors');
 
         // Third leg - Bulls ML
-        expect(params[2].ContractType).toBe('HandicapContestantML');
-        expect(params[2].Contestant1).toBe('Bulls');
-        expect(params[2].SelectedContestant).toBe('Bulls');
+        expect(p[2].ContractType).toBe('HandicapContestantML');
+        expect(p[2].Contestant1).toBe('Bulls');
+        expect(p[2].SelectedContestant).toBe('Bulls');
       });
     });
 

@@ -3,6 +3,12 @@
  *
  * This module provides SQL Server integration for grading parsed chat bets.
  * Requires a licensed connection to Scapeshift's SQL Server database.
+ *
+ * @deprecated The grading mapper functions are deprecated in favor of the tracking module.
+ * The ChatBetGradingClient is still supported, but mapParseResultToSqlParameters and
+ * validateGradingParameters are deprecated. Use the tracking module instead:
+ *
+ * import { mapParseResultToContractLegSpec } from 'chat-bet-parse/tracking'
  */
 
 // Export main client class and factory functions
@@ -20,7 +26,10 @@ export type {
 // Export error classes for error handling
 export { GradingError, GradingConnectionError, GradingQueryError, GradingDataError } from './types';
 
-// Export mapping utilities for advanced use cases
+// Export mapping utilities for advanced use cases (DEPRECATED)
+/**
+ * @deprecated Use mapParseResultToContractLegSpec from 'chat-bet-parse/tracking' instead
+ */
 export { mapParseResultToSqlParameters, validateGradingParameters } from './mappers';
 
 // Re-export the main client as default

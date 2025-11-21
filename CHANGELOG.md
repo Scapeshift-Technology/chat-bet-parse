@@ -4,6 +4,25 @@
 
 ### Minor Changes
 
+- **DEPRECATION: Grading Mapper Functions**: The grading mapper module (`src/grading/mappers.ts`) is now deprecated in favor of the tracking mapper module. The grading mapper now wraps the tracking mapper for backward compatibility.
+
+  **Deprecated Functions:**
+  - `mapParseResultToSqlParameters` → Use `mapParseResultToContractLegSpec` instead
+  - `validateGradingParameters` → Use `validateContractLegSpec` instead
+
+  **Migration:**
+  ```typescript
+  // Before (DEPRECATED)
+  import { mapParseResultToSqlParameters } from 'chat-bet-parse/grading';
+  const params = mapParseResultToSqlParameters(result, { matchScheduledDate: date });
+
+  // After (RECOMMENDED)
+  import { mapParseResultToContractLegSpec } from 'chat-bet-parse/tracking';
+  const spec = mapParseResultToContractLegSpec(result, { eventDate: date });
+  ```
+
+  **Why?** Both mappers were doing the same conceptual work with 95% duplicate code. Consolidating to the tracking mapper eliminates duplication and provides a single source of truth. The `ChatBetGradingClient` continues to work unchanged.
+
 - **Individual Player Props with Match.Player Field**: Add dedicated fields for individual player props to properly distinguish them from team-based props
 
   ### 🎯 New Match Fields

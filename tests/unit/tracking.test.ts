@@ -37,90 +37,94 @@ function validateContractLegSpecMapping(testCase: TestCase) {
 
   const contractSpec = mapParseResultToContractLegSpec(parseResult, options);
 
+  // Runtime assertion: should return single spec for straight bets
+  expect(Array.isArray(contractSpec)).toBe(false);
+  const spec = contractSpec as ContractLegSpec;
+
   // Validate the spec
-  validateContractLegSpec(contractSpec);
+  validateContractLegSpec(spec);
 
   // Common assertions for all contract types
-  expect(contractSpec.LegSequence).toBe(1); // Always 1 for straight bets
-  expect(contractSpec.ContractType).toBe(testCase.expectedContractType);
+  expect(spec.LegSequence).toBe(1); // Always 1 for straight bets
+  expect(spec.ContractType).toBe(testCase.expectedContractType);
   // For writeins, EventDate comes from the contract itself
   if (testCase.expectedContractType !== 'Writein') {
-    expect(contractSpec.EventDate).toEqual(options.eventDate);
+    expect(spec.EventDate).toEqual(options.eventDate);
   }
-  expect(contractSpec.Price).toBeNull(); // Always null for straight bets
+  expect(spec.Price).toBeNull(); // Always null for straight bets
 
   // League mapping
   if (testCase.expectedLeague) {
-    expect(contractSpec.League).toBe(testCase.expectedLeague);
+    expect(spec.League).toBe(testCase.expectedLeague);
   }
 
   // Sport mapping
   if (testCase.expectedSport !== undefined) {
-    expect(contractSpec.Sport).toBe(testCase.expectedSport);
+    expect(spec.Sport).toBe(testCase.expectedSport);
   }
 
   // Period mapping
   if (testCase.expectedPeriod && testCase.expectedContractType !== 'Series' && testCase.expectedContractType !== 'Writein') {
-    expect(contractSpec.PeriodTypeCode).toBe(testCase.expectedPeriod.PeriodTypeCode);
-    expect(contractSpec.PeriodNumber).toBe(testCase.expectedPeriod.PeriodNumber);
+    expect(spec.PeriodTypeCode).toBe(testCase.expectedPeriod.PeriodTypeCode);
+    expect(spec.PeriodNumber).toBe(testCase.expectedPeriod.PeriodNumber);
   }
 
   // Day sequence mapping
   if (testCase.expectedDaySequence !== undefined) {
-    expect(contractSpec.DaySequence).toBe(testCase.expectedDaySequence);
+    expect(spec.DaySequence).toBe(testCase.expectedDaySequence);
   }
 
   // Contract-specific field mappings
   switch (testCase.expectedContractType) {
     case 'HandicapContestantML':
-      expect(contractSpec.Contestant1_RawName).toBe(testCase.expectedTeam1);
-      expect(contractSpec.Contestant2_RawName).toBe(testCase.expectedTeam2);
-      expect(contractSpec.SelectedContestant_RawName).toBe(testCase.expectedTeam1);
-      expect(contractSpec.TiesLose).toBe(testCase.expectedTiesLose ?? false);
-      expect(contractSpec.Line).toBeUndefined();
+      expect(spec.Contestant1_RawName).toBe(testCase.expectedTeam1);
+      expect(spec.Contestant2_RawName).toBe(testCase.expectedTeam2);
+      expect(spec.SelectedContestant_RawName).toBe(testCase.expectedTeam1);
+      expect(spec.TiesLose).toBe(testCase.expectedTiesLose ?? false);
+      expect(spec.Line).toBeUndefined();
       break;
 
     case 'HandicapContestantLine':
-      expect(contractSpec.Contestant1_RawName).toBe(testCase.expectedTeam1);
-      expect(contractSpec.Contestant2_RawName).toBe(testCase.expectedTeam2);
-      expect(contractSpec.SelectedContestant_RawName).toBe(testCase.expectedTeam1);
-      expect(contractSpec.Line).toBe(testCase.expectedLine);
-      expect(contractSpec.TiesLose).toBe(false); // Default for spreads
+      expect(spec.Contestant1_RawName).toBe(testCase.expectedTeam1);
+      expect(spec.Contestant2_RawName).toBe(testCase.expectedTeam2);
+      expect(spec.SelectedContestant_RawName).toBe(testCase.expectedTeam1);
+      expect(spec.Line).toBe(testCase.expectedLine);
+      expect(spec.TiesLose).toBe(false); // Default for spreads
       break;
 
     case 'TotalPoints':
-      expect(contractSpec.Contestant1_RawName).toBe(testCase.expectedTeam1);
-      expect(contractSpec.Contestant2_RawName).toBe(testCase.expectedTeam2);
-      expect(contractSpec.Line).toBe(testCase.expectedLine);
-      expect(contractSpec.IsOver).toBe(testCase.expectedIsOver);
-      expect(contractSpec.SelectedContestant_RawName).toBeUndefined();
+      expect(spec.Contestant1_RawName).toBe(testCase.expectedTeam1);
+      expect(spec.Contestant2_RawName).toBe(testCase.expectedTeam2);
+      expect(spec.Line).toBe(testCase.expectedLine);
+      expect(spec.IsOver).toBe(testCase.expectedIsOver);
+      expect(spec.SelectedContestant_RawName).toBeUndefined();
       break;
 
     case 'TotalPointsContestant':
-      expect(contractSpec.Contestant1_RawName).toBe(testCase.expectedTeam1);
-      expect(contractSpec.Contestant2_RawName).toBe(testCase.expectedTeam2);
-      expect(contractSpec.SelectedContestant_RawName).toBe(testCase.expectedTeam1);
-      expect(contractSpec.Line).toBe(testCase.expectedLine);
-      expect(contractSpec.IsOver).toBe(testCase.expectedIsOver);
-      expect(contractSpec.ContestantType).toBe('TeamLeague'); // Default for team totals
+      expect(spec.Contestant1_RawName).toBe(testCase.expectedTeam1);
+      expect(spec.Contestant2_RawName).toBe(testCase.expectedTeam2);
+      expect(spec.SelectedContestant_RawName).toBe(testCase.expectedTeam1);
+      expect(spec.Line).toBe(testCase.expectedLine);
+      expect(spec.IsOver).toBe(testCase.expectedIsOver);
+      expect(spec.ContestantType).toBe('TeamLeague'); // Default for team totals
       break;
 
     case 'PropOU':
       // For individual player props vs team props
       if (testCase.expectedContestantType === 'Individual') {
         // Individual player prop
-        expect(contractSpec.Contestant1_RawName).toBe(testCase.expectedPlayerTeam || undefined);
-        expect(contractSpec.SelectedContestant_RawName).toBe(testCase.expectedPlayer);
+        expect(spec.Contestant1_RawName).toBe(testCase.expectedPlayerTeam || undefined);
+        expect(spec.SelectedContestant_RawName).toBe(testCase.expectedPlayer);
       } else {
         // Team prop
-        expect(contractSpec.Contestant1_RawName).toBe(testCase.expectedTeam1);
-        expect(contractSpec.SelectedContestant_RawName).toBe(testCase.expectedTeam1);
+        expect(spec.Contestant1_RawName).toBe(testCase.expectedTeam1);
+        expect(spec.SelectedContestant_RawName).toBe(testCase.expectedTeam1);
       }
-      expect(contractSpec.Line).toBe(testCase.expectedLine);
-      expect(contractSpec.IsOver).toBe(testCase.expectedIsOver);
-      expect(contractSpec.Prop).toBe(testCase.expectedProp);
+      expect(spec.Line).toBe(testCase.expectedLine);
+      expect(spec.IsOver).toBe(testCase.expectedIsOver);
+      expect(spec.Prop).toBe(testCase.expectedProp);
       if (testCase.expectedContestantType) {
-        expect(contractSpec.PropContestantType).toBe(testCase.expectedContestantType);
+        expect(spec.PropContestantType).toBe(testCase.expectedContestantType);
       }
       break;
 
@@ -128,37 +132,37 @@ function validateContractLegSpecMapping(testCase: TestCase) {
       // For individual player props vs team props
       if (testCase.expectedContestantType === 'Individual') {
         // Individual player prop
-        expect(contractSpec.Contestant1_RawName).toBe(testCase.expectedPlayerTeam || undefined);
-        expect(contractSpec.SelectedContestant_RawName).toBe(testCase.expectedPlayer);
+        expect(spec.Contestant1_RawName).toBe(testCase.expectedPlayerTeam || undefined);
+        expect(spec.SelectedContestant_RawName).toBe(testCase.expectedPlayer);
       } else {
         // Team prop
-        expect(contractSpec.Contestant1_RawName).toBe(testCase.expectedTeam1);
-        expect(contractSpec.SelectedContestant_RawName).toBe(testCase.expectedTeam1);
+        expect(spec.Contestant1_RawName).toBe(testCase.expectedTeam1);
+        expect(spec.SelectedContestant_RawName).toBe(testCase.expectedTeam1);
       }
-      expect(contractSpec.IsYes).toBe(testCase.expectedIsYes);
-      expect(contractSpec.Prop).toBe(testCase.expectedProp);
+      expect(spec.IsYes).toBe(testCase.expectedIsYes);
+      expect(spec.Prop).toBe(testCase.expectedProp);
       if (testCase.expectedContestantType) {
-        expect(contractSpec.PropContestantType).toBe(testCase.expectedContestantType);
+        expect(spec.PropContestantType).toBe(testCase.expectedContestantType);
       }
       break;
 
     case 'Series':
-      expect(contractSpec.Contestant1_RawName).toBe(testCase.expectedTeam1);
-      expect(contractSpec.SelectedContestant_RawName).toBe(testCase.expectedTeam1);
-      expect(contractSpec.SeriesLength).toBe(testCase.expectedSeriesLength);
-      expect(contractSpec.PeriodTypeCode).toBeUndefined();
-      expect(contractSpec.PeriodNumber).toBeUndefined();
+      expect(spec.Contestant1_RawName).toBe(testCase.expectedTeam1);
+      expect(spec.SelectedContestant_RawName).toBe(testCase.expectedTeam1);
+      expect(spec.SeriesLength).toBe(testCase.expectedSeriesLength);
+      expect(spec.PeriodTypeCode).toBeUndefined();
+      expect(spec.PeriodNumber).toBeUndefined();
       break;
 
     case 'Writein':
-      expect(contractSpec.WriteInDescription).toBe(testCase.expectedDescription);
-      expect(contractSpec.Contestant1_RawName).toBeUndefined();
-      expect(contractSpec.Contestant2_RawName).toBeUndefined();
-      expect(contractSpec.PeriodTypeCode).toBeUndefined();
-      expect(contractSpec.PeriodNumber).toBeUndefined();
+      expect(spec.WriteInDescription).toBe(testCase.expectedDescription);
+      expect(spec.Contestant1_RawName).toBeUndefined();
+      expect(spec.Contestant2_RawName).toBeUndefined();
+      expect(spec.PeriodTypeCode).toBeUndefined();
+      expect(spec.PeriodNumber).toBeUndefined();
       // For writeins, EventDate comes from the contract itself
       if (testCase.expectedEventDate) {
-        expect(contractSpec.EventDate).toEqual(testCase.expectedEventDate);
+        expect(spec.EventDate).toEqual(testCase.expectedEventDate);
       }
       break;
   }
@@ -203,24 +207,30 @@ describe('ContractLegSpec Mapping', () => {
       const parseResult = parseChat('IW Athletics @ +145');
       const eventDate = new Date('2024-12-25');
 
-      const contractSpec = mapParseResultToContractLegSpec(parseResult, { eventDate });
+      const result = mapParseResultToContractLegSpec(parseResult, { eventDate });
 
+      expect(Array.isArray(result)).toBe(false);
+      const contractSpec = result as ContractLegSpec;
       expect(contractSpec.EventDate).toEqual(eventDate);
     });
 
     test('should use writein EventDate when available', () => {
       const parseResult = parseChat('IW writein 2024/11/5 Trump to win presidency @ -150');
 
-      const contractSpec = mapParseResultToContractLegSpec(parseResult);
+      const result = mapParseResultToContractLegSpec(parseResult);
 
+      expect(Array.isArray(result)).toBe(false);
+      const contractSpec = result as ContractLegSpec;
       expect(contractSpec.EventDate).toEqual(new Date(2024, 10, 5)); // Month is 0-indexed
     });
 
     test('should derive from ExecutionDtm for fills when no eventDate provided', () => {
       const parseResult = parseChat('YG Athletics @ +145 = 1.0');
 
-      const contractSpec = mapParseResultToContractLegSpec(parseResult);
+      const result = mapParseResultToContractLegSpec(parseResult);
 
+      expect(Array.isArray(result)).toBe(false);
+      const contractSpec = result as ContractLegSpec;
       // Should be today's date in Eastern time (execution date)
       // Convert to Eastern time to match the mapper's logic
       const now = new Date();
@@ -233,8 +243,10 @@ describe('ContractLegSpec Mapping', () => {
     test('should default to today for orders when no eventDate provided', () => {
       const parseResult = parseChat('IW Athletics @ +145');
 
-      const contractSpec = mapParseResultToContractLegSpec(parseResult);
+      const result = mapParseResultToContractLegSpec(parseResult);
 
+      expect(Array.isArray(result)).toBe(false);
+      const contractSpec = result as ContractLegSpec;
       const today = new Date();
       expect(contractSpec.EventDate.getFullYear()).toBe(today.getFullYear());
       expect(contractSpec.EventDate.getMonth()).toBe(today.getMonth());
@@ -246,24 +258,30 @@ describe('ContractLegSpec Mapping', () => {
     test('should use provided league option', () => {
       const parseResult = parseChat('IW Athletics @ +145');
 
-      const contractSpec = mapParseResultToContractLegSpec(parseResult, { league: 'MLB' });
+      const result = mapParseResultToContractLegSpec(parseResult, { league: 'MLB' });
 
+      expect(Array.isArray(result)).toBe(false);
+      const contractSpec = result as ContractLegSpec;
       expect(contractSpec.League).toBe('MLB');
     });
 
     test('should extract league from contract when available', () => {
       const parseResult = parseChat('IW MLB Athletics @ +145');
 
-      const contractSpec = mapParseResultToContractLegSpec(parseResult);
+      const result = mapParseResultToContractLegSpec(parseResult);
 
+      expect(Array.isArray(result)).toBe(false);
+      const contractSpec = result as ContractLegSpec;
       expect(contractSpec.League).toBe('MLB');
     });
 
     test('should prefer options.league over contract league', () => {
       const parseResult = parseChat('IW NFL Dolphins @ +145');
 
-      const contractSpec = mapParseResultToContractLegSpec(parseResult, { league: 'CFL' });
+      const result = mapParseResultToContractLegSpec(parseResult, { league: 'CFL' });
 
+      expect(Array.isArray(result)).toBe(false);
+      const contractSpec = result as ContractLegSpec;
       expect(contractSpec.League).toBe('CFL'); // Options override contract
     });
   });

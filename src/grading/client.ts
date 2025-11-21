@@ -91,11 +91,12 @@ export class ChatBetGradingClient implements IGradingClient {
         );
       }
 
-      // Validate parameters
-      validateGradingParameters(sqlParams);
+      // Validate parameters (cast needed for TypeScript type narrowing)
+      const params = sqlParams as GradingSqlParameters;
+      validateGradingParameters(params);
 
       // Execute the grading function
-      const grade = await this.executeGradingFunction(sqlParams);
+      const grade = await this.executeGradingFunction(params);
 
       return grade;
     } catch (error) {
