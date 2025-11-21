@@ -160,5 +160,55 @@ export const gameTotalsTestCases: TestCase[] = [
     expectedIsOver: true,
     expectedPeriod: { PeriodTypeCode: 'I', PeriodNumber: 1 },
     expectedSport: 'Baseball'
+  },
+  // NBA game total with full date (10/26/2025) without referenceDate
+  {
+    description: 'YG NBA game total with full date (10/26/2025) without referenceDate',
+    input: 'YG NBA 10/26/2025 Pacers u230 @ -110 = 1k',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: -110,
+    expectedSize: 1000,
+    expectedTeam1: 'Pacers',
+    expectedLine: 230,
+    expectedIsOver: false,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+    expectedSport: 'Basketball',
+    expectedLeague: 'NBA',
+    expectedEventDate: new Date('2025-10-26T04:00:00.000Z')
+  },
+  // NBA game total with full date (10/26/2025) with referenceDate
+  {
+    description: 'YG NBA game total with full date (10/26/2025) with referenceDate',
+    input: 'YG NBA 10/26/2025 Pacers u230 @ -110 = 1k',
+    referenceDate: new Date('2025-10-26T03:21:49.000Z'),
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: -110,
+    expectedSize: 1000,
+    expectedTeam1: 'Pacers',
+    expectedLine: 230,
+    expectedIsOver: false,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+    expectedSport: 'Basketball',
+    expectedLeague: 'NBA',
+    expectedEventDate: new Date('2025-10-26T04:00:00.000Z')
+  },
+  // NBA game total with partial date (10/26) with referenceDate
+  {
+    description: 'YG NBA game total with partial date (10/26) with referenceDate',
+    input: 'YG NBA 10/26 Pacers u230 @ -110 = 1k',
+    referenceDate: new Date('2025-10-26T03:21:49.000Z'),
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: -110,
+    expectedSize: 1000,
+    expectedTeam1: 'Pacers',
+    expectedLine: 230,
+    expectedIsOver: false,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+    expectedSport: 'Basketball',
+    expectedLeague: 'NBA',
+    expectedEventDate: new Date('2025-10-26T04:00:00.000Z')
   }
 ];

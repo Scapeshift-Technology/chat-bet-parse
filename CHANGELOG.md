@@ -1,5 +1,51 @@
 # chat-bet-parse
 
+## 0.6.2
+
+### Patch Changes
+
+- **Tracking Mapper EventDate Priority Enhancement**: The tracking mapper now prioritizes dates embedded in bet text (`contract.Match.Date`) over execution timestamps when determining `EventDate`
+
+  ### 🎯 EventDate Priority Order
+
+  1. Writein contracts' explicit `EventDate`
+  2. Caller-provided `options.eventDate`
+  3. **Date parsed from bet text (`contract.Match.Date`)** ← NEW
+  4. Date extracted from `ExecutionDtm` timestamp
+  5. Today's date (fallback)
+
+  ### 🚀 What Changed
+
+  Before this fix, when parsing a bet like `"YG NBA 10/26/2025 Pacers u230 @ -110 = 1k"` executed on 10/25/2025, the mapper would use the execution date (10/25) instead of the date specified in the bet text (10/26).
+
+  **Before:**
+  ```typescript
+  const result = parseChat('YG NBA 10/26/2025 Pacers u230 @ -110 = 1k');
+  const spec = mapParseResultToContractLegSpec(result);
+  // EventDate = 2025-10-25 (from ExecutionDtm) ❌
+  ```
+
+  **After:**
+  ```typescript
+  const result = parseChat('YG NBA 10/26/2025 Pacers u230 @ -110 = 1k');
+  const spec = mapParseResultToContractLegSpec(result);
+  // EventDate = 2025-10-26 (from bet text) ✅
+  ```
+
+  ### 🧪 Test Coverage
+
+  - Added 11 new Date Handling tests covering:
+    - Full date formats (MM/DD/YYYY)
+    - Partial date formats (MM/DD) with referenceDate inference
+    - Priority ordering verification (options.eventDate > Match.Date > ExecutionDtm)
+    - All 485 tests passing
+
+  ### 📚 Files Modified
+
+  - `src/tracking/mappers.ts`: Added `contract.Match.Date` check in EventDate determination
+  - `tests/unit/tracking.test.ts`: Added 7 new comprehensive Date Handling tests
+  - `tests/fixtures/game-totals.fixtures.ts`: Added 4 NBA date parsing test cases
+
 ## 0.6.0
 
 ### Minor Changes

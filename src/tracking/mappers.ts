@@ -37,7 +37,12 @@ export function mapParseResultToContractLegSpec(
   const contract = result.contract;
   const contractType = result.contractType;
 
-  // Determine event date - for writeins use contract's EventDate, otherwise use options.eventDate or derive from ExecutionDtm
+  // Determine event date priority:
+  // 1. Writein contracts' explicit EventDate
+  // 2. Caller-provided options.eventDate
+  // 3. Date parsed from bet text (contract.Match.Date)
+  // 4. Date extracted from ExecutionDtm timestamp
+  // 5. Today's date (fallback)
   let eventDate: Date;
   if (isWritein(contract) && contract.EventDate) {
     // For writein contracts, always use the EventDate from the contract itself
@@ -45,6 +50,9 @@ export function mapParseResultToContractLegSpec(
   } else if (options?.eventDate) {
     // For non-writein contracts, use the provided option
     eventDate = options.eventDate;
+  } else if (!isWritein(contract) && 'Match' in contract && contract.Match.Date) {
+    // Use date from bet text if available (e.g., "NBA 10/26/2025 Pacers u230")
+    eventDate = contract.Match.Date;
   } else if (result.bet.ExecutionDtm) {
     // Convert ExecutionDtm to Eastern time and extract date
     const easternTime = new Date(

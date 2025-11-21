@@ -224,6 +224,128 @@ describe('ContractLegSpec Mapping', () => {
       expect(contractSpec.EventDate).toEqual(new Date(2024, 10, 5)); // Month is 0-indexed
     });
 
+    test('should use contract.Match.Date when available (date from bet text)', () => {
+      // This bet includes a date in the text: 10/26/2025
+      const parseResult = parseChat('YG NBA 10/26/2025 Pacers u230 @ -110 = 1k');
+
+      const result = mapParseResultToContractLegSpec(parseResult);
+
+      expect(Array.isArray(result)).toBe(false);
+      const contractSpec = result as ContractLegSpec;
+      // EventDate should come from the date in bet text (10/26/2025), not ExecutionDtm
+      // The parser sets Match.Date to 2025-10-26T04:00:00.000Z (4am UTC for Eastern time)
+      const expectedDate = new Date('2025-10-26T04:00:00.000Z');
+      expect(contractSpec.EventDate.getFullYear()).toBe(expectedDate.getFullYear());
+      expect(contractSpec.EventDate.getMonth()).toBe(expectedDate.getMonth());
+      expect(contractSpec.EventDate.getDate()).toBe(expectedDate.getDate());
+    });
+
+    test('should use contract.Match.Date with partial date and referenceDate (day before)', () => {
+      // Partial date (10/26) with referenceDate of 10/25/2025 (day before)
+      const parseResult = parseChat('YG NBA 10/26 Pacers u230 @ -110 = 1k', {
+        referenceDate: new Date('2025-10-25T03:21:49.000Z')
+      });
+
+      const result = mapParseResultToContractLegSpec(parseResult);
+
+      expect(Array.isArray(result)).toBe(false);
+      const contractSpec = result as ContractLegSpec;
+      // EventDate should be 10/26/2025 (inferred from referenceDate)
+      const expectedDate = new Date('2025-10-26T04:00:00.000Z');
+      expect(contractSpec.EventDate.getFullYear()).toBe(expectedDate.getFullYear());
+      expect(contractSpec.EventDate.getMonth()).toBe(expectedDate.getMonth());
+      expect(contractSpec.EventDate.getDate()).toBe(expectedDate.getDate());
+    });
+
+    test('should use contract.Match.Date with partial date and referenceDate (same day)', () => {
+      // Partial date (10/26) with referenceDate of 10/26/2025 (same day)
+      const parseResult = parseChat('YG NBA 10/26 Pacers u230 @ -110 = 1k', {
+        referenceDate: new Date('2025-10-26T03:21:49.000Z')
+      });
+
+      const result = mapParseResultToContractLegSpec(parseResult);
+
+      expect(Array.isArray(result)).toBe(false);
+      const contractSpec = result as ContractLegSpec;
+      // EventDate should be 10/26/2025
+      const expectedDate = new Date('2025-10-26T04:00:00.000Z');
+      expect(contractSpec.EventDate.getFullYear()).toBe(expectedDate.getFullYear());
+      expect(contractSpec.EventDate.getMonth()).toBe(expectedDate.getMonth());
+      expect(contractSpec.EventDate.getDate()).toBe(expectedDate.getDate());
+    });
+
+    test('should use contract.Match.Date with partial date and referenceDate (day after)', () => {
+      // Partial date (10/26) with referenceDate of 10/27/2025 (day after)
+      const parseResult = parseChat('YG NBA 10/26 Pacers u230 @ -110 = 1k', {
+        referenceDate: new Date('2025-10-27T03:21:49.000Z')
+      });
+
+      const result = mapParseResultToContractLegSpec(parseResult);
+
+      expect(Array.isArray(result)).toBe(false);
+      const contractSpec = result as ContractLegSpec;
+      // EventDate should be 10/26/2026 (next year, since 10/26/2025 is in the past)
+      const expectedDate = new Date('2026-10-26T04:00:00.000Z');
+      expect(contractSpec.EventDate.getFullYear()).toBe(expectedDate.getFullYear());
+      expect(contractSpec.EventDate.getMonth()).toBe(expectedDate.getMonth());
+      expect(contractSpec.EventDate.getDate()).toBe(expectedDate.getDate());
+    });
+
+    test('should prioritize options.eventDate over contract.Match.Date (full date)', () => {
+      // Bet has date 10/26/2025 in text, but options.eventDate should override
+      const parseResult = parseChat('YG NBA 10/26/2025 Pacers u230 @ -110 = 1k');
+
+      const overrideDate = new Date('2025-11-15T00:00:00.000Z');
+      const result = mapParseResultToContractLegSpec(parseResult, {
+        eventDate: overrideDate
+      });
+
+      expect(Array.isArray(result)).toBe(false);
+      const contractSpec = result as ContractLegSpec;
+      // EventDate should be from options.eventDate (11/15/2025), NOT from bet text (10/26/2025)
+      expect(contractSpec.EventDate.getFullYear()).toBe(overrideDate.getFullYear());
+      expect(contractSpec.EventDate.getMonth()).toBe(overrideDate.getMonth());
+      expect(contractSpec.EventDate.getDate()).toBe(overrideDate.getDate());
+    });
+
+    test('should prioritize options.eventDate over contract.Match.Date (partial date)', () => {
+      // Bet has partial date 10/26 in text with referenceDate, but options.eventDate should override both
+      const parseResult = parseChat('YG NBA 10/26 Pacers u230 @ -110 = 1k', {
+        referenceDate: new Date('2025-10-26T03:21:49.000Z')
+      });
+
+      const overrideDate = new Date('2025-12-01T00:00:00.000Z');
+      const result = mapParseResultToContractLegSpec(parseResult, {
+        eventDate: overrideDate
+      });
+
+      expect(Array.isArray(result)).toBe(false);
+      const contractSpec = result as ContractLegSpec;
+      // EventDate should be from options.eventDate (12/01/2025), NOT from bet text (10/26/2025)
+      expect(contractSpec.EventDate.getFullYear()).toBe(overrideDate.getFullYear());
+      expect(contractSpec.EventDate.getMonth()).toBe(overrideDate.getMonth());
+      expect(contractSpec.EventDate.getDate()).toBe(overrideDate.getDate());
+    });
+
+    test('should prioritize contract.Match.Date over ExecutionDtm', () => {
+      // Bet has date 10/26/2025 in text
+      // Manually set ExecutionDtm to a different date to verify contract.Match.Date takes precedence
+      const parseResult = parseChat('YG NBA 10/26/2025 Pacers u230 @ -110 = 1k');
+
+      // Override ExecutionDtm to a known different date (11/15/2025)
+      parseResult.bet.ExecutionDtm = new Date('2025-11-15T03:21:49.000Z');
+
+      const result = mapParseResultToContractLegSpec(parseResult);
+
+      expect(Array.isArray(result)).toBe(false);
+      const contractSpec = result as ContractLegSpec;
+      // EventDate should be from bet text (10/26/2025), NOT from ExecutionDtm (11/15/2025)
+      const expectedDate = new Date('2025-10-26T04:00:00.000Z');
+      expect(contractSpec.EventDate.getFullYear()).toBe(expectedDate.getFullYear());
+      expect(contractSpec.EventDate.getMonth()).toBe(expectedDate.getMonth());
+      expect(contractSpec.EventDate.getDate()).toBe(expectedDate.getDate());
+    });
+
     test('should derive from ExecutionDtm for fills when no eventDate provided', () => {
       const parseResult = parseChat('YG Athletics @ +145 = 1.0');
 
