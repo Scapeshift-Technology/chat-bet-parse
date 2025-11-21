@@ -1,5 +1,114 @@
 # chat-bet-parse
 
+## 0.6.0
+
+### Minor Changes
+
+- **Individual Player Props with Match.Player Field**: Add dedicated fields for individual player props to properly distinguish them from team-based props
+
+  ### 🎯 New Match Fields
+
+  - **`Match.Player`** - Player name for individual props (e.g., "Cooper Flagg", "B. Falter")
+    ```typescript
+    // Before (WRONG): Player stored in Team1
+    { Match: { Team1: "Cooper Flagg" }, ContestantType: "Individual" }
+
+    // After (CORRECT): Player stored in dedicated field
+    { Match: { Player: "Cooper Flagg", PlayerTeam: "DAL" }, ContestantType: "Individual" }
+    ```
+
+  - **`Match.PlayerTeam`** - Optional team affiliation from "(TEAM)" syntax
+    ```
+    YG NBA Cooper Flagg (DAL) pts o16.5 @ +100 = 2k
+    → Match.Player = "Cooper Flagg"
+    → Match.PlayerTeam = "DAL"
+    ```
+
+  ### 🔄 Breaking Changes
+
+  - **`Match.Team1` is now optional** (was previously required)
+  - Individual player props now use `Match.Player` instead of `Match.Team1`
+  - SQL mapper returns `undefined` (not `null`) for missing `Contestant1_RawName` on individual props
+
+  ### 🚀 Parser Enhancements
+
+  - **Smart contestant type detection**: Automatically determines Individual vs TeamLeague based on prop keywords
+  - **Multi-word player name support**: New `extractContestantAndProp()` utility handles names like "Cooper Flagg pts"
+  - **Team affiliation parsing**: `parsePlayerWithTeam()` extracts player and team from "(TEAM)" syntax
+  - **Team prop differentiation**: Use "team passing yards" keyword to distinguish team-level props from player props
+
+  ### 📦 SQL Mapping Updates
+
+  - **Individual props**: `Contestant1_RawName = PlayerTeam || undefined`, `SelectedContestant_RawName = Player`
+  - **Team props**: `Contestant1_RawName = Team1` (unchanged)
+  - No SQL schema changes required - existing `ContractLegSpecTableType` handles both cases
+
+  ### 🧪 Test Coverage
+
+  - Updated 9 test files with individual player prop test cases
+  - Added support for "Cooper Flagg", "B. Falter", and Player123/Team123 patterns
+  - All 441 tests passing
+
+  ### 📚 Files Modified
+
+  - `src/types/index.ts`: Extended Match interface with Player and PlayerTeam fields
+  - `src/parsers/utils.ts`: Added parsePlayerWithTeam() and extractContestantAndProp()
+  - `src/parsers/index.ts`: Updated parsePropOU() and parsePropYN() for individual props
+  - `src/tracking/mappers.ts`: Updated extractMatchInfo() for correct SQL mapping
+  - Test fixtures updated to use "team passing yards" syntax for team-level props
+
+- **Parlay/Round Robin Support in Mappers**: Grading and tracking mappers now handle parlay and round robin bets by returning arrays of mapped parameters
+
+  ### 🎯 Mapper Updates
+
+  - **`mapParseResultToSqlParameters()`** - Returns array for parlay/round robin
+    ```typescript
+    // Straight bet (backward compatible)
+    const params = mapParseResultToSqlParameters(straightBet, options);
+    // → Single GradingSqlParameters object
+
+    // Parlay/Round Robin (new)
+    const params = mapParseResultToSqlParameters(parlayBet, options);
+    // → Array of GradingSqlParameters (one per leg)
+    ```
+
+  - **`mapParseResultToContractLegSpec()`** - Returns array for parlay/round robin
+    ```typescript
+    // Straight bet (backward compatible)
+    const spec = mapParseResultToContractLegSpec(straightBet, options);
+    // → Single ContractLegSpec object
+
+    // Parlay/Round Robin (new)
+    const specs = mapParseResultToContractLegSpec(parlayBet, options);
+    // → Array of ContractLegSpec (one per leg with LegSequence and Price)
+    ```
+
+  ### 🚀 Features
+
+  - **Recursive leg mapping**: Each parlay/round robin leg is mapped individually using the same logic as straight bets
+  - **Automatic LegSequence**: Combo legs automatically get assigned proper 1-based LegSequence values
+  - **Price handling**: Combo legs include Price field (null for straight bets per SQL spec)
+  - **Validation updates**: Allow `undefined` Contestant1 for individual props (PropOU/PropYN with Individual type)
+
+  ### 🔄 Breaking Changes
+
+  - Return type changed from `GradingSqlParameters` to `GradingSqlParameters | GradingSqlParameters[]`
+  - Return type changed from `ContractLegSpec` to `ContractLegSpec | ContractLegSpec[]`
+  - Code using these mappers must handle both single and array return types
+
+  ### 🧪 Test Coverage
+
+  - New test suite `tests/unit/mappers.test.ts` with 31 comprehensive tests
+  - Covers all contract types, parlay/round robin mapping, validation
+  - Updated individual prop tests to expect correct Contestant1 mapping
+  - All 472 tests passing
+
+  ### 📚 Files Modified
+
+  - `src/grading/mappers.ts`: Updated mapParseResultToSqlParameters() to handle combos
+  - `src/tracking/mappers.ts`: Updated mapParseResultToContractLegSpec() to handle combos
+  - `tests/unit/mappers.test.ts`: New comprehensive test suite for grading mappers
+
 ## 0.5.0
 
 ### Minor Changes

@@ -66,6 +66,8 @@ import {
   detectPropType,
   validatePropFormat,
   detectContestantType,
+  parsePlayerWithTeam,
+  extractContestantAndProp,
   parseWriteinDate,
   validateWriteinDescription,
   parseKeywords,
@@ -1111,25 +1113,17 @@ function parsePropOU(
     .replace(/\s*[ou]\d+(?:\.\d+)?(?:[+-]\d+(?:\.\d+)?)?(\s+runs)?/i, '')
     .trim();
 
-  // Check for individual pattern first: "B. Falter" (single letter, dot, space, name)
-  const individualMatch = withoutOU.match(/^([A-Z]\.\s+[A-Za-z]+)\s+(.+)$/);
-
-  let contestant: string;
-  let propText: string;
-
-  if (individualMatch) {
-    // Handle individual pattern like "B. Falter Ks"
-    contestant = individualMatch[1]; // "B. Falter"
-    propText = individualMatch[2].toLowerCase(); // "ks"
-  } else {
-    // Handle regular pattern like "Player123 passing yards"
-    const parts = withoutOU.trim().split(/\s+/);
-    if (parts.length < 2) {
-      throw new InvalidContractTypeError(rawInput, contractText);
-    }
-    contestant = parts[0];
-    propText = parts.slice(1).join(' ').toLowerCase();
+  // Extract contestant and prop using the helper function
+  const extracted = extractContestantAndProp(withoutOU);
+  if (!extracted) {
+    throw new InvalidContractTypeError(
+      rawInput,
+      `Could not extract contestant and prop from: ${withoutOU}`
+    );
   }
+
+  let contestant = extracted.contestant;
+  const propText = extracted.propText;
 
   const propInfo = detectPropType(propText);
   if (!propInfo || propInfo.category !== 'PropOU') {
@@ -1139,21 +1133,42 @@ function parsePropOU(
   // Detect contestant type - use keyword-based type first, fallback to pattern detection
   const contestantType = propInfo.contestantType || detectContestantType(contestant);
 
-  return {
-    Sport: finalSport,
-    League: league,
-    Match: {
+  // Construct Match differently based on ContestantType
+  let match: Match;
+  let finalContestant: string;
+
+  if (contestantType === 'Individual') {
+    // Individual player prop - use Player field
+    const { player, team } = parsePlayerWithTeam(contestant);
+    match = {
+      Date: eventDate,
+      Player: player,
+      PlayerTeam: team,
+      DaySequence: gameNumber,
+    };
+    // Remove team affiliation from contestant name for storage
+    finalContestant = player;
+  } else {
+    // Team-level prop - use existing Team1 logic
+    match = {
       Date: eventDate,
       Team1: contestant,
       DaySequence: gameNumber,
-    },
+    };
+    finalContestant = contestant;
+  }
+
+  return {
+    Sport: finalSport,
+    League: league,
+    Match: match,
     Period: { PeriodTypeCode: 'M', PeriodNumber: 0 },
     HasContestant: true,
     HasLine: true,
     ContractSportCompetitionMatchType: 'Prop',
     ContestantType: contestantType,
     Prop: propInfo.standardName,
-    Contestant: contestant,
+    Contestant: finalContestant,
     Line: line,
     IsOver: isOver,
   };
@@ -1235,6 +1250,26 @@ function parsePropYN(
   // Detect contestant type - use keyword-based type first, fallback to pattern detection
   const contestantType = propInfo.contestantType || detectContestantType(teams.team1);
 
+  // Construct Match differently based on ContestantType
+  let finalMatch: Match;
+  let finalContestant: string;
+
+  if (contestantType === 'Individual') {
+    // Individual player prop - use Player field
+    const { player, team } = parsePlayerWithTeam(teams.team1);
+    finalMatch = {
+      Date: eventDate,
+      Player: player,
+      PlayerTeam: team,
+      DaySequence: gameNumber,
+    };
+    finalContestant = player;
+  } else {
+    // Team-level prop - use existing match logic
+    finalMatch = match;
+    finalContestant = teams.team1;
+  }
+
   // Determine IsYes value based on prop type
   let isYes: boolean;
   if (propInfo.standardName === 'FirstToScore') {
@@ -1248,14 +1283,14 @@ function parsePropYN(
   return {
     Sport: sport,
     League: league,
-    Match: match,
+    Match: finalMatch,
     Period: { PeriodTypeCode: 'M', PeriodNumber: 0 },
     HasContestant: true,
     HasLine: false,
     ContractSportCompetitionMatchType: 'Prop',
     ContestantType: contestantType,
     Prop: propInfo.standardName,
-    Contestant: teams.team1,
+    Contestant: finalContestant,
     IsYes: isYes,
   };
 }

@@ -11,7 +11,7 @@ import type {
   GradingSqlParameters,
   GradingOptions,
 } from './types';
-import { GradingError, GradingConnectionError, GradingQueryError } from './types';
+import { GradingError, GradingConnectionError, GradingQueryError, GradingDataError } from './types';
 import { mapParseResultToSqlParameters, validateGradingParameters } from './mappers';
 
 // ==============================================================================
@@ -82,6 +82,14 @@ export class ChatBetGradingClient implements IGradingClient {
 
       // Convert ParseResult to SQL parameters
       const sqlParams = mapParseResultToSqlParameters(result, options);
+
+      // Check if this is a parlay/round robin (array return)
+      if (Array.isArray(sqlParams)) {
+        throw new GradingDataError(
+          'Parlay and round robin bets cannot be graded using this method. ' +
+            'Grade each leg individually by passing the individual leg ParseResult.'
+        );
+      }
 
       // Validate parameters
       validateGradingParameters(sqlParams);

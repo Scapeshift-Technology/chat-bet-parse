@@ -2,6 +2,28 @@
  * Shared types for test fixtures
  */
 
+// Shared leg expectation fields
+export interface LegExpectation {
+  contractType: string;
+  price: number;
+  team?: string;
+  teams?: string[];
+  // Individual player prop fields
+  player?: string;
+  playerTeam?: string;
+  line?: number;
+  isOver?: boolean;
+  rotationNumber?: number;
+  daySequence?: number;
+  period?: { PeriodTypeCode: string; PeriodNumber: number };
+  sport?: string;
+  league?: string;
+  eventDate?: Date;
+  // Writein-specific fields
+  description?: string;
+  writeinEventDate?: Date; // For writeins, use contract.EventDate instead of contract.Match.Date
+}
+
 // Straight bet test case
 export interface TestCase {
   description: string;
@@ -12,6 +34,9 @@ export interface TestCase {
   expectedSize?: number;
   expectedTeam1?: string;
   expectedTeam2?: string;
+  // NEW: Individual player prop fields
+  expectedPlayer?: string;
+  expectedPlayerTeam?: string;
   expectedLine?: number;
   expectedIsOver?: boolean;
   expectedIsYes?: boolean;
@@ -46,23 +71,7 @@ export interface ParlayTestCase {
   expectedPushesLose?: boolean;
   expectedFreeBet?: boolean;
   // Leg validations - each leg is a straight bet expectation
-  expectedLegs: Array<{
-    contractType: string;
-    price: number;
-    team?: string;
-    teams?: string[];
-    line?: number;
-    isOver?: boolean;
-    rotationNumber?: number;
-    daySequence?: number;
-    period?: { PeriodTypeCode: string; PeriodNumber: number };
-    sport?: string;
-    league?: string;
-    eventDate?: Date;
-    // Writein-specific fields
-    description?: string;
-    writeinEventDate?: Date; // For writeins, use contract.EventDate instead of contract.Match.Date
-  }>;
+  expectedLegs: Array<LegExpectation>;
   // Reference date for year inference testing (optional)
   referenceDate?: Date;
 }
@@ -80,17 +89,7 @@ export interface RoundRobinTestCase {
   expectedParlaySize: number;
   expectedIsAtMost: boolean;
   expectedRiskType: 'perSelection' | 'total';
-  expectedLegs: Array<{
-    contractType: string;
-    price: number;
-    team?: string;
-    teams?: string[];
-    line?: number;
-    isOver?: boolean;
-    // Writein-specific fields
-    description?: string;
-    writeinEventDate?: Date;
-  }>;
+  expectedLegs: Array<LegExpectation>;
 }
 
 export interface ErrorTestCase {

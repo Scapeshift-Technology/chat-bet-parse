@@ -69,7 +69,8 @@ export const propsYNTestCases: TestCase[] = [
     expectedChatType: 'order',
     expectedContractType: 'PropYN',
     expectedPrice: 120,
-    expectedTeam1: 'Hill',
+    expectedPlayer: 'Hill',
+    expectedTeam1: undefined, // Individual props should NOT use Team1
     expectedProp: 'AnytimeTD',
     expectedIsYes: true,
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
@@ -99,7 +100,8 @@ export const propsOUTestCases: TestCase[] = [
     expectedContractType: 'PropOU',
     expectedPrice: -110,
     expectedSize: 2.0,
-    expectedTeam1: 'Player456',
+    expectedPlayer: 'Player456',
+    expectedTeam1: undefined, // Individual props should NOT use Team1
     expectedLine: 12.5,
     expectedIsOver: false,
     expectedProp: 'Rebounds',
@@ -111,7 +113,8 @@ export const propsOUTestCases: TestCase[] = [
     expectedChatType: 'order',
     expectedContractType: 'PropOU',
     expectedPrice: -115,
-    expectedTeam1: 'LeBron',
+    expectedPlayer: 'LeBron',
+    expectedTeam1: undefined,
     expectedLine: 25.5,
     expectedIsOver: true,
     expectedProp: 'Points',
@@ -126,7 +129,7 @@ export const propsOUTestCases: TestCase[] = [
     expectedTeam1: 'Chiefs',
     expectedLine: 275.5,
     expectedIsOver: true,
-    expectedProp: 'TeamPassingYards',
+    expectedProp: 'PassingYards',
     expectedContestantType: 'TeamLeague'
   },
 
@@ -138,10 +141,12 @@ export const propsOUTestCases: TestCase[] = [
     expectedContractType: 'PropOU',
     expectedPrice: -115,
     expectedSize: 1500,
-    expectedTeam1: 'Player123',
+    expectedPlayer: 'Player123',
+    expectedTeam1: undefined,
     expectedLine: 250.5,
     expectedIsOver: true,
     expectedProp: 'PassingYards',
+    expectedContestantType: 'Individual',
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
   },
   {
@@ -151,14 +156,16 @@ export const propsOUTestCases: TestCase[] = [
     expectedContractType: 'PropOU',
     expectedPrice: -105,
     expectedSize: 2000,
-    expectedTeam1: 'Player456',
+    expectedPlayer: 'Player456',
+    expectedTeam1: undefined,
     expectedLine: 1.5,
     expectedIsOver: false,
-    expectedProp: 'RBI'
+    expectedProp: 'RBI',
+    expectedContestantType: 'Individual'
   },
   {
     description: 'YG Team passing yards prop (non-individual contestant)',
-    input: 'YG Team123 passing yards o250.5 @ -115 = 1.5',
+    input: 'YG Team123 team passing yards o250.5 @ -115 = 1.5',
     expectedChatType: 'fill',
     expectedContractType: 'PropOU',
     expectedPrice: -115,
@@ -167,6 +174,43 @@ export const propsOUTestCases: TestCase[] = [
     expectedLine: 250.5,
     expectedIsOver: true,
     expectedProp: 'PassingYards',
+    expectedContestantType: 'TeamLeague',
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
+  },
+  {
+    description: 'YG NBA player points over WITHOUT team affiliation',
+    input: 'YG NBA Cooper Flagg pts o16.5 @ +100 = 2k',
+    expectedChatType: 'fill',
+    expectedContractType: 'PropOU',
+    expectedPrice: 100,
+    expectedSize: 2000,
+    expectedPlayer: 'Cooper Flagg',
+    expectedPlayerTeam: undefined,
+    expectedTeam1: undefined,
+    expectedLine: 16.5,
+    expectedIsOver: true,
+    expectedProp: 'Points',
+    expectedContestantType: 'Individual',
+    expectedSport: 'Basketball',
+    expectedLeague: 'NBA',
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
+  },
+  {
+    description: 'YG NBA player points over WITH team affiliation',
+    input: 'YG NBA Cooper Flagg (DAL) pts o16.5 @ +100 = 2k',
+    expectedChatType: 'fill',
+    expectedContractType: 'PropOU',
+    expectedPrice: 100,
+    expectedSize: 2000,
+    expectedPlayer: 'Cooper Flagg',
+    expectedPlayerTeam: 'DAL',
+    expectedTeam1: undefined,
+    expectedLine: 16.5,
+    expectedIsOver: true,
+    expectedProp: 'Points',
+    expectedContestantType: 'Individual',
+    expectedSport: 'Basketball',
+    expectedLeague: 'NBA',
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
   }
 ];

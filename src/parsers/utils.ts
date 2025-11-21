@@ -595,6 +595,30 @@ export function matchesIgnoreCase(text: string, pattern: string): boolean {
 }
 
 /**
+ * Extract player name and optional team affiliation
+ * Pattern: "Cooper Flagg (DAL)" or "B. Falter"
+ *
+ * @param text - Player text potentially containing team in parentheses
+ * @returns Object with player name and optional team
+ */
+export function parsePlayerWithTeam(text: string): { player: string; team?: string } {
+  const trimmed = text.trim();
+
+  // Pattern: "Name (TEAM)" where TEAM is 2-4 uppercase letters
+  const match = trimmed.match(/^(.+?)\s*\(([A-Z]{2,4})\)$/);
+
+  if (match) {
+    return {
+      player: match[1].trim(),
+      team: match[2].trim(),
+    };
+  }
+
+  // No team affiliation - just return player name
+  return { player: trimmed };
+}
+
+/**
  * Extract over/under from text: "o4.5" -> { isOver: true, line: 4.5 }
  * Also handles attached prices: "u2.5-125" -> { isOver: false, line: 2.5, attachedPrice: -125 }
  */
@@ -849,7 +873,7 @@ const PROP_TYPE_MAP: Record<string, PropTypeInfo> = {
 
   // Football - Team Stats (TeamLeague)
   'team passing yards': {
-    standardName: 'TeamPassingYards',
+    standardName: 'PassingYards',
     category: 'PropOU',
     contestantType: 'TeamLeague',
   },
@@ -1005,6 +1029,41 @@ export function detectPropType(propText: string): PropTypeInfo | null {
     const regex = new RegExp(`\\b${keyword.replace(/\s+/g, '\\s+')}\\b`);
     if (regex.test(cleanText)) {
       return info;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Extract contestant name and prop keyword from text
+ * Handles multi-word names like "Cooper Flagg pts" or "Team123 passing yards"
+ *
+ * @param text - Text containing contestant and prop (e.g., "Cooper Flagg pts")
+ * @returns Object with contestant name and prop keyword
+ */
+export function extractContestantAndProp(
+  text: string
+): { contestant: string; propText: string } | null {
+  const cleanText = text.trim();
+
+  // Sort keywords by length (longest first) to match "passing yards" before "yards"
+  const sortedKeywords = Object.entries(PROP_TYPE_MAP).sort(([a], [b]) => b.length - a.length);
+
+  // Try to find a prop keyword in the text
+  for (const [keyword] of sortedKeywords) {
+    // Match the keyword at word boundaries
+    const regex = new RegExp(`\\b(${keyword.replace(/\s+/g, '\\s+')})\\b`, 'i');
+    const match = cleanText.match(regex);
+
+    if (match) {
+      // Extract contestant (everything before the prop keyword)
+      const contestant = cleanText.substring(0, match.index).trim();
+      const propText = match[1].toLowerCase();
+
+      if (contestant) {
+        return { contestant, propText };
+      }
     }
   }
 

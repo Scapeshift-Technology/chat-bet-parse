@@ -87,7 +87,7 @@ export interface IGradingClient {
 export interface GradingSqlParameters {
   // Match identification
   MatchScheduledDate: Date;
-  Contestant1: string;
+  Contestant1?: string; // Optional for individual props (PropOU/PropYN with Individual type)
   Contestant2?: string;
   DaySequence?: number;
   MatchContestantType?: ContestantType;

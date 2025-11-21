@@ -86,6 +86,14 @@ function validateTestCase(testCase: TestCase) {
       expect(result.contract.Match.Team2).toBe(testCase.expectedTeam2);
     }
 
+    // NEW: Individual player prop fields
+    if (testCase.expectedPlayer !== undefined) {
+      expect(result.contract.Match.Player).toBe(testCase.expectedPlayer);
+    }
+    if (testCase.expectedPlayerTeam !== undefined) {
+      expect(result.contract.Match.PlayerTeam).toBe(testCase.expectedPlayerTeam);
+    }
+
     // Day sequence
     if (testCase.expectedDaySequence !== undefined) {
       expect(result.contract.Match.DaySequence).toBe(testCase.expectedDaySequence);
@@ -260,6 +268,13 @@ function validateParlayTestCase(testCase: ParlayTestCase) {
         expect(actualLeg.contract.Match.Team2).toBe(expectedLeg.teams[1]);
       }
     }
+    // NEW: Individual player prop fields
+    if (expectedLeg.player !== undefined) {
+      expect(actualLeg.contract.Match.Player).toBe(expectedLeg.player);
+    }
+    if (expectedLeg.playerTeam !== undefined) {
+      expect(actualLeg.contract.Match.PlayerTeam).toBe(expectedLeg.playerTeam);
+    }
     if (expectedLeg.line !== undefined) {
       expect('Line' in actualLeg.contract && actualLeg.contract.Line).toBe(expectedLeg.line);
     }
@@ -372,6 +387,13 @@ function validateRoundRobinTestCase(testCase: RoundRobinTestCase) {
       if (expectedLeg.teams[1]) {
         expect(actualLeg.contract.Match.Team2).toBe(expectedLeg.teams[1]);
       }
+    }
+    // NEW: Individual player prop fields
+    if (expectedLeg.player !== undefined) {
+      expect(actualLeg.contract.Match.Player).toBe(expectedLeg.player);
+    }
+    if (expectedLeg.playerTeam !== undefined) {
+      expect(actualLeg.contract.Match.PlayerTeam).toBe(expectedLeg.playerTeam);
     }
     if (expectedLeg.line !== undefined) {
       expect('Line' in actualLeg.contract && actualLeg.contract.Line).toBe(expectedLeg.line);

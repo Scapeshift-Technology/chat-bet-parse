@@ -13,7 +13,8 @@ export const individualContestantTestCases: TestCase[] = [
     expectedContractType: 'PropOU',
     expectedPrice: 120,
     expectedSize: 1000,
-    expectedTeam1: 'B. Falter',
+    expectedPlayer: 'B. Falter',
+    expectedTeam1: undefined, // Individual props should NOT use Team1
     expectedLine: 1.5,
     expectedIsOver: true,
     expectedProp: 'Ks',

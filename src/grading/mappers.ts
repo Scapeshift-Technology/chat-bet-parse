@@ -19,17 +19,18 @@ import { validateContractStructure } from '../shared/contractValidation';
 
 /**
  * Convert a ParseResult to SQL Server function parameters
- * Note: This function only handles straight bets (not parlays or round robins)
+ * For straight bets, returns a single GradingSqlParameters object
+ * For parlays/round robins, returns an array of GradingSqlParameters (one per leg)
  */
 export function mapParseResultToSqlParameters(
   result: ParseResult,
   options?: GradingOptions
-): GradingSqlParameters {
-  // Only straight bets can be mapped
+): GradingSqlParameters | GradingSqlParameters[] {
+  // Handle parlay and round robin by mapping each leg
   if (!isStraight(result)) {
-    throw new GradingDataError(
-      'Cannot map parlay or round robin to SQL parameters. Parlays/RR must be graded leg-by-leg.'
-    );
+    // Parlay and RoundRobin both have a 'legs' array
+    const legs = (result as any).legs as ParseResult[];
+    return legs.map(leg => mapParseResultToSqlParameters(leg, options) as GradingSqlParameters);
   }
 
   const contract = result.contract;
@@ -124,9 +125,23 @@ function extractMatchInfo(
     };
   }
 
-  // Both match and series contracts have a Match property
+  // For individual player props, use PlayerTeam for Contestant1
+  if (
+    'ContractSportCompetitionMatchType' in contract &&
+    contract.ContractSportCompetitionMatchType === 'Prop' &&
+    'ContestantType' in contract &&
+    contract.ContestantType === 'Individual'
+  ) {
+    return {
+      Contestant1: contract.Match.PlayerTeam || undefined,
+      Contestant2: undefined,
+      DaySequence: contract.Match.DaySequence || undefined,
+    };
+  }
+
+  // Both match and series contracts have a Match property with Team1
   return {
-    Contestant1: contract.Match.Team1,
+    Contestant1: contract.Match.Team1 || '',
     Contestant2: contract.Match.Team2,
     DaySequence: contract.Match.DaySequence || undefined,
   };
@@ -311,12 +326,18 @@ export function validateGradingParameters(params: GradingSqlParameters): void {
     throw new GradingDataError('MatchScheduledDate is required');
   }
 
-  if (!params.Contestant1) {
-    throw new GradingDataError('Contestant1 is required');
-  }
-
   if (!params.ContractType) {
     throw new GradingDataError('ContractType is required');
+  }
+
+  // Contestant1 is required for all contract types except Writein and individual props
+  // For individual props (PropOU/PropYN with Individual contestant type), Contestant1 can be undefined
+  const isIndividualProp =
+    (params.ContractType === 'PropOU' || params.ContractType === 'PropYN') &&
+    params.PropContestantType === 'Individual';
+
+  if (!params.Contestant1 && params.ContractType !== 'Writein' && !isIndividualProp) {
+    throw new GradingDataError('Contestant1 is required');
   }
 
   // Contract-specific validation

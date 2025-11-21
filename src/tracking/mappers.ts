@@ -15,17 +15,23 @@ import { validateContractStructure } from '../shared/contractValidation';
 
 /**
  * Convert a ParseResult to ContractLegSpec for SQL Server
- * Note: This function only handles straight bets (not parlays or round robins)
+ * For straight bets, returns a single ContractLegSpec object
+ * For parlays/round robins, returns an array of ContractLegSpec (one per leg)
  */
 export function mapParseResultToContractLegSpec(
   result: ParseResult,
   options?: ContractMappingOptions
-): ContractLegSpec {
-  // Only straight bets can be mapped (parlays/round robins must be handled differently)
+): ContractLegSpec | ContractLegSpec[] {
+  // Handle parlay and round robin by mapping each leg
   if (!isStraight(result)) {
-    throw new ContractMappingError(
-      'Cannot map parlay or round robin to single ContractLegSpec. Use mapParlayToContractLegSpecs instead.'
-    );
+    // Parlay and RoundRobin both have a 'legs' array
+    const legs = (result as any).legs as ParseResult[];
+    return legs.map((leg, index) => {
+      const spec = mapParseResultToContractLegSpec(leg, options) as ContractLegSpec;
+      spec.LegSequence = index + 1; // Set proper leg sequence
+      spec.Price = leg.bet.Price ?? null; // Include price for combo legs
+      return spec;
+    });
   }
 
   const contract = result.contract;
@@ -150,6 +156,21 @@ function extractMatchInfo(
       Contestant1_RawName: undefined,
       Contestant2_RawName: undefined,
       DaySequence: undefined,
+    };
+  }
+
+  // Special handling for Individual player props (not tennis matches!)
+  if (
+    'ContractSportCompetitionMatchType' in contract &&
+    contract.ContractSportCompetitionMatchType === 'Prop' &&
+    'ContestantType' in contract &&
+    contract.ContestantType === 'Individual'
+  ) {
+    // Individual player prop - use PlayerTeam if available, otherwise undefined
+    return {
+      Contestant1_RawName: contract.Match.PlayerTeam || undefined,
+      Contestant2_RawName: undefined,
+      DaySequence: contract.Match.DaySequence || undefined,
     };
   }
 

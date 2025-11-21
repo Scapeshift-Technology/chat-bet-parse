@@ -106,8 +106,16 @@ function validateContractLegSpecMapping(testCase: TestCase) {
       break;
 
     case 'PropOU':
-      expect(contractSpec.Contestant1_RawName).toBe(testCase.expectedTeam1);
-      expect(contractSpec.SelectedContestant_RawName).toBe(testCase.expectedTeam1);
+      // For individual player props vs team props
+      if (testCase.expectedContestantType === 'Individual') {
+        // Individual player prop
+        expect(contractSpec.Contestant1_RawName).toBe(testCase.expectedPlayerTeam || undefined);
+        expect(contractSpec.SelectedContestant_RawName).toBe(testCase.expectedPlayer);
+      } else {
+        // Team prop
+        expect(contractSpec.Contestant1_RawName).toBe(testCase.expectedTeam1);
+        expect(contractSpec.SelectedContestant_RawName).toBe(testCase.expectedTeam1);
+      }
       expect(contractSpec.Line).toBe(testCase.expectedLine);
       expect(contractSpec.IsOver).toBe(testCase.expectedIsOver);
       expect(contractSpec.Prop).toBe(testCase.expectedProp);
@@ -117,8 +125,16 @@ function validateContractLegSpecMapping(testCase: TestCase) {
       break;
 
     case 'PropYN':
-      expect(contractSpec.Contestant1_RawName).toBe(testCase.expectedTeam1);
-      expect(contractSpec.SelectedContestant_RawName).toBe(testCase.expectedTeam1);
+      // For individual player props vs team props
+      if (testCase.expectedContestantType === 'Individual') {
+        // Individual player prop
+        expect(contractSpec.Contestant1_RawName).toBe(testCase.expectedPlayerTeam || undefined);
+        expect(contractSpec.SelectedContestant_RawName).toBe(testCase.expectedPlayer);
+      } else {
+        // Team prop
+        expect(contractSpec.Contestant1_RawName).toBe(testCase.expectedTeam1);
+        expect(contractSpec.SelectedContestant_RawName).toBe(testCase.expectedTeam1);
+      }
       expect(contractSpec.IsYes).toBe(testCase.expectedIsYes);
       expect(contractSpec.Prop).toBe(testCase.expectedProp);
       if (testCase.expectedContestantType) {

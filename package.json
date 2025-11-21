@@ -1,6 +1,6 @@
 {
   "name": "chat-bet-parse",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "TypeScript package for parsing sports betting contract text into structured data types compatible with SQL Server stored procedures",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",

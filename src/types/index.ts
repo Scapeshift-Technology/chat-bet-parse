@@ -85,9 +85,13 @@ export interface Period {
 
 export interface Match {
   Date?: Date;
-  Team1: string;
+  Team1?: string; // For team-based matches
   Team2?: string; // Optional for team totals, series, etc.
   DaySequence?: number; // Game number (G2, #2, etc.)
+
+  // Player-specific fields for individual props
+  Player?: string; // Player name (for individual props only)
+  PlayerTeam?: string; // Optional team affiliation from "(TEAM)" syntax
 }
 
 // ==============================================================================
