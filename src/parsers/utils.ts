@@ -928,6 +928,11 @@ const PROP_TYPE_MAP: Record<string, PropTypeInfo> = {
     category: 'PropOU',
     contestantType: 'Individual',
   },
+  '3pt shots made': {
+    standardName: 'ThreePointersMade',
+    category: 'PropOU',
+    contestantType: 'Individual',
+  },
   'free throws made': {
     standardName: 'FreeThrowsMade',
     category: 'PropOU',
@@ -942,6 +947,8 @@ const PROP_TYPE_MAP: Record<string, PropTypeInfo> = {
     contestantType: 'Individual',
   },
   pra: { standardName: 'PRA', category: 'PropOU', contestantType: 'Individual' },
+  'pts+reb+ast': { standardName: 'PRA', category: 'PropOU', contestantType: 'Individual' },
+  'pts+rebs+asts': { standardName: 'PRA', category: 'PropOU', contestantType: 'Individual' },
   'points and rebounds': { standardName: 'PR', category: 'PropOU', contestantType: 'Individual' },
   'pts+rebs': { standardName: 'PR', category: 'PropOU', contestantType: 'Individual' },
   'points and assists': { standardName: 'PA', category: 'PropOU', contestantType: 'Individual' },
@@ -1013,6 +1020,13 @@ const PROP_TYPE_MAP: Record<string, PropTypeInfo> = {
 };
 
 /**
+ * Escape special regex characters in a string
+ */
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
  * Detect prop type from text and return standardized info
  * Note: Matches longest phrases first to avoid partial matches
  */
@@ -1026,7 +1040,8 @@ export function detectPropType(propText: string): PropTypeInfo | null {
   for (const [keyword, info] of sortedKeywords) {
     // Use word boundaries to ensure we match the complete phrase, not just substrings
     // This prevents "1st inning" from matching "1st team to score"
-    const regex = new RegExp(`\\b${keyword.replace(/\s+/g, '\\s+')}\\b`);
+    const escapedKeyword = escapeRegex(keyword).replace(/\s+/g, '\\s+');
+    const regex = new RegExp(`\\b${escapedKeyword}\\b`);
     if (regex.test(cleanText)) {
       return info;
     }
@@ -1053,7 +1068,8 @@ export function extractContestantAndProp(
   // Try to find a prop keyword in the text
   for (const [keyword] of sortedKeywords) {
     // Match the keyword at word boundaries
-    const regex = new RegExp(`\\b(${keyword.replace(/\s+/g, '\\s+')})\\b`, 'i');
+    const escapedKeyword = escapeRegex(keyword).replace(/\s+/g, '\\s+');
+    const regex = new RegExp(`\\b(${escapedKeyword})\\b`, 'i');
     const match = cleanText.match(regex);
 
     if (match) {
