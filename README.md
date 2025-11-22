@@ -20,369 +20,184 @@ A TypeScript npm package for parsing sports betting chat messages into structure
 npm install chat-bet-parse
 ```
 
-For grading functionality (optional):
-```bash
-npm install chat-bet-parse mssql
+## Examples by Contract Type
+
+### Chat Bets (Orders)
+**Game Totals**
+- `IW Padres/Pirates 1st inning u0.5 @ +100` (no size - order only)
+- `IW ATH/SF F5 o4.5 @ -117 = 2.7` (with unit_size = $2.70 literal)
+- `IW KC F7 o6.5 @ -115 = 1.0` (first seven innings with unit_size = $1.00 literal)
+- `IW 507 Thunder/Nuggets o213.5` (no price, no size)
+- `IW G1 St. Louis/PHI o8.5 @ -110` (game number before teams)
+- `IW # 2 COL/ARI F5 u5 @ -105` (game number with space before teams)
+
+**Team Totals**
+- `IW LAA TT o3.5 @ -115.5` (no size - order only)
+- `IW MIA F5 TT u1.5 @ -110 = 1.0` (with unit_size = $1.00 literal)
+- `IW G2 SEA TT u4.5 @ -110` (game number before team)
+- `IW # 3 LAA TT o3.5 @ -115` (game number with space before team)
+
+**Moneylines**
+- `IW 872 Athletics @ +145` (no size - order only)
+- `IW 872 Athletics @ +145 = 4.0` (with unit_size = $4.00 literal)
+
+**Spreads**
+- `IW 870 Mariners -1.5 +135` (no size - order only)
+- `IW 871 Rangers +1.5 -125 = 3.0` (with unit_size = $3.00 literal)
+
+**Props (Over/Under)**
+- `IW Player123 passing yards o250.5 @ -115` (no size - order only)
+- `IW Player456 rebounds o12.5 @ -110 = 2.0` (with unit_size = $2.00 literal)
+- `YG Player789 rbi o1.5 @ -105 = 1.5` (decimal_thousands_size = $1,500)
+
+**Props (Yes/No)**
+- `IW CIN 1st team to score @ -115` (no size - order only)
+- `IW CHC last team to score @ -139 = 0.50` (with unit_size = $0.50 literal)
+- `YG CIN 1st team to score @ -115 = 0.563` (decimal_thousands_size = $563)
+- `YG CHC last team to score @ -139 = 0.35` (decimal_thousands_size = $350)
+- `YG CIN first team to score @ -109.8 = $265` (dollar_size = $265 literal)
+
+**Series Bets**
+- `IW 852 Guardians series @ -105` (no size - order only, default 3-game series)
+- `IW 854 Yankees 4 game series @ +110 = 1.0` (with unit_size = $1.00 literal)
+- `IW 856 Red Sox series out of 4 @ -120 = 2.0` (with unit_size = $2.00 literal)
+- `IW Lakers 7-Game Series @ +120 = 1.0` (with unit_size = $1.00 literal)
+- `IW 856 St. Louis Cardinals series/5 @ -120 = 2.0` (with unit_size = $2.00 literal)
+
+**Writein Contracts**
+- `IW writein 2024-12-25 Christmas Day game will go to overtime @ +200` (no size - order only)
+- `IWW 2024-12-25 Christmas Day game will go to overtime @ +200` (shorthand for "IW writein")
+- `IW writein 12/31/2024 New Year's Eve total points over 250 @ -110 = 5.0` (with unit_size = $5.00 literal)
+- `IW writein 03/15 March Madness upset in first round @ +300 = 2.5` (MM/DD format, infers year)
+- `IW writein 6-1 June trade deadline blockbuster deal @ +150 = 1.0` (MM-DD format, infers year)
+
+### Chat Fills (Executed Bets)
+**Game Totals**
+- `YG Padres/Pirates 1st inning u0.5 @ +100 = 0.094` (decimal_thousands_size = $94)
+- `YG ATH/SF F5 o4.5 @ -117 = 2.7` (decimal_thousands_size = $2,700)
+- `YG KC F7 o6.5 @ -115 = 1.5` (first seven innings, decimal_thousands_size = $1,500)
+- `YG 507 Thunder/Nuggets o213.5 @ 2k` (k_size = $2,000)
+- `YG COL/ARI #2 1st inning u0.5 @ +120 = $200` (dollar_size = $200 literal)
+- `YG G2 COL/ARI 1st inning u0.5 @ +120 = 2.0` (game number before teams)
+- `YG GM 1 CLE/WAS 1st inning o0.5 runs = 1.0` (game number with space before teams)
+
+**Team Totals**
+- `YG LAA TT o3.5 @ -115.5 = 8.925` (decimal_thousands_size = $8,925)
+- `YG MIA F5 TT u1.5 @ -110 = 1.0` (decimal_thousands_size = $1,000)
+- `YG SEA G2 TT u4.5 @ -110 = 1.5k` (k_size = $1,500)
+- `YG G 2 SEA TT u4.5 @ -110 = 1.0` (game number with space before team)
+
+**Moneylines**
+- `YG 872 Athletics @ 4k` (k_size = $4,000, default price -110)
+- `YG KC F7 @ +125 = 2.0` (first seven innings moneyline, decimal_thousands_size = $2,000)
+- `YG 872 Athletics +145 @ $500` (dollar_size = $500 literal)
+
+**Spreads**
+- `YG 870 Mariners -1.5 +135 @ 2.5k` (k_size = $2,500)
+- `YG 871 Rangers +1.5 -125 @ 1.5k` (k_size = $1,500)
+
+**Props (Over/Under)**
+- `YG Player123 passing yards o250.5 @ -115` (no size - order only)
+- `YG Player456 rebounds o12.5 @ -110` (no size - order only)
+
+**Series Bets**
+- `YG 852 Guardians series @ -105 = 3k` (k_size = $3,000, default 3-game series)
+- `YG 854 Yankees 4 game series @ +110 = 1k` (k_size = $1,000)
+- `YG 856 Red Sox series out of 4 @ -120 = 2.0` (decimal_thousands_size = $2,000)
+- `YG Lakers 7-Game Series @ +120 = 1.0` (decimal_thousands_size = $1,000)
+- `YG 856 St. Louis Cardinals series/5 @ -120 = 2.0` (decimal_thousands_size = $2,000)
+
+**Props (Yes/No)**
+- `YG CIN 1st team to score @ -115 = 0.563` (decimal_thousands_size = $563)
+- `YG CHC last to score @ -139 = 0.35` (decimal_thousands_size = $350)
+- `YG CIN first team to score @ -109.8 = $265` (dollar_size = $265 literal)
+
+**Writein Contracts**
+- `YG writein 2024-12-25 Christmas Day game will go to overtime @ +200 = 1.5` (decimal_thousands_size = $1,500)
+- `YGW 2024-12-25 Christmas Day game will go to overtime @ +200 = 1.5` (shorthand for "YG writein")
+- `YG writein 12/31/2024 New Year's Eve total points over 250 @ -110 = 5.0` (decimal_thousands_size = $5,000)
+- `YG writein 03/15 March Madness upset in first round @ +300 = 2.5k` (k_size = $2,500)
+- `YG writein 6-1 June trade deadline blockbuster deal @ +150 = $1000` (dollar_size = $1,000 literal)
+
+### Parlays (YGP/IWP)
+
+**Basic Parlays - Ampersand Syntax**
+- `YGP Lakers @ +120 & Warriors @ -110 = $100` (2-leg parlay, fair odds)
+- `YGP Lakers @ +120 & Warriors @ -110 & Celtics @ +105 = $100` (3-leg parlay)
+- `IWP Lakers @ +120 & Warriors @ -110` (parlay order, no size)
+
+**Parlays with To-Win Override**
+- `YGP Lakers @ +120 & Warriors @ -110 = $100 tw $500` (custom payout, not fair odds)
+- `YGP Lakers @ +100 & Warriors @ -110 & Celtics @ +120 = $100 tw $750`
+
+**Parlays with Optional Flags**
+- `YGP pusheslose:true Lakers @ +120 & Warriors @ -110 = $100` (pushes reduce parlay)
+- `YGP freebet:true Lakers @ +120 & Warriors @ -110 = $50` (free bet parlay)
+- `YGP pusheslose:true freebet:true Lakers @ +120 & Warriors @ -110 = $50` (multiple flags)
+
+**Parlays with Leg Properties**
+- `YGP 872 Cardinals/Cubs o8.5 @ -110 & 701 Lakers @ +120 = $100` (rotation numbers)
+- `YGP Cardinals/Cubs G1 o8.5 @ -110 & Lakers @ +120 = $100` (game number on leg 1)
+- `YGP 5/14 Lakers @ +120 & 5/15 Warriors @ -110 = $100` (dates per leg)
+- `YGP MLB Cardinals @ +150 & NBA Lakers @ +120 = $100` (leagues per leg)
+- `YGP Cardinals/Cubs F5 o4.5 @ -110 & Dodgers F5 @ +120 = $100` (periods)
+
+**Multiline Parlay Format**
+```
+YGP
+Lakers @ +120
+Warriors @ -110
+Celtics @ +105
+= $100
 ```
 
-## Quick Start
-
-### Parsing
-
-```typescript
-import { parseChat, isStraight, isParlay, isRoundRobin } from 'chat-bet-parse';
-
-// Parse a straight bet fill
-const fillResult = parseChat(
-  'YG Padres/Pirates 1st inning u0.5 @ +100 = 0.094'
-);
-
-if (isStraight(fillResult)) {
-  console.log(fillResult.chatType); // 'fill'
-  console.log(fillResult.betType); // 'straight'
-  console.log(fillResult.contractType); // 'TotalPoints'
-  console.log(fillResult.bet.Size); // 94
-  console.log(fillResult.contract.Line); // 0.5
-}
-
-// Parse a chat order
-const orderResult = parseChat(
-  'IW Padres/Pirates 1st inning u0.5 @ +100'
-);
-
-console.log(orderResult.chatType); // 'order'
-console.log(orderResult.contractType); // 'TotalPoints'
-console.log(orderResult.bet.Size); // undefined (no size specified)
-
-// Parse a parlay
-const parlayResult = parseChat(
-  'YGP Lakers @ +120 & Warriors @ -110 & Celtics @ +105 = $100'
-);
-
-if (isParlay(parlayResult)) {
-  console.log(parlayResult.chatType); // 'fill'
-  console.log(parlayResult.legs.length); // 3
-  console.log(parlayResult.bet.Risk); // 100
-  console.log(parlayResult.useFair); // true (calculate fair odds)
-}
-
-// Parse a round robin
-const rrResult = parseChat(
-  'YGRR 4c2 Lakers @ +120 & Warriors @ -110 & Celtics @ +105 & Nets @ +115 = $100 per'
-);
-
-if (isRoundRobin(rrResult)) {
-  console.log(rrResult.chatType); // 'fill'
-  console.log(rrResult.parlaySize); // 2 (2-leg parlays)
-  console.log(rrResult.isAtMost); // false (exactly 2-leg, not "at most")
-  console.log(rrResult.riskType); // 'perSelection'
-  console.log(rrResult.legs.length); // 4
-}
-
-// Parse a writein contract
-const writeinResult = parseChat(
-  'YG writein 2024-12-25 Christmas Day game will go to overtime @ +200 = 1.5'
-);
-
-console.log(writeinResult.chatType); // 'fill'
-console.log(writeinResult.contractType); // 'Writein'
-console.log(writeinResult.contract.EventDate); // Date object for 2024-12-25
-console.log(writeinResult.contract.Description); // 'Christmas Day game will go to overtime'
-console.log(writeinResult.bet.Size); // 1500
+```
+YGP pusheslose:true freebet:true
+Lakers @ +120
+Warriors @ -110
+= $100 tw $800
 ```
 
-### Grading (Optional)
+### Round Robins (YGRR/IWRR)
 
-```typescript
-import { parseChat, ChatBetGradingClient } from 'chat-bet-parse';
+**Basic Round Robins - nCr Notation**
+- `YGRR 4c2 Lakers @ +120 & Warriors @ -110 & Celtics @ +105 & Nets @ +115 = $100 per` (4 teams, 2-leg parlays, $100 per parlay)
+- `YGRR 4c2 Lakers @ +120 & Warriors @ -110 & Celtics @ +105 & Nets @ +115 = $600 total` (4 teams, 2-leg parlays, $600 total risk)
+- `YGRR 5c3 Lakers @ +120 & Warriors @ -110 & Celtics @ +105 & Nets @ +115 & Heat @ -105 = $50 per` (5 teams, 3-leg parlays)
+- `IWRR 4c2 Lakers @ +120 & Warriors @ -110 & Celtics @ +105 & Nets @ +115` (order, no size)
 
-// Initialize grading client (requires Scapeshift SQL Server database)
-const gradingClient = new ChatBetGradingClient(
-  'Server=your-server;Database=your-db;User Id=user;Password=pass;'
-);
+**Round Robins with At-Most Modifier**
+- `YGRR 4c3- Lakers @ +120 & Warriors @ -110 & Celtics @ +105 & Nets @ +115 = $100 per` (2-leg and 3-leg parlays)
+- `YGRR 5c4- Lakers @ +120 & Warriors @ -110 & Celtics @ +105 & Nets @ +115 & Heat @ -105 = $50 total` (2-leg, 3-leg, and 4-leg parlays)
 
-// Parse and grade a bet
-const result = parseChat('YG Padres/Pirates 1st inning u0.5 @ +100 = 0.094');
-const grade = await gradingClient.grade(result);
-console.log('Bet result:', grade); // 'W', 'L', 'P', or '?'
+**Round Robins with To-Win Override**
+- `YGRR 4c2 Lakers @ +120 & Warriors @ -110 & Celtics @ +105 & Nets @ +115 = $100 per tw $800`
+- `YGRR 5c3- Lakers @ +120 & Warriors @ -110 & Celtics @ +105 & Nets @ +115 & Heat @ -105 = $50 total tw $1200`
 
-await gradingClient.close();
+**Round Robins with Optional Flags**
+- `YGRR pusheslose:true 4c2 Lakers @ +120 & Warriors @ -110 & Celtics @ +105 & Nets @ +115 = $100 per`
+- `YGRR freebet:true 4c2 Lakers @ +120 & Warriors @ -110 & Celtics @ +105 & Nets @ +115 = $100 per`
+- `YGRR pusheslose:true freebet:true 4c2 Lakers @ +120 & Warriors @ -110 & Celtics @ +105 & Nets @ +115 = $100 per`
+
+**Multiline Round Robin Format**
+```
+YGRR 4c2
+Lakers @ +120
+Warriors @ -110
+Celtics @ +105
+Nets @ +115
+= $100 per
 ```
 
-## Contract Grading
-
-The package includes optional SQL Server integration for grading parsed contracts against actual game outcomes. This functionality requires a licensed connection to Scapeshift's SQL Server database.
-
-**Supported grading types:**
-- **Game Totals**: Over/under on total points scored
-- **Team Totals**: Over/under on team-specific points  
-- **Moneylines**: Straight win/loss outcomes
-- **Spreads**: Point spread with handicap lines
-- **Series**: Multi-game series outcomes
-- **Props**: Player/team proposition bets (basic implementation)
-- **Writeins**: Custom event contracts with user-defined descriptions
-
-**Grade results:**
-- `'W'` - Win
-- `'L'` - Loss
-- `'P'` - Push (tie)
-- `'?'` - Unable to grade (missing data, incomplete game, etc.)
-
-### SQL Server Function
-
-The grading functionality is powered by the `dbo.Contract_CALCULATE_Grade_fn` SQL Server function which is deployed on Scapeshift's SQL Server database:
-
-```sql
-
-**Function Signature:**
-```sql
-dbo.Contract_CALCULATE_Grade_fn(
-    @MatchScheduledDate DATE,
-    @Contestant1 CHAR(50),
-    @Contestant2 CHAR(50) = NULL,
-    @DaySequence TINYINT = NULL,
-    @MatchContestantType CHAR(10) = NULL,
-    @PeriodTypeCode CHAR(2),
-    @PeriodNumber TINYINT,
-    @ContractType VARCHAR(30),
-    @Line DECIMAL(5,2) = NULL,
-    @IsOver BIT = NULL,
-    @SelectedContestant CHAR(50) = NULL,
-    @TiesLose BIT = 0,
-    @Prop VARCHAR(20) = NULL,
-    @PropContestantType CHAR(10) = NULL,
-    @IsYes BIT = NULL,
-    @SeriesLength TINYINT = NULL,
-    @EventDate DATE = NULL,
-    @WriteInDescription VARCHAR(255) = NULL
-) RETURNS CHAR(1)
 ```
-
-**Valid Contestant Types:**
-- **Individual**: Individual competitors (e.g., tennis players, golfers)
-- **TeamAdHoc**: Teams that register to play a single event together (e.g., doubles tennis pairs)  
-- **TeamLeague**: Teams that play together as a unit across multiple events (e.g., MLB teams, NBA teams)
-
-**Contract Types Supported:**
-- **TotalPoints**: Game total over/under bets
-- **TotalPointsContestant**: Team total over/under bets  
-- **HandicapContestantML**: Moneyline (straight win/loss) bets
-- **HandicapContestantLine**: Point spread bets
-- **PropOU**: Proposition over/under bets
-- **PropYN**: Proposition yes/no bets
-- **Series**: Multi-game series outcome bets
-- **Writein**: Custom event contracts with user-defined descriptions
-
-**Example SQL Usage:**
-```sql
-SELECT dbo.Contract_CALCULATE_Grade_fn(
-    '2024-01-15',           -- MatchScheduledDate
-    'Yankees',              -- Contestant1  
-    'Red Sox',              -- Contestant2
-    NULL,                   -- DaySequence (for doubleheaders)
-    'TeamLeague',           -- MatchContestantType
-    'FG',                   -- PeriodTypeCode (Full Game)
-    1,                      -- PeriodNumber
-    'TotalPoints',          -- ContractType
-    9.5,                    -- Line
-    1,                      -- IsOver (1 for over, 0 for under)
-    NULL,                   -- SelectedContestant (for team totals)
-    0,                      -- TiesLose
-    NULL,                   -- Prop (for prop bets)
-    NULL,                   -- PropContestantType
-    NULL,                   -- IsYes (for yes/no props)
-    NULL,                   -- SeriesLength (for series bets)
-    NULL,                   -- EventDate (for writein contracts)
-    NULL                    -- WriteInDescription (for writein contracts)
-) as Grade;
-
--- Example: Writein contract grading
-SELECT dbo.Contract_CALCULATE_Grade_fn(
-    NULL,                   -- MatchScheduledDate (not used for writeins)
-    NULL,                   -- Contestant1 (not used for writeins)
-    NULL,                   -- Contestant2 (not used for writeins)
-    NULL,                   -- DaySequence
-    NULL,                   -- MatchContestantType
-    'M',                    -- PeriodTypeCode (default)
-    0,                      -- PeriodNumber (default)
-    'Writein',              -- ContractType
-    NULL,                   -- Line (not used for writeins)
-    NULL,                   -- IsOver (not used for writeins)
-    NULL,                   -- SelectedContestant (not used for writeins)
-    0,                      -- TiesLose
-    NULL,                   -- Prop (not used for writeins)
-    NULL,                   -- PropContestantType
-    NULL,                   -- IsYes (not used for writeins)
-    NULL,                   -- SeriesLength (not used for writeins)
-    '2024-12-25',           -- EventDate
-    'Christmas Day game will go to overtime'  -- WriteInDescription
-) as Grade;
+YGRR pusheslose:true freebet:true 5c3-
+Lakers @ +120
+Warriors @ -110
+Celtics @ +105
+Nets @ +115
+Heat @ -105
+= $50 total tw $1000
 ```
-
-**Implementation Notes:**
-- PropYN grading may require enhancement for specific prop types
-- Series grading requires all games in the series to be completed
-- Function only accepts unambiguous contestant name matches
-
-See [src/grading/README.md](src/grading/README.md) for detailed grading documentation.
-
-## API
-
-### `parseChat(message: string, options?: ParseOptions)`
-
-The main entry point that automatically detects the message type and delegates to the appropriate parser:
-
-- **Straight Bet Orders** (starting with "IW"): Delegates to `parseChatOrder()`
-- **Straight Bet Fills** (starting with "YG"): Delegates to `parseChatFill()`
-- **Parlay Orders** (starting with "IWP"): Parses parlay orders
-- **Parlay Fills** (starting with "YGP"): Parses parlay fills
-- **Round Robin Orders** (starting with "IWRR"): Parses round robin orders
-- **Round Robin Fills** (starting with "YGRR"): Parses round robin fills
-- **Writein Orders** (starting with "IWW"): Shorthand for `IW writein`
-- **Writein Fills** (starting with "YGW"): Shorthand for `YG writein`
-
-**Returns**: A discriminated union with two discriminators (`chatType` and `betType`):
-```typescript
-type ParseResult = ParseResultStraight | ParseResultParlay | ParseResultRoundRobin;
-
-// Two discriminators for flexible type narrowing:
-// - chatType: 'order' | 'fill'  (whether it's an order or executed bet)
-// - betType: 'straight' | 'parlay' | 'roundRobin'  (bet structure)
-```
-
-**ParseOptions**:
-```typescript
-interface ParseOptions {
-  referenceDate?: Date;  // For date inference (defaults to current date)
-}
-```
-
-### Type Guards
-
-Use type guards to discriminate between result types. You can narrow by **bet type** or **chat type**:
-
-```typescript
-import { isStraight, isParlay, isRoundRobin, isOrder, isFill } from 'chat-bet-parse';
-
-const result = parseChat(input);
-
-// Discriminate by BET TYPE
-if (isStraight(result)) {
-  // result is ParseResultStraight
-  console.log(result.betType); // 'straight'
-  console.log(result.contractType);
-  console.log(result.contract);
-}
-
-if (isParlay(result)) {
-  // result is ParseResultParlay
-  console.log(result.betType); // 'parlay'
-  console.log(result.legs);
-  console.log(result.useFair);
-  console.log(result.pushesLose);
-}
-
-if (isRoundRobin(result)) {
-  // result is ParseResultRoundRobin
-  console.log(result.betType); // 'roundRobin'
-  console.log(result.legs);
-  console.log(result.parlaySize);
-  console.log(result.isAtMost);
-  console.log(result.riskType);
-}
-
-// Discriminate by CHAT TYPE
-if (isOrder(result)) {
-  // result has chatType === 'order'
-  console.log(result.bet.Size); // May be undefined
-  console.log(result.bet.ExecutionDtm); // undefined (no execution time for orders)
-}
-
-if (isFill(result)) {
-  // result has chatType === 'fill'
-  console.log(result.bet.ExecutionDtm); // Date object
-  if (isStraight(result)) {
-    console.log(result.bet.Size); // Required for straight fills
-  } else {
-    console.log(result.bet.Risk); // For parlay/round robin fills
-  }
-}
-```
-
-### Result Type Structures
-
-All parse results share a common base with two discriminators:
-
-```typescript
-// Base interface for all results
-interface ParseResultBase {
-  chatType: 'order' | 'fill';  // Discriminator 1: order vs fill
-  betType: 'straight' | 'parlay' | 'roundRobin';  // Discriminator 2: bet structure
-  bet: Bet;  // Unified bet object (fields vary by chatType and betType)
-}
-
-// Unified bet object
-interface Bet {
-  // Primary fields - USE THESE
-  Risk?: number;     // Always populated when size/risk specified (all bet types)
-  ToWin?: number;    // Always populated when size/risk specified (all bet types)
-
-  // Deprecated fields - kept for backward compatibility only
-  /** @deprecated Use Risk/ToWin instead */
-  Price?: number;    // USA odds (straight bets only)
-  /** @deprecated Use Risk/ToWin instead */
-  Size?: number;     // Straight bets only (optional for orders, required for fills)
-
-  // Common fields
-  ExecutionDtm?: Date;   // Fills only (all betTypes)
-  IsFreeBet?: boolean;   // All types
-}
-```
-
-**ParseResultStraight** (Straight Bets):
-```typescript
-interface ParseResultStraight extends ParseResultBase {
-  betType: 'straight';
-  contractType: ContractType;  // e.g., 'TotalPoints', 'HandicapContestantML'
-  contract: Contract;           // The actual contract details
-  rotationNumber?: number;
-}
-```
-
-**ParseResultParlay** (Parlays):
-```typescript
-interface ParseResultParlay extends ParseResultBase {
-  betType: 'parlay';
-  useFair: boolean;       // true = calculate fair odds, false = custom to-win
-  pushesLose?: boolean;   // from "pusheslose:true" or "tieslose:true"
-  legs: Array<ParseResultStraight>;  // Each leg is a straight bet
-}
-```
-
-**ParseResultRoundRobin** (Round Robins):
-```typescript
-interface ParseResultRoundRobin extends ParseResultBase {
-  betType: 'roundRobin';
-  parlaySize: number;              // From nCr notation (e.g., 2 from "4c2")
-  isAtMost: boolean;               // From trailing "-" (e.g., true from "4c3-")
-  riskType: 'perSelection' | 'total';  // Required for fills
-  useFair: boolean;
-  pushesLose?: boolean;
-  legs: Array<ParseResultStraight>;
-}
-```
-
-### Legacy Parser Functions
-
-These functions are still available but `parseChat()` is recommended:
-
-#### `parseChatOrder(message: string, options?: ParseOptions)`
-
-Parses chat orders (IW messages) where size is optional and interpreted as literal units.
-
-#### `parseChatFill(message: string, options?: ParseOptions)`
-
-Parses chat fills (YG messages) where size is required and decimal values are interpreted as thousands.
 
 ## Syntax Grammar (EBNF)
 
@@ -435,7 +250,7 @@ event_date       = yyyy_mm_dd | mm_dd_yyyy | yyyy_mm_dd_alt | mm_dd_yyyy_alt | m
 (* Rotation number must come immediately after YG if present *)
 rotation_number  = digit+
 
-(* Game number patterns: g2, gm1, #2, g 2, gm 1, # 2 *)
+(* Game number patterns: g2, gm1, #2, g 2, gm 2, # 2 *)
 game_number      = (("g" ["m"] [" "]) | "#" [" "]) digit+
 
 (* Over/under pattern: o4.5, u0.5 *)
@@ -454,7 +269,7 @@ dollar_size            = "$" digit+ ["." digit+]             (* Interpreted as l
 
 (* Ordinal numbers *)
 first            = "1" ["st"] | "first"
-second           = "2" ["nd"] | "second"  
+second           = "2" ["nd"] | "second"
 third            = "3" ["rd"] | "third"
 fourth           = "4" ["th"] | "fourth"
 
@@ -465,12 +280,12 @@ quarter          = "quarter" | "q"
 hockey_period    = "period" | "p"
 
 (* Team and period patterns *)
-team             = [("49" | "76")] (letter | "&" | " ")+ 
+team             = [("49" | "76")] (letter | "&" | " ")+
 teams            = team "/" team                              (* Both teams must be different *)
 match            = (teams | team) [game_number]              (* Game number can also appear before match in message structure *)
 
 (* Period patterns - flexible combinations *)
-period           = (first (inning | half | quarter | hockey_period | "five" | "5")) | 
+period           = (first (inning | half | quarter | hockey_period | "five" | "5")) |
                    (second (inning | half | quarter | hockey_period)) |
                    (third (quarter | hockey_period)) |
                    (fourth quarter) |
@@ -518,7 +333,7 @@ first_to_score   = (first ("to score" | "team to score"))
 (* 6. Series *)
 series           = team "series" [series_suffix]
 series_suffix    = "out of" digit+ |                  (* "out of 4" *)
-                   digit+ "game series" |             (* "4 game series" *)  
+                   digit+ "game series" |             (* "4 game series" *)
                    digit+ "-game series" |            (* "7-Game Series" *)
                    "/" digit+                         (* "series/5" *)
                                                       (* defaults to "out of 3" if not specified *)
@@ -782,6 +597,235 @@ Heat @ -105
   - `first seven`, `f7` → `H17` (first seven innings)
   - `second half`, `2nd half`, `second h`, `2nd h`, `2h` → `H2`
   - Default (no period) → `M0`
+
+## API
+
+### `parseChat(message: string, options?: ParseOptions)`
+
+The main entry point that automatically detects the message type and delegates to the appropriate parser:
+
+- **Straight Bet Orders** (starting with "IW"): Delegates to `parseChatOrder()`
+- **Straight Bet Fills** (starting with "YG"): Delegates to `parseChatFill()`
+- **Parlay Orders** (starting with "IWP"): Parses parlay orders
+- **Parlay Fills** (starting with "YGP"): Parses parlay fills
+- **Round Robin Orders** (starting with "IWRR"): Parses round robin orders
+- **Round Robin Fills** (starting with "YGRR"): Parses round robin fills
+- **Writein Orders** (starting with "IWW"): Shorthand for `IW writein`
+- **Writein Fills** (starting with "YGW"): Shorthand for `YG writein`
+
+**Returns**: A discriminated union with two discriminators (`chatType` and `betType`):
+```typescript
+type ParseResult = ParseResultStraight | ParseResultParlay | ParseResultRoundRobin;
+
+// Two discriminators for flexible type narrowing:
+// - chatType: 'order' | 'fill'  (whether it's an order or executed bet)
+// - betType: 'straight' | 'parlay' | 'roundRobin'  (bet structure)
+```
+
+**ParseOptions**:
+```typescript
+interface ParseOptions {
+  referenceDate?: Date;  // For date inference (defaults to current date)
+}
+```
+
+### Type Guards
+
+Use type guards to discriminate between result types. You can narrow by **bet type** or **chat type**:
+
+```typescript
+import { isStraight, isParlay, isRoundRobin, isOrder, isFill } from 'chat-bet-parse';
+
+const result = parseChat(input);
+
+// Discriminate by BET TYPE
+if (isStraight(result)) {
+  // result is ParseResultStraight
+  console.log(result.betType); // 'straight'
+  console.log(result.contractType);
+  console.log(result.contract);
+}
+
+if (isParlay(result)) {
+  // result is ParseResultParlay
+  console.log(result.betType); // 'parlay'
+  console.log(result.legs);
+  console.log(result.useFair);
+  console.log(result.pushesLose);
+}
+
+if (isRoundRobin(result)) {
+  // result is ParseResultRoundRobin
+  console.log(result.betType); // 'roundRobin'
+  console.log(result.legs);
+  console.log(result.parlaySize);
+  console.log(result.isAtMost);
+  console.log(result.riskType);
+}
+
+// Discriminate by CHAT TYPE
+if (isOrder(result)) {
+  // result has chatType === 'order'
+  console.log(result.bet.Size); // May be undefined
+  console.log(result.bet.ExecutionDtm); // undefined (no execution time for orders)
+}
+
+if (isFill(result)) {
+  // result has chatType === 'fill'
+  console.log(result.bet.ExecutionDtm); // Date object
+  if (isStraight(result)) {
+    console.log(result.bet.Size); // Required for straight fills
+  } else {
+    console.log(result.bet.Risk); // For parlay/round robin fills
+  }
+}
+```
+
+### Result Type Structures
+
+All parse results share a common base with two discriminators:
+
+```typescript
+// Base interface for all results
+interface ParseResultBase {
+  chatType: 'order' | 'fill';  // Discriminator 1: order vs fill
+  betType: 'straight' | 'parlay' | 'roundRobin';  // Discriminator 2: bet structure
+  bet: Bet;  // Unified bet object (fields vary by chatType and betType)
+}
+
+// Unified bet object
+interface Bet {
+  // Primary fields - USE THESE
+  Risk?: number;     // Always populated when size/risk specified (all bet types)
+  ToWin?: number;    // Always populated when size/risk specified (all bet types)
+
+  // Deprecated fields - kept for backward compatibility only
+  /** @deprecated Use Risk/ToWin instead */
+  Price?: number;    // USA odds (straight bets only)
+  /** @deprecated Use Risk/ToWin instead */
+  Size?: number;     // Straight bets only (optional for orders, required for fills)
+
+  // Common fields
+  ExecutionDtm?: Date;   // Fills only (all betTypes)
+  IsFreeBet?: boolean;   // All types
+}
+```
+
+**ParseResultStraight** (Straight Bets):
+```typescript
+interface ParseResultStraight extends ParseResultBase {
+  betType: 'straight';
+  contractType: ContractType;  // e.g., 'TotalPoints', 'HandicapContestantML'
+  contract: Contract;           // The actual contract details
+  rotationNumber?: number;
+}
+```
+
+**ParseResultParlay** (Parlays):
+```typescript
+interface ParseResultParlay extends ParseResultBase {
+  betType: 'parlay';
+  useFair: boolean;       // true = calculate fair odds, false = custom to-win
+  pushesLose?: boolean;   // from "pusheslose:true" or "tieslose:true"
+  legs: Array<ParseResultStraight>;  // Each leg is a straight bet
+}
+```
+
+**ParseResultRoundRobin** (Round Robins):
+```typescript
+interface ParseResultRoundRobin extends ParseResultBase {
+  betType: 'roundRobin';
+  parlaySize: number;              // From nCr notation (e.g., 2 from "4c2")
+  isAtMost: boolean;               // From trailing "-" (e.g., true from "4c3-")
+  riskType: 'perSelection' | 'total';  // Required for fills
+  useFair: boolean;
+  pushesLose?: boolean;
+  legs: Array<ParseResultStraight>;
+}
+```
+
+### Legacy Parser Functions
+
+These functions are still available but `parseChat()` is recommended:
+
+#### `parseChatOrder(message: string, options?: ParseOptions)`
+
+Parses chat orders (IW messages) where size is optional and interpreted as literal units.
+
+#### `parseChatFill(message: string, options?: ParseOptions)`
+
+Parses chat fills (YG messages) where size is required and decimal values are interpreted as thousands.
+
+## Contract Grading
+
+The package includes optional SQL Server integration for grading parsed contracts against actual game outcomes. This functionality requires a licensed connection to Scapeshift's SQL Server database.
+
+**Supported grading types:**
+- **Game Totals**: Over/under on total points scored
+- **Team Totals**: Over/under on team-specific points
+- **Moneylines**: Straight win/loss outcomes
+- **Spreads**: Point spread with handicap lines
+- **Series**: Multi-game series outcomes
+- **Props**: Player/team proposition bets (basic implementation)
+- **Writeins**: Custom event contracts with user-defined descriptions
+
+**Grade results:**
+- `'W'` - Win
+- `'L'` - Loss
+- `'P'` - Push (tie)
+- `'?'` - Unable to grade (missing data, incomplete game, etc.)
+
+### SQL Server Function
+
+The grading functionality is powered by the `dbo.Contract_CALCULATE_Grade_fn` SQL Server function which is deployed on Scapeshift's SQL Server database:
+
+```sql
+
+**Function Signature:**
+```sql
+dbo.Contract_CALCULATE_Grade_fn(
+    @MatchScheduledDate DATE,
+    @Contestant1 CHAR(50),
+    @Contestant2 CHAR(50) = NULL,
+    @DaySequence TINYINT = NULL,
+    @MatchContestantType CHAR(10) = NULL,
+    @PeriodTypeCode CHAR(2),
+    @PeriodNumber TINYINT,
+    @ContractType VARCHAR(30),
+    @Line DECIMAL(5,2) = NULL,
+    @IsOver BIT = NULL,
+    @SelectedContestant CHAR(50) = NULL,
+    @TiesLose BIT = 0,
+    @Prop VARCHAR(20) = NULL,
+    @PropContestantType CHAR(10) = NULL,
+    @IsYes BIT = NULL,
+    @SeriesLength TINYINT = NULL,
+    @EventDate DATE = NULL,
+    @WriteInDescription VARCHAR(255) = NULL
+) RETURNS CHAR(1)
+```
+
+**Valid Contestant Types:**
+- **Individual**: Individual competitors (e.g., tennis players, golfers)
+- **TeamAdHoc**: Teams that register to play a single event together (e.g., doubles tennis pairs)
+- **TeamLeague**: Teams that play together as a unit across multiple events (e.g., MLB teams, NBA teams)
+
+**Contract Types Supported:**
+- **TotalPoints**: Game total over/under bets
+- **TotalPointsContestant**: Team total over/under bets
+- **HandicapContestantML**: Moneyline (straight win/loss) bets
+- **HandicapContestantLine**: Point spread bets
+- **PropOU**: Proposition over/under bets
+- **PropYN**: Proposition yes/no bets
+- **Series**: Multi-game series outcome bets
+- **Writein**: Custom event contracts with user-defined descriptions
+
+**Implementation Notes:**
+- PropYN grading may require enhancement for specific prop types
+- Series grading requires all games in the series to be completed
+- Function only accepts unambiguous contestant name matches
+
+See [src/grading/README.md](src/grading/README.md) for detailed grading documentation.
 
 ## Development
 
