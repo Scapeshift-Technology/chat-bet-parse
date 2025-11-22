@@ -648,13 +648,21 @@ function tokenizeChat(message: string, options?: ParseOptions): TokenResult {
     } else {
       // Check if this looks like a total (team name followed by o/u or Over/Under)
       // Use non-greedy match for team name to avoid including the total indicator
+      // Also handle team totals (TT) - stop before TT marker
+      const teamTotalMatch = restOfContract.match(
+        /^([a-zA-Z\s&.-]+?)\s+tt\s+([ou]|over|under)\s*(\d+(?:\.\d+)?)/i
+      );
       const totalMatch = restOfContract.match(
         /^([a-zA-Z\s&.-]+?)\s+([ou]|over|under)\s*(\d+(?:\.\d+)?)/i
       );
-      if (totalMatch) {
+      if (teamTotalMatch) {
+        // Team total: insert period before TT: "Dolphins 2h TT u10.5"
+        const teamName = teamTotalMatch[1].trim();
+        contractText = `${teamName} ${period} TT ${teamTotalMatch[2]}${teamTotalMatch[3]}`;
+      } else if (totalMatch) {
         // Insert period between team and total: "Utah State 1Q u10.5"
         const teamName = totalMatch[1].trim();
-        contractText = `${teamName} ${period} ${totalMatch[2]} ${totalMatch[3]}`;
+        contractText = `${teamName} ${period} ${totalMatch[2]}${totalMatch[3]}`;
       } else {
         // For other patterns (like moneylines), just append period at the end
         contractText = `${restOfContract} ${period}`;
@@ -706,13 +714,21 @@ function tokenizeChat(message: string, options?: ParseOptions): TokenResult {
     } else {
       // Check if this looks like a total (team name followed by o/u or Over/Under)
       // Use non-greedy match for team name to avoid including the total indicator
+      // Also handle team totals (TT) - stop before TT marker
+      const teamTotalMatch = restOfContract.match(
+        /^([a-zA-Z\s&.-]+?)\s+tt\s+([ou]|over|under)\s*(\d+(?:\.\d+)?)/i
+      );
       const totalMatch = restOfContract.match(
         /^([a-zA-Z\s&.-]+?)\s+([ou]|over|under)\s*(\d+(?:\.\d+)?)/i
       );
-      if (totalMatch) {
+      if (teamTotalMatch) {
+        // Team total: insert period before TT: "Dolphins 2h TT u10.5"
+        const teamName = teamTotalMatch[1].trim();
+        contractText = `${teamName} ${period} TT ${teamTotalMatch[2]}${teamTotalMatch[3]}`;
+      } else if (totalMatch) {
         // Insert period between team and total: "Utah State 1Q u10.5"
         const teamName = totalMatch[1].trim();
-        contractText = `${teamName} ${period} ${totalMatch[2]} ${totalMatch[3]}`;
+        contractText = `${teamName} ${period} ${totalMatch[2]}${totalMatch[3]}`;
       } else {
         // For other patterns (like moneylines), just append period at the end
         contractText = `${restOfContract} ${period}`;

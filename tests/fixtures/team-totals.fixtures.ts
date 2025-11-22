@@ -66,5 +66,19 @@ export const teamTotalsTestCases: TestCase[] = [
     expectedDaySequence: 2,
     expectedLine: 4.5,
     expectedIsOver: false
+  },
+  {
+    description: 'YG NFL 2h team total with plus odds and k-notation',
+    input: 'YG NFL 2h Dolphins TT u10.5 @ +100 = 2.5k',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPointsContestant',
+    expectedPrice: 100,
+    expectedSize: 2500,
+    expectedTeam1: 'Dolphins',
+    expectedLine: 10.5,
+    expectedIsOver: false,
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 2 },
+    expectedSport: 'Football',
+    expectedLeague: 'NFL'
   }
 ];
