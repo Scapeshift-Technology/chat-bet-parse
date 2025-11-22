@@ -45,6 +45,91 @@ import { roundRobinErrorTestCases } from '../fixtures/round-robin-errors.fixture
 import { parseNcrNotation } from '../../src/parsers/ncr';
 
 /**
+ * HELPER FUNCTIONS FOR DRY TEST ASSERTIONS
+ */
+
+/**
+ * Asserts equality only if expected value is defined
+ */
+function expectIfDefined<T>(actual: T, expected: T | undefined): void {
+  if (expected !== undefined) {
+    expect(actual).toBe(expected);
+  }
+}
+
+/**
+ * Asserts that a contract has a property with the expected value
+ */
+function expectContractProperty<T>(
+  contract: any,
+  propertyName: string,
+  expectedValue: T | undefined
+): void {
+  if (expectedValue !== undefined) {
+    expect(propertyName in contract).toBe(true);
+    if (propertyName in contract) {
+      expect(contract[propertyName]).toBe(expectedValue);
+    }
+  }
+}
+
+/**
+ * Validates a single leg (used by both parlay and round robin validation)
+ */
+function validateLeg(actualLeg: any, expectedLeg: any): void {
+  // Each leg must be a straight bet
+  expect('contract' in actualLeg).toBe(true);
+  if (!('contract' in actualLeg)) return;
+
+  // Validate leg properties
+  expect(actualLeg.contractType).toBe(expectedLeg.contractType);
+  expect(actualLeg.bet.Price).toBe(expectedLeg.price);
+
+  // Validate leg contract details
+  if (expectedLeg.team) {
+    expect('Contestant' in actualLeg.contract &&
+      actualLeg.contract.Contestant).toBe(expectedLeg.team);
+  }
+  if (expectedLeg.teams) {
+    expect(actualLeg.contract.Match.Team1).toBe(expectedLeg.teams[0]);
+    if (expectedLeg.teams[1]) {
+      expect(actualLeg.contract.Match.Team2).toBe(expectedLeg.teams[1]);
+    }
+  }
+
+  // Individual player prop fields
+  expectIfDefined(actualLeg.contract.Match?.Player, expectedLeg.player);
+  expectIfDefined(actualLeg.contract.Match?.PlayerTeam, expectedLeg.playerTeam);
+
+  // Line and over/under
+  expectContractProperty(actualLeg.contract, 'Line', expectedLeg.line);
+  expectContractProperty(actualLeg.contract, 'IsOver', expectedLeg.isOver);
+
+  // Other fields
+  expectIfDefined(actualLeg.rotationNumber, expectedLeg.rotationNumber);
+  expectIfDefined(actualLeg.contract.Match?.DaySequence, expectedLeg.daySequence);
+  expectIfDefined(actualLeg.contract.Sport, expectedLeg.sport);
+  expectIfDefined(actualLeg.contract.League, expectedLeg.league);
+
+  // Period validation
+  if (expectedLeg.period) {
+    expect(actualLeg.contract.Period.PeriodTypeCode).toBe(expectedLeg.period.PeriodTypeCode);
+    expect(actualLeg.contract.Period.PeriodNumber).toBe(expectedLeg.period.PeriodNumber);
+  }
+
+  // Event date
+  if (expectedLeg.eventDate) {
+    expect(actualLeg.contract.Match.Date).toEqual(expectedLeg.eventDate);
+  }
+
+  // Writein-specific validations
+  expectContractProperty(actualLeg.contract, 'Description', expectedLeg.description);
+  if (expectedLeg.writeinEventDate) {
+    expect('EventDate' in actualLeg.contract && actualLeg.contract.EventDate).toEqual(expectedLeg.writeinEventDate);
+  }
+}
+
+/**
  * Generic test function that validates a parsed result against expected values
  */
 function validateTestCase(testCase: TestCase) {
@@ -57,9 +142,7 @@ function validateTestCase(testCase: TestCase) {
 
   // Bet details
   expect(result.bet.Price).toBe(testCase.expectedPrice);
-  if (testCase.expectedSize !== undefined) {
-    expect(result.bet.Size).toBe(testCase.expectedSize);
-  }
+  expectIfDefined(result.bet.Size, testCase.expectedSize);
 
   // ExecutionDtm - fills have it, orders don't
   if (testCase.expectedChatType === 'fill') {
@@ -74,30 +157,14 @@ function validateTestCase(testCase: TestCase) {
     if (testCase.expectedEventDate !== undefined) {
       expect(result.contract.EventDate).toEqual(testCase.expectedEventDate);
     }
-    if (testCase.expectedDescription !== undefined) {
-      expect(result.contract.Description).toBe(testCase.expectedDescription);
-    }
+    expectIfDefined(result.contract.Description, testCase.expectedDescription);
   } else {
     // Regular contracts with Match property
-    if (testCase.expectedTeam1 !== undefined) {
-      expect(result.contract.Match.Team1).toBe(testCase.expectedTeam1);
-    }
-    if (testCase.expectedTeam2 !== undefined) {
-      expect(result.contract.Match.Team2).toBe(testCase.expectedTeam2);
-    }
-
-    // NEW: Individual player prop fields
-    if (testCase.expectedPlayer !== undefined) {
-      expect(result.contract.Match.Player).toBe(testCase.expectedPlayer);
-    }
-    if (testCase.expectedPlayerTeam !== undefined) {
-      expect(result.contract.Match.PlayerTeam).toBe(testCase.expectedPlayerTeam);
-    }
-
-    // Day sequence
-    if (testCase.expectedDaySequence !== undefined) {
-      expect(result.contract.Match.DaySequence).toBe(testCase.expectedDaySequence);
-    }
+    expectIfDefined(result.contract.Match.Team1, testCase.expectedTeam1);
+    expectIfDefined(result.contract.Match.Team2, testCase.expectedTeam2);
+    expectIfDefined(result.contract.Match.Player, testCase.expectedPlayer);
+    expectIfDefined(result.contract.Match.PlayerTeam, testCase.expectedPlayerTeam);
+    expectIfDefined(result.contract.Match.DaySequence, testCase.expectedDaySequence);
   }
 
   // Rotation number
@@ -117,75 +184,18 @@ function validateTestCase(testCase: TestCase) {
     }
   }
 
-  // Contract-specific fields
-  if (testCase.expectedLine !== undefined) {
-    expect('Line' in result.contract).toBe(true);
-    if ('Line' in result.contract) {
-      expect(result.contract.Line).toBe(testCase.expectedLine);
-    }
-  }
+  // Contract-specific fields using helper
+  expectContractProperty(result.contract, 'Line', testCase.expectedLine);
+  expectContractProperty(result.contract, 'IsOver', testCase.expectedIsOver);
+  expectContractProperty(result.contract, 'IsYes', testCase.expectedIsYes);
+  expectContractProperty(result.contract, 'TiesLose', testCase.expectedTiesLose);
+  expectContractProperty(result.contract, 'Prop', testCase.expectedProp);
+  expectContractProperty(result.contract, 'SeriesLength', testCase.expectedSeriesLength);
+  expectContractProperty(result.contract, 'ContestantType', testCase.expectedContestantType);
 
-  if (testCase.expectedIsOver !== undefined) {
-    expect('IsOver' in result.contract).toBe(true);
-    if ('IsOver' in result.contract) {
-      expect(result.contract.IsOver).toBe(testCase.expectedIsOver);
-    }
-  }
-
-  if (testCase.expectedIsYes !== undefined) {
-    expect('IsYes' in result.contract).toBe(true);
-    if ('IsYes' in result.contract) {
-      expect(result.contract.IsYes).toBe(testCase.expectedIsYes);
-    }
-  }
-
-  if (testCase.expectedTiesLose !== undefined) {
-    expect('TiesLose' in result.contract).toBe(true);
-    if ('TiesLose' in result.contract) {
-      expect(result.contract.TiesLose).toBe(testCase.expectedTiesLose);
-    }
-  }
-
-  if (testCase.expectedProp !== undefined) {
-    expect('Prop' in result.contract).toBe(true);
-    if ('Prop' in result.contract) {
-      expect(result.contract.Prop).toBe(testCase.expectedProp);
-    }
-  }
-
-  if (testCase.expectedSeriesLength !== undefined) {
-    expect('SeriesLength' in result.contract).toBe(true);
-    if ('SeriesLength' in result.contract) {
-      expect(result.contract.SeriesLength).toBe(testCase.expectedSeriesLength);
-    }
-  }
-
-  // ContestantType field for props
-  if (testCase.expectedContestantType !== undefined) {
-    expect('ContestantType' in result.contract).toBe(true);
-    if ('ContestantType' in result.contract) {
-      expect(result.contract.ContestantType).toBe(testCase.expectedContestantType);
-    }
-  }
-
-  // Sport and League fields
-  if (!isWritein(result.contract)) {
-    // Regular contracts
-    if (testCase.expectedSport !== undefined) {
-      expect(result.contract.Sport).toBe(testCase.expectedSport);
-    }
-    if (testCase.expectedLeague !== undefined) {
-      expect(result.contract.League).toBe(testCase.expectedLeague);
-    }
-  } else {
-    // Writein contracts can also have Sport and League
-    if (testCase.expectedSport !== undefined) {
-      expect(result.contract.Sport).toBe(testCase.expectedSport);
-    }
-    if (testCase.expectedLeague !== undefined) {
-      expect(result.contract.League).toBe(testCase.expectedLeague);
-    }
-  }
+  // Sport and League fields (same for both writein and regular contracts)
+  expectIfDefined(result.contract.Sport, testCase.expectedSport);
+  expectIfDefined(result.contract.League, testCase.expectedLeague);
 
   // Event date for regular contracts (in addition to writeins)
   if (!isWritein(result.contract) && testCase.expectedEventDate !== undefined) {
@@ -193,9 +203,7 @@ function validateTestCase(testCase: TestCase) {
   }
 
   // Free bet flag
-  if (testCase.expectedFreeBet !== undefined) {
-    expect(result.bet.IsFreeBet).toBe(testCase.expectedFreeBet);
-  }
+  expectIfDefined(result.bet.IsFreeBet, testCase.expectedFreeBet);
 }
 
 /**
@@ -227,86 +235,18 @@ function validateParlayTestCase(testCase: ParlayTestCase) {
 
   // Validate parlay-level properties
   expect(result.chatType).toBe(testCase.expectedChatType);
-  if (testCase.expectedRisk !== undefined) {
-    expect(result.bet.Risk).toBe(testCase.expectedRisk);
-  }
-  if (testCase.expectedToWin !== undefined) {
-    expect(result.bet.ToWin).toBe(testCase.expectedToWin);
-  }
+  expectIfDefined(result.bet.Risk, testCase.expectedRisk);
+  expectIfDefined(result.bet.ToWin, testCase.expectedToWin);
   expect(result.useFair).toBe(testCase.expectedUseFair);
-  if (testCase.expectedPushesLose !== undefined) {
-    expect(result.pushesLose).toBe(testCase.expectedPushesLose);
-  }
-  if (testCase.expectedFreeBet !== undefined) {
-    expect(result.bet.IsFreeBet).toBe(testCase.expectedFreeBet);
-  }
+  expectIfDefined(result.pushesLose, testCase.expectedPushesLose);
+  expectIfDefined(result.bet.IsFreeBet, testCase.expectedFreeBet);
 
   // Validate leg count
   expect(result.legs).toHaveLength(testCase.expectedLegs.length);
 
-  // Validate each leg
+  // Validate each leg using shared helper
   for (let i = 0; i < testCase.expectedLegs.length; i++) {
-    const expectedLeg = testCase.expectedLegs[i];
-    const actualLeg = result.legs[i];
-
-    // Each leg must be a straight bet
-    expect('contract' in actualLeg).toBe(true);
-    if (!('contract' in actualLeg)) continue;
-
-    // Validate leg properties
-    expect(actualLeg.contractType).toBe(expectedLeg.contractType);
-    expect(actualLeg.bet.Price).toBe(expectedLeg.price);
-
-    // Validate leg contract details (team, teams, line, etc.)
-    if (expectedLeg.team) {
-      expect('Contestant' in actualLeg.contract &&
-        actualLeg.contract.Contestant).toBe(expectedLeg.team);
-    }
-    if (expectedLeg.teams) {
-      expect(actualLeg.contract.Match.Team1).toBe(expectedLeg.teams[0]);
-      if (expectedLeg.teams[1]) {
-        expect(actualLeg.contract.Match.Team2).toBe(expectedLeg.teams[1]);
-      }
-    }
-    // NEW: Individual player prop fields
-    if (expectedLeg.player !== undefined) {
-      expect(actualLeg.contract.Match.Player).toBe(expectedLeg.player);
-    }
-    if (expectedLeg.playerTeam !== undefined) {
-      expect(actualLeg.contract.Match.PlayerTeam).toBe(expectedLeg.playerTeam);
-    }
-    if (expectedLeg.line !== undefined) {
-      expect('Line' in actualLeg.contract && actualLeg.contract.Line).toBe(expectedLeg.line);
-    }
-    if (expectedLeg.isOver !== undefined) {
-      expect('IsOver' in actualLeg.contract && actualLeg.contract.IsOver).toBe(expectedLeg.isOver);
-    }
-    if (expectedLeg.rotationNumber !== undefined) {
-      expect(actualLeg.rotationNumber).toBe(expectedLeg.rotationNumber);
-    }
-    if (expectedLeg.daySequence !== undefined) {
-      expect(actualLeg.contract.Match.DaySequence).toBe(expectedLeg.daySequence);
-    }
-    if (expectedLeg.period) {
-      expect(actualLeg.contract.Period.PeriodTypeCode).toBe(expectedLeg.period.PeriodTypeCode);
-      expect(actualLeg.contract.Period.PeriodNumber).toBe(expectedLeg.period.PeriodNumber);
-    }
-    if (expectedLeg.sport) {
-      expect(actualLeg.contract.Sport).toBe(expectedLeg.sport);
-    }
-    if (expectedLeg.league) {
-      expect(actualLeg.contract.League).toBe(expectedLeg.league);
-    }
-    if (expectedLeg.eventDate) {
-      expect(actualLeg.contract.Match.Date).toEqual(expectedLeg.eventDate);
-    }
-    // Writein-specific validations
-    if (expectedLeg.description) {
-      expect('Description' in actualLeg.contract && actualLeg.contract.Description).toBe(expectedLeg.description);
-    }
-    if (expectedLeg.writeinEventDate) {
-      expect('EventDate' in actualLeg.contract && actualLeg.contract.EventDate).toEqual(expectedLeg.writeinEventDate);
-    }
+    validateLeg(result.legs[i], testCase.expectedLegs[i]);
   }
 }
 
@@ -349,65 +289,18 @@ function validateRoundRobinTestCase(testCase: RoundRobinTestCase) {
   expect(result.parlaySize).toBe(testCase.expectedParlaySize);
   expect(result.isAtMost).toBe(testCase.expectedIsAtMost);
   expect(result.riskType).toBe(testCase.expectedRiskType);
-
-  if (testCase.expectedRisk !== undefined) {
-    expect(result.bet.Risk).toBe(testCase.expectedRisk);
-  }
-  if (testCase.expectedToWin !== undefined) {
-    expect(result.bet.ToWin).toBe(testCase.expectedToWin);
-  }
+  expectIfDefined(result.bet.Risk, testCase.expectedRisk);
+  expectIfDefined(result.bet.ToWin, testCase.expectedToWin);
   expect(result.useFair).toBe(testCase.expectedUseFair);
-  if (testCase.expectedPushesLose !== undefined) {
-    expect(result.pushesLose).toBe(testCase.expectedPushesLose);
-  }
-  if (testCase.expectedFreeBet !== undefined) {
-    expect(result.bet.IsFreeBet).toBe(testCase.expectedFreeBet);
-  }
+  expectIfDefined(result.pushesLose, testCase.expectedPushesLose);
+  expectIfDefined(result.bet.IsFreeBet, testCase.expectedFreeBet);
 
   // Validate leg count
   expect(result.legs).toHaveLength(testCase.expectedLegs.length);
 
-  // Validate each leg (same logic as parlays)
+  // Validate each leg using shared helper
   for (let i = 0; i < testCase.expectedLegs.length; i++) {
-    const expectedLeg = testCase.expectedLegs[i];
-    const actualLeg = result.legs[i];
-
-    expect('contract' in actualLeg).toBe(true);
-    if (!('contract' in actualLeg)) continue;
-
-    expect(actualLeg.contractType).toBe(expectedLeg.contractType);
-    expect(actualLeg.bet.Price).toBe(expectedLeg.price);
-
-    if (expectedLeg.team) {
-      expect('Contestant' in actualLeg.contract &&
-        actualLeg.contract.Contestant).toBe(expectedLeg.team);
-    }
-    if (expectedLeg.teams) {
-      expect(actualLeg.contract.Match.Team1).toBe(expectedLeg.teams[0]);
-      if (expectedLeg.teams[1]) {
-        expect(actualLeg.contract.Match.Team2).toBe(expectedLeg.teams[1]);
-      }
-    }
-    // NEW: Individual player prop fields
-    if (expectedLeg.player !== undefined) {
-      expect(actualLeg.contract.Match.Player).toBe(expectedLeg.player);
-    }
-    if (expectedLeg.playerTeam !== undefined) {
-      expect(actualLeg.contract.Match.PlayerTeam).toBe(expectedLeg.playerTeam);
-    }
-    if (expectedLeg.line !== undefined) {
-      expect('Line' in actualLeg.contract && actualLeg.contract.Line).toBe(expectedLeg.line);
-    }
-    if (expectedLeg.isOver !== undefined) {
-      expect('IsOver' in actualLeg.contract && actualLeg.contract.IsOver).toBe(expectedLeg.isOver);
-    }
-    // Writein-specific validations
-    if (expectedLeg.description) {
-      expect('Description' in actualLeg.contract && actualLeg.contract.Description).toBe(expectedLeg.description);
-    }
-    if (expectedLeg.writeinEventDate) {
-      expect('EventDate' in actualLeg.contract && actualLeg.contract.EventDate).toEqual(expectedLeg.writeinEventDate);
-    }
+    validateLeg(result.legs[i], testCase.expectedLegs[i]);
   }
 }
 
