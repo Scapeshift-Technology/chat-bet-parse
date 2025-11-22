@@ -245,19 +245,35 @@ export type ContractType =
   | 'Writein';
 
 /**
- * Unified bet structure - fields populated based on chatType and betType
- * - Price/Size: Only for straight bets
- * - Risk/ToWin: Only for parlay/roundRobin fills
+ * Unified bet structure containing betting amounts and execution details.
+ *
+ * PRIMARY FIELDS (use these):
+ * - Risk/ToWin: Always populated when a size/amount is specified (all bet types)
+ *
+ * DEPRECATED FIELDS (backward compatibility only):
+ * - Price/Size: Use Risk/ToWin instead
+ *
+ * OTHER FIELDS:
  * - ExecutionDtm: Only for fills (all betTypes)
+ * - IsFreeBet: Optional flag for all types
  */
 export interface Bet {
-  // Straight bet fields
-  Price?: number; // USA odds format (straight bets only)
-  Size?: number; // Straight bets only (optional for orders, required for fills)
+  // Primary fields - USE THESE
+  Risk?: number; // Always populated when size/risk is specified (all bet types)
+  ToWin?: number; // Always populated when size/risk is specified (all bet types)
 
-  // Parlay/RoundRobin fill fields
-  Risk?: number; // Parlay/RR fills only (from "= $100")
-  ToWin?: number; // Parlay/RR fills only (optional override from "tw $500")
+  // Legacy fields - DEPRECATED (kept for backward compatibility only)
+  /**
+   * @deprecated Use Risk and ToWin instead. This field was only used to calculate
+   * Risk/ToWin, which the library now provides directly. Kept for backward compatibility.
+   */
+  Price?: number;
+  /**
+   * @deprecated Use Risk and ToWin instead. This field was only used to calculate
+   * Risk/ToWin, which the library now provides directly. Kept for backward compatibility.
+   * Only populated when simple size syntax is used (e.g., "= 2.5").
+   */
+  Size?: number;
 
   // Common fields
   ExecutionDtm?: Date; // Fills only (all betTypes)

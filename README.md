@@ -323,13 +323,15 @@ interface ParseResultBase {
 
 // Unified bet object
 interface Bet {
-  // Straight bet fields
-  Price?: number;    // USA odds (straight bets only)
-  Size?: number;     // Straight bets only (optional for orders, required for fills)
+  // Primary fields - USE THESE
+  Risk?: number;     // Always populated when size/risk specified (all bet types)
+  ToWin?: number;    // Always populated when size/risk specified (all bet types)
 
-  // Parlay/RoundRobin fill fields
-  Risk?: number;     // Parlay/RR fills only (from "= $100")
-  ToWin?: number;    // Parlay/RR fills only (optional override from "tw $500")
+  // Deprecated fields - kept for backward compatibility only
+  /** @deprecated Use Risk/ToWin instead */
+  Price?: number;    // USA odds (straight bets only)
+  /** @deprecated Use Risk/ToWin instead */
+  Size?: number;     // Straight bets only (optional for orders, required for fills)
 
   // Common fields
   ExecutionDtm?: Date;   // Fills only (all betTypes)
