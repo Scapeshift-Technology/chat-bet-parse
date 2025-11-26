@@ -984,7 +984,7 @@ function parseTeamTotal(
   // Remove the o/u part (and optional "runs") and TT to get team and period
   const withoutOU = contractText
     .replace(/\s*[ou]\d+(?:\.\d+)?(?:[+-]\d+(?:\.\d+)?)?(\s+runs)?/i, '')
-    .replace(/\s*tt\s*/i, ' ')
+    .replace(/\s+tt\s*/i, ' ')
     .trim();
 
   // Parse team and extract match info

@@ -80,5 +80,19 @@ export const teamTotalsTestCases: TestCase[] = [
     expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 2 },
     expectedSport: 'Football',
     expectedLeague: 'NFL'
+  },
+  {
+    description: 'YG CFB 1H team total with k-notation',
+    input: 'YG CFB Massachusetts 1H TT u7.5 @ -125 = 4k',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPointsContestant',
+    expectedPrice: -125,
+    expectedSize: 4000,
+    expectedTeam1: 'Massachusetts',
+    expectedLine: 7.5,
+    expectedIsOver: false,
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 },
+    expectedSport: 'Football',
+    expectedLeague: 'CFB'
   }
 ];
