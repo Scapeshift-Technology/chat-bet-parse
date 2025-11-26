@@ -1,6 +1,6 @@
 {
   "name": "chat-bet-parse",
-  "version": "0.6.6",
+  "version": "0.6.7",
   "description": "TypeScript package for parsing sports betting contract text into structured data types compatible with SQL Server stored procedures",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -10,6 +10,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
+    },
+    "./types": {
+      "types": "./dist/types-only.d.ts",
+      "import": "./dist/types-only.mjs",
+      "require": "./dist/types-only.js"
     }
   },
   "files": [
@@ -18,8 +23,8 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
-    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+    "build": "tsup src/index.ts src/types-only.ts --format cjs,esm --dts --clean",
+    "dev": "tsup src/index.ts src/types-only.ts --format cjs,esm --dts --watch",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
