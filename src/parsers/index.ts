@@ -74,6 +74,7 @@ import {
   parseParlayKeywords,
   parseParlaySize,
   parseRoundRobinSize,
+  calculateTotalParlays,
 } from './utils';
 
 // ==============================================================================
@@ -2193,12 +2194,20 @@ function parseRoundRobinFill(rawInput: string, options?: ParseOptions): ParseRes
   // 8. Parse size with risk type
   const { risk, toWin, useFair, riskType } = parseRoundRobinSize(sizeText, rawInput);
 
-  // 9. Build result
+  // 9. Calculate total risk for per-selection mode
+  // For per-selection mode: total risk = per-parlay risk × number of parlays
+  let totalRisk = risk;
+  if (riskType === 'perSelection' && risk !== undefined) {
+    const totalParlays = calculateTotalParlays(totalLegs, parlaySize, isAtMost);
+    totalRisk = risk * totalParlays;
+  }
+
+  // 10. Build result
   return {
     chatType: 'fill',
     betType: 'roundRobin',
     bet: {
-      Risk: risk,
+      Risk: totalRisk,
       ToWin: toWin,
       ExecutionDtm: new Date(),
       IsFreeBet: freebet || false,

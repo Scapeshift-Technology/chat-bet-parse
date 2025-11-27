@@ -1618,3 +1618,49 @@ export function parseRoundRobinSize(sizeText: string, rawInput: string): ParsedR
 
   return { risk: riskParsed.value, toWin: undefined, useFair: true, riskType };
 }
+
+/**
+ * Calculate the combination C(n, r) = n! / (r! * (n-r)!)
+ * This represents "n choose r" - the number of ways to choose r items from n items
+ */
+export function calculateCombination(n: number, r: number): number {
+  // Handle edge cases
+  if (r > n) return 0;
+  if (r === 0 || r === n) return 1;
+
+  // Optimize by using the smaller of r or n-r
+  if (r > n - r) {
+    r = n - r;
+  }
+
+  let result = 1;
+  for (let i = 0; i < r; i++) {
+    result *= n - i;
+    result /= i + 1;
+  }
+
+  return Math.round(result);
+}
+
+/**
+ * Calculate the total number of parlays for a round robin bet
+ * For exact notation (e.g., 4c2): returns C(n, r)
+ * For at-most notation (e.g., 4c3-): returns sum of C(n, 2) + C(n, 3) + ... + C(n, r)
+ */
+export function calculateTotalParlays(
+  totalLegs: number,
+  parlaySize: number,
+  isAtMost: boolean
+): number {
+  if (isAtMost) {
+    // At-most: sum all combinations from 2-leg parlays up to parlaySize-leg parlays
+    let total = 0;
+    for (let r = 2; r <= parlaySize; r++) {
+      total += calculateCombination(totalLegs, r);
+    }
+    return total;
+  } else {
+    // Exact: just calculate C(totalLegs, parlaySize)
+    return calculateCombination(totalLegs, parlaySize);
+  }
+}

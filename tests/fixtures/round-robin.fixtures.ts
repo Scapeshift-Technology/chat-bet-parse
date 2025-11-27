@@ -16,7 +16,7 @@ export const roundRobinTestCases: RoundRobinTestCase[] = [
     expectedParlaySize: 2,
     expectedIsAtMost: false,
     expectedRiskType: 'perSelection',
-    expectedRisk: 100,
+    expectedRisk: 600, // $100 per × 6 parlays (C(4,2) = 6)
     expectedUseFair: true,
     expectedLegs: [
       { contractType: 'HandicapContestantML', price: 120, team: 'Lakers' },
@@ -48,7 +48,7 @@ export const roundRobinTestCases: RoundRobinTestCase[] = [
     expectedParlaySize: 3,
     expectedIsAtMost: false,
     expectedRiskType: 'perSelection',
-    expectedRisk: 50,
+    expectedRisk: 500, // $50 per × 10 parlays (C(5,3) = 10)
     expectedUseFair: true,
     expectedLegs: [
       { contractType: 'HandicapContestantML', price: 120, team: 'Lakers' },
@@ -84,7 +84,7 @@ export const roundRobinTestCases: RoundRobinTestCase[] = [
     expectedParlaySize: 3,
     expectedIsAtMost: true,
     expectedRiskType: 'perSelection',
-    expectedRisk: 100,
+    expectedRisk: 1000, // $100 per × 10 parlays (C(4,2) + C(4,3) = 6 + 4 = 10)
     expectedUseFair: true,
     expectedLegs: [
       { contractType: 'HandicapContestantML', price: 120, team: 'Lakers' },
@@ -117,7 +117,7 @@ export const roundRobinTestCases: RoundRobinTestCase[] = [
     expectedParlaySize: 5,
     expectedIsAtMost: true,
     expectedRiskType: 'perSelection',
-    expectedRisk: 100,
+    expectedRisk: 5600, // $100 per × 56 parlays (C(6,2) + C(6,3) + C(6,4) + C(6,5) = 15 + 20 + 15 + 6 = 56)
     expectedUseFair: true,
     expectedLegs: [
       { contractType: 'HandicapContestantML', price: 120, team: 'Lakers' },
@@ -139,7 +139,7 @@ export const roundRobinTestCases: RoundRobinTestCase[] = [
     expectedParlaySize: 2,
     expectedIsAtMost: false,
     expectedRiskType: 'perSelection',
-    expectedRisk: 100,
+    expectedRisk: 600, // $100 per × 6 parlays (C(4,2) = 6)
     expectedToWin: 800,
     expectedUseFair: false,
     expectedLegs: [
@@ -174,7 +174,7 @@ export const roundRobinTestCases: RoundRobinTestCase[] = [
     expectedParlaySize: 2,
     expectedIsAtMost: false,
     expectedRiskType: 'perSelection',
-    expectedRisk: 11000,
+    expectedRisk: 66000, // $11k per × 6 parlays (C(4,2) = 6)
     expectedUseFair: true,
     expectedLegs: [
       { contractType: 'HandicapContestantML', price: 120, team: 'Lakers' },
@@ -194,7 +194,7 @@ export const roundRobinTestCases: RoundRobinTestCase[] = [
     expectedParlaySize: 2,
     expectedIsAtMost: false,
     expectedRiskType: 'perSelection',
-    expectedRisk: 100,
+    expectedRisk: 600, // $100 per × 6 parlays (C(4,2) = 6)
     expectedUseFair: true,
     expectedPushesLose: true,
     expectedLegs: [
@@ -211,7 +211,7 @@ export const roundRobinTestCases: RoundRobinTestCase[] = [
     expectedParlaySize: 2,
     expectedIsAtMost: false,
     expectedRiskType: 'perSelection',
-    expectedRisk: 100,
+    expectedRisk: 600, // $100 per × 6 parlays (C(4,2) = 6)
     expectedUseFair: true,
     expectedFreeBet: true,
     expectedLegs: [
@@ -228,7 +228,7 @@ export const roundRobinTestCases: RoundRobinTestCase[] = [
     expectedParlaySize: 2,
     expectedIsAtMost: false,
     expectedRiskType: 'perSelection',
-    expectedRisk: 100,
+    expectedRisk: 600, // $100 per × 6 parlays (C(4,2) = 6)
     expectedUseFair: true,
     expectedPushesLose: true,
     expectedFreeBet: true,
@@ -250,7 +250,7 @@ export const roundRobinTestCases: RoundRobinTestCase[] = [
     expectedParlaySize: 2,
     expectedIsAtMost: false,
     expectedRiskType: 'perSelection',
-    expectedRisk: 100,
+    expectedRisk: 600, // $100 per × 6 parlays (C(4,2) = 6)
     expectedUseFair: true,
     expectedLegs: [
       { contractType: 'TotalPoints', price: -110, teams: ['Cardinals', 'Cubs'], line: 8.5, isOver: true },
@@ -266,7 +266,7 @@ export const roundRobinTestCases: RoundRobinTestCase[] = [
     expectedParlaySize: 2,
     expectedIsAtMost: false,
     expectedRiskType: 'perSelection',
-    expectedRisk: 100,
+    expectedRisk: 600, // $100 per × 6 parlays (C(4,2) = 6)
     expectedUseFair: true,
     expectedLegs: [
       { contractType: 'HandicapContestantML', price: 150, team: 'Cardinals' },
@@ -291,7 +291,7 @@ Nets @ +115
     expectedParlaySize: 2,
     expectedIsAtMost: false,
     expectedRiskType: 'perSelection',
-    expectedRisk: 100,
+    expectedRisk: 600, // $100 per × 6 parlays (C(4,2) = 6)
     expectedUseFair: true,
     expectedLegs: [
       { contractType: 'HandicapContestantML', price: 120, team: 'Lakers' },
@@ -337,7 +337,7 @@ Heat @ -105
     expectedParlaySize: 2,
     expectedIsAtMost: false,
     expectedRiskType: 'perSelection',
-    expectedRisk: 100,
+    expectedRisk: 300, // $100 per × 3 parlays (C(3,2) = 3)
     expectedUseFair: true,
     expectedLegs: [
       { contractType: 'HandicapContestantML', price: 120, team: 'Lakers' },
@@ -356,7 +356,7 @@ Heat @ -105
     expectedParlaySize: 2,
     expectedIsAtMost: false,
     expectedRiskType: 'perSelection',
-    expectedRisk: 100,
+    expectedRisk: 600, // $100 per × 6 parlays (C(4,2) = 6)
     expectedUseFair: true,
     expectedLegs: [
       {
