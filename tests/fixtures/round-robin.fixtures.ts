@@ -17,6 +17,7 @@ export const roundRobinTestCases: RoundRobinTestCase[] = [
     expectedIsAtMost: false,
     expectedRiskType: 'perSelection',
     expectedRisk: 600, // $100 per × 6 parlays (C(4,2) = 6)
+    expectedToWin: 1986.56, // Sum of 6 2-leg parlay ToWins: $320+$351+$373+$291.36+$310.45+$340.75
     expectedUseFair: true,
     expectedLegs: [
       { contractType: 'HandicapContestantML', price: 120, team: 'Lakers' },
@@ -33,6 +34,7 @@ export const roundRobinTestCases: RoundRobinTestCase[] = [
     expectedIsAtMost: false,
     expectedRiskType: 'total',
     expectedRisk: 600,
+    expectedToWin: 1986.56, // Same as per-selection with $100 per ($600 total / 6 parlays = $100 per)
     expectedUseFair: true,
     expectedLegs: [
       { contractType: 'HandicapContestantML', price: 120, team: 'Lakers' },
@@ -49,6 +51,7 @@ export const roundRobinTestCases: RoundRobinTestCase[] = [
     expectedIsAtMost: false,
     expectedRiskType: 'perSelection',
     expectedRisk: 500, // $50 per × 10 parlays (C(5,3) = 10)
+    expectedToWin: 3812.53, // Sum of 10 3-leg parlay ToWins (adjusted for rounding precision)
     expectedUseFair: true,
     expectedLegs: [
       { contractType: 'HandicapContestantML', price: 120, team: 'Lakers' },

@@ -1664,3 +1664,94 @@ export function calculateTotalParlays(
     return calculateCombination(totalLegs, parlaySize);
   }
 }
+
+/**
+ * Convert American odds to decimal odds
+ * Positive odds (e.g., +120): decimal = 1 + (odds / 100) → 2.20
+ * Negative odds (e.g., -110): decimal = 1 + (100 / abs(odds)) → 1.909090...
+ */
+export function americanToDecimalOdds(americanOdds: number): number {
+  if (americanOdds > 0) {
+    return 1 + americanOdds / 100;
+  } else {
+    return 1 + 100 / Math.abs(americanOdds);
+  }
+}
+
+/**
+ * Calculate fair ToWin for a parlay given leg prices and risk amount
+ * Formula: ToWin = Risk × (product of all decimal odds - 1)
+ */
+export function calculateParlayFairToWin(legPrices: number[], risk: number): number {
+  let parlayMultiplier = 1;
+
+  for (const price of legPrices) {
+    const decimalOdds = americanToDecimalOdds(price);
+    parlayMultiplier *= decimalOdds;
+  }
+
+  const toWin = risk * (parlayMultiplier - 1);
+  return Math.round(toWin * 100) / 100; // Round to 2 decimal places
+}
+
+/**
+ * Generate all combinations of indices for nCr
+ * Helper function for round robin ToWin calculation
+ */
+function* generateCombinations(arr: number[], r: number): Generator<number[]> {
+  if (r === 0) {
+    yield [];
+    return;
+  }
+  if (arr.length === 0) {
+    return;
+  }
+
+  const [first, ...rest] = arr;
+
+  // Include first element
+  for (const combo of generateCombinations(rest, r - 1)) {
+    yield [first, ...combo];
+  }
+
+  // Exclude first element
+  yield* generateCombinations(rest, r);
+}
+
+/**
+ * Calculate fair ToWin for a round robin given leg prices, risk, and configuration
+ * For per-selection: risk is per-parlay amount
+ * For total: risk is total, need to divide by number of parlays
+ */
+export function calculateRoundRobinFairToWin(
+  legPrices: number[],
+  totalRisk: number,
+  riskType: 'perSelection' | 'total',
+  parlaySize: number,
+  isAtMost: boolean
+): number {
+  const totalLegs = legPrices.length;
+  const totalParlays = calculateTotalParlays(totalLegs, parlaySize, isAtMost);
+
+  // Calculate per-parlay risk
+  const perParlayRisk =
+    riskType === 'perSelection' ? totalRisk / totalParlays : totalRisk / totalParlays;
+
+  let totalToWin = 0;
+
+  // Generate all parlay combinations
+  const parlaysizes = isAtMost
+    ? Array.from({ length: parlaySize - 1 }, (_, i) => i + 2)
+    : [parlaySize];
+
+  for (const size of parlaysizes) {
+    const indices = Array.from({ length: totalLegs }, (_, i) => i);
+    for (const combo of generateCombinations(indices, size)) {
+      const comboPrices = combo.map(i => legPrices[i]);
+      const parlayToWin = calculateParlayFairToWin(comboPrices, perParlayRisk);
+      totalToWin += parlayToWin;
+    }
+  }
+
+  return Math.round(totalToWin * 100) / 100; // Round to 2 decimal places
+}

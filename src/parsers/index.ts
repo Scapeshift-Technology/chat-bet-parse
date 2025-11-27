@@ -75,6 +75,8 @@ import {
   parseParlaySize,
   parseRoundRobinSize,
   calculateTotalParlays,
+  calculateParlayFairToWin,
+  calculateRoundRobinFairToWin,
 } from './utils';
 
 // ==============================================================================
@@ -1858,6 +1860,7 @@ function parseParlayFill(rawInput: string, options?: ParseOptions): ParseResultP
 
   // 6. Parse each leg as IW order (reuse existing logic!)
   const legs: ParseResultStraight[] = [];
+  const legPrices: number[] = []; // Extract prices immediately to avoid using deprecated field later
   for (let i = 0; i < legTexts.length; i++) {
     try {
       const legText = legTexts[i];
@@ -1882,6 +1885,8 @@ function parseParlayFill(rawInput: string, options?: ParseOptions): ParseResultP
       const legInput = `IW ${legText}`;
       const legResult = parseChatOrder(legInput, options);
       legs.push(legResult);
+      // Extract price immediately (from tokenization) before deprecated field is no longer needed
+      legPrices.push(legResult.bet.Price!);
     } catch (error) {
       const errorMsg = (error as Error).message;
       // Clean up error messages for better parlay context
@@ -1895,13 +1900,20 @@ function parseParlayFill(rawInput: string, options?: ParseOptions): ParseResultP
   // 7. Parse size and optional to-win
   const { risk, toWin, useFair } = parseParlaySize(sizeText, rawInput);
 
-  // 8. Build result
+  // 8. Calculate fair ToWin if not explicitly provided
+  let finalToWin = toWin;
+  if (useFair && risk !== undefined) {
+    // Use prices array extracted during leg parsing
+    finalToWin = calculateParlayFairToWin(legPrices, risk);
+  }
+
+  // 9. Build result
   return {
     chatType: 'fill',
     betType: 'parlay',
     bet: {
       Risk: risk,
-      ToWin: toWin,
+      ToWin: finalToWin,
       ExecutionDtm: new Date(),
       IsFreeBet: freebet || false,
     },
@@ -2180,21 +2192,24 @@ function parseRoundRobinFill(rawInput: string, options?: ParseOptions): ParseRes
 
   // 8. Parse each leg as IW order (reuse existing logic!)
   const legs: ParseResultStraight[] = [];
+  const legPrices: number[] = []; // Extract prices immediately to avoid using deprecated field later
   for (let i = 0; i < legTexts.length; i++) {
     try {
       const legInput = `IW ${legTexts[i]}`;
       const legResult = parseChatOrder(legInput, options);
       legs.push(legResult);
+      // Extract price immediately (from tokenization) before deprecated field is no longer needed
+      legPrices.push(legResult.bet.Price!);
     } catch (error) {
       const errorMsg = (error as Error).message;
       throw new InvalidRoundRobinLegError(rawInput, i + 1, errorMsg);
     }
   }
 
-  // 8. Parse size with risk type
+  // 9. Parse size with risk type
   const { risk, toWin, useFair, riskType } = parseRoundRobinSize(sizeText, rawInput);
 
-  // 9. Calculate total risk for per-selection mode
+  // 10. Calculate total risk for per-selection mode
   // For per-selection mode: total risk = per-parlay risk × number of parlays
   let totalRisk = risk;
   if (riskType === 'perSelection' && risk !== undefined) {
@@ -2202,13 +2217,20 @@ function parseRoundRobinFill(rawInput: string, options?: ParseOptions): ParseRes
     totalRisk = risk * totalParlays;
   }
 
-  // 10. Build result
+  // 11. Calculate fair ToWin if not explicitly provided
+  let finalToWin = toWin;
+  if (useFair && totalRisk !== undefined) {
+    // Use prices array extracted during leg parsing
+    finalToWin = calculateRoundRobinFairToWin(legPrices, totalRisk, riskType, parlaySize, isAtMost);
+  }
+
+  // 11. Build result
   return {
     chatType: 'fill',
     betType: 'roundRobin',
     bet: {
       Risk: totalRisk,
-      ToWin: toWin,
+      ToWin: finalToWin,
       ExecutionDtm: new Date(),
       IsFreeBet: freebet || false,
     },

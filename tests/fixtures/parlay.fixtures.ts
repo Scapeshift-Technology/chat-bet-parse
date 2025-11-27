@@ -14,6 +14,7 @@ export const parlayTestCases: ParlayTestCase[] = [
     input: 'YGP Lakers @ +120 & Warriors @ -110 = $100',
     expectedChatType: 'fill',
     expectedRisk: 100,
+    expectedToWin: 320, // Lakers: 2.20, Warriors: 1.909090909, Parlay: 4.20, ToWin: $100 × 3.20 = $320.00
     expectedUseFair: true,
     expectedLegs: [
       { contractType: 'HandicapContestantML', price: 120, team: 'Lakers' },
@@ -25,6 +26,7 @@ export const parlayTestCases: ParlayTestCase[] = [
     input: 'YGP Lakers @ +120 & Warriors @ -110 & Celtics @ +105 = $100',
     expectedChatType: 'fill',
     expectedRisk: 100,
+    expectedToWin: 761, // Lakers: 2.20, Warriors: 1.909090909, Celtics: 2.05, Parlay: 8.61, ToWin: $100 × 7.61 = $761.00
     expectedUseFair: true,
     expectedLegs: [
       { contractType: 'HandicapContestantML', price: 120, team: 'Lakers' },
@@ -37,6 +39,7 @@ export const parlayTestCases: ParlayTestCase[] = [
     input: 'YGP Lakers @ +100 & Warriors @ -110 & Celtics @ +120 & Nets @ -105 = $50',
     expectedChatType: 'fill',
     expectedRisk: 50,
+    expectedToWin: 770, // Lakers: 2.00, Warriors: 1.909090909, Celtics: 2.20, Nets: 1.952380952, Parlay: 16.40, ToWin: $50 × 15.40 = $770.00
     expectedUseFair: true,
     expectedLegs: [
       { contractType: 'HandicapContestantML', price: 100, team: 'Lakers' },
