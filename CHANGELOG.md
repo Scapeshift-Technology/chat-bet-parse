@@ -1,5 +1,112 @@
 # chat-bet-parse
 
+## 0.6.8
+
+### Patch Changes
+
+- **Automatic ToWin Calculation for Parlays and Round Robins**: When parsing parlays (YGP) and round robins (YGRR) with fair odds (`useFair: true`), the library now automatically calculates `bet.ToWin` from leg prices using fair parlay odds mathematics.
+
+  ### 🎯 Problem Solved
+
+  Previously, `bet.ToWin` was `undefined` for parlays and round robins when no explicit `tw` override was provided. This caused downstream errors in systems that expected both `Risk` and `ToWin` to be populated.
+
+  **Before:**
+  ```typescript
+  const result = parseChat('YGP Lakers @ +120 & Warriors @ -110 = $100');
+  console.log(result.bet.ToWin); // undefined ❌
+  ```
+
+  **After:**
+  ```typescript
+  const result = parseChat('YGP Lakers @ +120 & Warriors @ -110 = $100');
+  console.log(result.bet.ToWin); // 320.00 ✅
+  console.log(result.useFair);   // true
+  ```
+
+  ### 🚀 How It Works
+
+  **Parlay Calculation:**
+  1. Convert each leg's American odds to decimal odds (+120 → 2.20, -110 → 1.909090...)
+  2. Multiply all decimal odds together to get parlay multiplier
+  3. Calculate `ToWin = Risk × (multiplier - 1)`
+
+  **Round Robin Calculation:**
+  1. Generate all nCr combinations (or at-most combinations for notation like 4c3-)
+  2. Calculate fair ToWin for each parlay combination
+  3. Sum all ToWins for total expected payout
+
+  ### 📚 Examples
+
+  ```typescript
+  // 2-leg parlay
+  parseChat('YGP Lakers @ +120 & Warriors @ -110 = $100')
+  // → { bet: { Risk: 100, ToWin: 320 }, useFair: true }
+
+  // 3-leg parlay
+  parseChat('YGP Lakers @ +120 & Warriors @ -110 & Celtics @ +105 = $100')
+  // → { bet: { Risk: 100, ToWin: 761 }, useFair: true }
+
+  // Round robin with per-selection risk
+  parseChat('YGRR 4c2 Lakers @ +120 & Warriors @ -110 & Celtics @ +105 & Nets @ +115 = $100 per')
+  // → { bet: { Risk: 600, ToWin: 1986.56 }, useFair: true, riskType: 'perSelection' }
+
+  // With explicit tw override (not fair odds)
+  parseChat('YGP Lakers @ +120 & Warriors @ -110 = $100 tw $500')
+  // → { bet: { Risk: 100, ToWin: 500 }, useFair: false }
+  ```
+
+  ### ✅ Impact
+
+  - `bet.ToWin` is now always populated for fills with fair odds
+  - Use `useFair: true` to distinguish calculated ToWin from explicit overrides
+  - All 497 tests passing
+
+- **Correct Total Risk Calculation for Round Robins**: When parsing round robins with per-selection risk mode (e.g., `$100 per`), the library now correctly calculates total risk as `per-parlay risk × number of parlays`.
+
+  ### 🎯 Problem Solved
+
+  Previously, the library only returned the per-parlay risk amount instead of calculating the total risk across all parlays.
+
+  **Before:**
+  ```typescript
+  const result = parseChat('YGRR 4c2 ... = $100 per');
+  console.log(result.bet.Risk); // 100 ❌ (only per-parlay amount)
+  ```
+
+  **After:**
+  ```typescript
+  const result = parseChat('YGRR 4c2 ... = $100 per');
+  console.log(result.bet.Risk); // 600 ✅ ($100 per × 6 parlays)
+  ```
+
+  ### 📚 Examples
+
+  ```typescript
+  // 4c2 = C(4,2) = 6 parlays
+  parseChat('YGRR 4c2 Lakers @ +120 & Warriors @ -110 & Celtics @ +105 & Nets @ +115 = $100 per')
+  // → { bet: { Risk: 600 }, riskType: 'perSelection' }
+
+  // 4c3- (at-most) = C(4,2) + C(4,3) = 6 + 4 = 10 parlays
+  parseChat('YGRR 4c3- Lakers @ +120 & Warriors @ -110 & Celtics @ +105 & Nets @ +115 = $100 per')
+  // → { bet: { Risk: 1000 }, riskType: 'perSelection' }
+
+  // Total risk mode (unchanged behavior)
+  parseChat('YGRR 4c2 ... = $600 total')
+  // → { bet: { Risk: 600 }, riskType: 'total' }
+  ```
+
+  ### 🔧 New Helper Functions
+
+  - `calculateCombination(n, r)`: Calculates C(n,r) = "n choose r"
+  - `calculateTotalParlays(totalLegs, parlaySize, isAtMost)`: Calculates total number of parlays
+  - `americanToDecimalOdds(odds)`: Converts American odds to decimal
+  - `calculateParlayFairToWin(legPrices, risk)`: Calculates fair ToWin for a single parlay
+  - `calculateRoundRobinFairToWin(legPrices, risk, riskType, parlaySize, isAtMost)`: Calculates fair ToWin for all round robin combinations
+
+  ### 📄 Migration Guide
+
+  See `RECENT_CHANGES_FOR_UI.md` for detailed migration instructions for UI developers.
+
 ## 0.6.3
 
 ### Patch Changes
