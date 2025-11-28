@@ -643,7 +643,7 @@ function tokenizeChat(message: string, options?: ParseOptions): TokenResult {
     // Check if this looks like a spread bet (team name followed by +/- line)
     // Handle both formats: +1.5 and +.5
     // Use non-greedy match for team name to avoid including the spread
-    const spreadMatch = restOfContract.match(/^([a-zA-Z\s&.-]+?)\s+([+-](?:\d+)?\.?\d+)/);
+    const spreadMatch = restOfContract.match(/^((?:49|76)?[a-zA-Z\s&.-]+?)\s+([+-](?:\d+)?\.?\d+)/);
     if (spreadMatch) {
       // Insert period between team and line: "Vanderbilt 2h +2.5"
       const teamName = spreadMatch[1].trim();
@@ -653,10 +653,10 @@ function tokenizeChat(message: string, options?: ParseOptions): TokenResult {
       // Use non-greedy match for team name to avoid including the total indicator
       // Also handle team totals (TT) - stop before TT marker
       const teamTotalMatch = restOfContract.match(
-        /^([a-zA-Z\s&.-]+?)\s+tt\s+([ou]|over|under)\s*(\d+(?:\.\d+)?)/i
+        /^((?:49|76)?[a-zA-Z\s&.-]+?)\s+tt\s+([ou]|over|under)\s*(\d+(?:\.\d+)?)/i
       );
       const totalMatch = restOfContract.match(
-        /^([a-zA-Z\s&.-]+?)\s+([ou]|over|under)\s*(\d+(?:\.\d+)?)/i
+        /^((?:49|76)?[a-zA-Z\s&.-]+?)\s+([ou]|over|under)\s*(\d+(?:\.\d+)?)/i
       );
       if (teamTotalMatch) {
         // Team total: insert period before TT: "Dolphins 2h TT u10.5"
@@ -709,7 +709,7 @@ function tokenizeChat(message: string, options?: ParseOptions): TokenResult {
     // Check if this looks like a spread bet (team name followed by +/- line)
     // Handle both formats: +1.5 and +.5
     // Use non-greedy match for team name to avoid including the spread
-    const spreadMatch = restOfContract.match(/^([a-zA-Z\s&.-]+?)\s+([+-](?:\d+)?\.?\d+)/);
+    const spreadMatch = restOfContract.match(/^((?:49|76)?[a-zA-Z\s&.-]+?)\s+([+-](?:\d+)?\.?\d+)/);
     if (spreadMatch) {
       // Insert period between team and line: "Vanderbilt 2h +2.5"
       const teamName = spreadMatch[1].trim();
@@ -719,10 +719,10 @@ function tokenizeChat(message: string, options?: ParseOptions): TokenResult {
       // Use non-greedy match for team name to avoid including the total indicator
       // Also handle team totals (TT) - stop before TT marker
       const teamTotalMatch = restOfContract.match(
-        /^([a-zA-Z\s&.-]+?)\s+tt\s+([ou]|over|under)\s*(\d+(?:\.\d+)?)/i
+        /^((?:49|76)?[a-zA-Z\s&.-]+?)\s+tt\s+([ou]|over|under)\s*(\d+(?:\.\d+)?)/i
       );
       const totalMatch = restOfContract.match(
-        /^([a-zA-Z\s&.-]+?)\s+([ou]|over|under)\s*(\d+(?:\.\d+)?)/i
+        /^((?:49|76)?[a-zA-Z\s&.-]+?)\s+([ou]|over|under)\s*(\d+(?:\.\d+)?)/i
       );
       if (teamTotalMatch) {
         // Team total: insert period before TT: "Dolphins 2h TT u10.5"
@@ -848,7 +848,7 @@ function detectContractType(contractText: string, rawInput: string): ContractTyp
 
   // Single team game totals: team with period and over/under (e.g., "Pirates F5 u4.5")
   if (
-    /^[a-zA-Z\s&.-]+\s+(f5|f3|h1|1h|h2|2h|\d+(?:st|nd|rd|th)?\s*(?:inning|i|quarter|q|period|p))\s+(over|under|[ou])\s*\d+(?:\.\d+)?(?:[+-]\d+(?:\.\d+)?)?/i.test(
+    /^(?:49|76)?[a-zA-Z\s&.-]+\s+(f5|f3|h1|1h|h2|2h|\d+(?:st|nd|rd|th)?\s*(?:inning|i|quarter|q|period|p))\s+(over|under|[ou])\s*\d+(?:\.\d+)?(?:[+-]\d+(?:\.\d+)?)?/i.test(
       contractText
     )
   ) {
@@ -858,7 +858,7 @@ function detectContractType(contractText: string, rawInput: string): ContractTyp
   // Single team game totals shorthand: just team name with o/u (e.g., "Bucknell o55.5")
   // This is for cases where sport/league context makes it clear it's a full game total
   if (
-    /^[a-zA-Z\s&.-]+\s+(over|under|[ou])\s*\d+(?:\.\d+)?(?:[+-]\d+(?:\.\d+)?)?/i.test(
+    /^(?:49|76)?[a-zA-Z\s&.-]+\s+(over|under|[ou])\s*\d+(?:\.\d+)?(?:[+-]\d+(?:\.\d+)?)?/i.test(
       contractText
     ) &&
     !contractText.includes('TT') &&

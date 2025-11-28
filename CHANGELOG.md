@@ -1,5 +1,44 @@
 # chat-bet-parse
 
+## 0.6.9
+
+### Patch Changes
+
+- **Support for Team Names Starting with Numbers (49ers, 76ers)**: Fixed parser regex patterns to correctly handle team names that start with "49" or "76", such as "49ers" and "76ers".
+
+  ### 🎯 Problem Solved
+
+  Previously, the parser failed to recognize team names starting with digits in single-team game total formats, causing parse errors.
+
+  **Before:**
+  ```typescript
+  const result = parseChat('YG NBA 11/28/2025 76ers u226.5 @ -115 = 1k');
+  // ❌ InvalidContractTypeError: Unable to determine contract type
+  ```
+
+  **After:**
+  ```typescript
+  const result = parseChat('YG NBA 11/28/2025 76ers u226.5 @ -115 = 1k');
+  // ✅ Successfully parses as TotalPoints contract
+  console.log(result.contract.Match.Contestant1_RawName); // "76ers"
+  console.log(result.contract.Line); // 226.5
+  ```
+
+  ### 🔧 Technical Details
+
+  Updated 5 regex patterns in the parser to allow optional "49" or "76" numeric prefixes:
+  - Single team game total shorthand (`76ers u226.5`)
+  - Single team with period (`76ers 1H u110`)
+  - Period extraction for spreads, team totals, and game totals
+
+  Pattern format: `(?:49|76)?[a-zA-Z\s&.-]+` allows optional "49" or "76" prefix followed by standard team name characters, preventing unintended matches while supporting these specific NFL/NBA teams.
+
+  ### ✅ Impact
+
+  - All 499 tests passing
+  - Supports both "49ers" (NFL) and "76ers" (NBA) in all bet formats
+  - Precise regex ensures no false positives with other numeric patterns
+
 ## 0.6.8
 
 ### Patch Changes

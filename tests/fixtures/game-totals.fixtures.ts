@@ -210,5 +210,21 @@ export const gameTotalsTestCases: TestCase[] = [
     expectedSport: 'Basketball',
     expectedLeague: 'NBA',
     expectedEventDate: new Date('2025-10-26T00:00:00.000Z')
+  },
+  // NBA game total with full date (11/28/2025) and 76ers
+  {
+    description: 'YG NBA game total with full date (11/28/2025) 76ers under',
+    input: 'YG NBA 11/28/2025 76ers u226.5 @ -115 = 1k',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: -115,
+    expectedSize: 1000,
+    expectedTeam1: '76ers',
+    expectedLine: 226.5,
+    expectedIsOver: false,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+    expectedSport: 'Basketball',
+    expectedLeague: 'NBA',
+    expectedEventDate: new Date('2025-11-28T00:00:00.000Z')
   }
 ];
