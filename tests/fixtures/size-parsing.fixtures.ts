@@ -188,5 +188,31 @@ export const fillSizeTestCases: TestCase[] = [
     expectedLine: 3.5,
     expectedIsOver: true,
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
+  },
+  {
+    description: 'Fill size - comma-thousands syntax (20,000)',
+    input: 'YG CBK South Dakota state jackrabbits o39.5@ -122 = risk 20,000',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: -122,
+    expectedRisk: 20000,
+    expectedTeam1: 'South Dakota state jackrabbits',
+    expectedLine: 39.5,
+    expectedIsOver: true,
+    expectedLeague: 'CBK',
+    expectedSport: 'Basketball',
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
+  },
+  {
+    description: 'Fill size - comma-thousands with dollar sign ($1,500)',
+    input: 'YG LAA TT o3.5 @ -115 = $1,500',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPointsContestant',
+    expectedPrice: -115,
+    expectedSize: 1500,
+    expectedTeam1: 'LAA',
+    expectedLine: 3.5,
+    expectedIsOver: true,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
   }
 ];

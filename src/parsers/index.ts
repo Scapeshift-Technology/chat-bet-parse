@@ -326,6 +326,11 @@ function tokenizeChat(message: string, options?: ParseOptions): TokenResult {
     processedMessage = 'YG writein ' + processedMessage.substring(4);
   }
 
+  // Add spaces around @ if they're missing
+  processedMessage = processedMessage.replace(/([^@\s])@([^@\s])/g, '$1 @ $2'); // no space before or after
+  processedMessage = processedMessage.replace(/([^@\s])@(\s)/g, '$1 @ $2'); // no space before
+  processedMessage = processedMessage.replace(/(\s)@([^@\s])/g, '$1 @ $2'); // no space after
+
   // Add spaces around = if they're missing
   processedMessage = processedMessage.replace(/([^=\s])=([^=\s])/g, '$1 = $2'); // no space before or after
   processedMessage = processedMessage.replace(/([^=\s])=(\s)/g, '$1 = $2'); // no space before

@@ -1,5 +1,56 @@
 # chat-bet-parse
 
+## 0.6.10
+
+### Patch Changes
+
+- **Comma-Thousands Syntax Support**: Added support for American thousands formatting in bet sizes with strict validation.
+
+  ### 🎯 Problem Solved
+
+  Previously, the parser only accepted sizes without commas. Users couldn't input sizes like `20,000` or `$15,550` - they had to write `20000` or use k-notation like `$15.55k`.
+
+  **Before:**
+  ```typescript
+  const result = parseChat('YG Lakers @ +120 = $1,500');
+  // ❌ InvalidSizeFormatError: Invalid size format: "= $1,500"
+  ```
+
+  **After:**
+  ```typescript
+  const result = parseChat('YG Lakers @ +120 = $1,500');
+  // ✅ Successfully parses as $1,500
+  console.log(result.bet.Size); // 1500
+
+  // Works in all size contexts
+  parseChat('YG Lakers @ +120 = risk 20,000');
+  parseChat('YGP Lakers @ +120 & Warriors @ -110 = $5k tw $15,550');
+  ```
+
+  ### 🔧 Technical Details
+
+  **Valid comma-thousands formats:**
+  - `1,234` - four digits
+  - `12,345` - five digits
+  - `1,234,567` - multiple comma groups
+  - `$15,550` - with dollar sign
+  - Works with: `risk 20,000`, `tw $15,550`, `= $1,500`
+
+  **Validation enforces American thousands formatting:**
+  - ✅ Valid: Groups of exactly 3 digits after first 1-3 digits
+  - ❌ Invalid: `20,30` (only 2 digits after comma)
+  - ❌ Invalid: `1,2345` (4 digits after comma)
+  - ❌ Invalid: `123,45` (2 digits after comma)
+
+  **Additional fix:** Parser now handles missing spaces around `@` symbol (e.g., `o39.5@-122` now works correctly).
+
+  ### ✅ Impact
+
+  - All 508 tests passing
+  - Supports comma-thousands in all size contexts (risk, towin, size)
+  - Strict validation prevents invalid comma placement
+  - 7 new tests covering valid and invalid comma patterns
+
 ## 0.6.9
 
 ### Patch Changes

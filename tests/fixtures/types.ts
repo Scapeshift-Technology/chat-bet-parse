@@ -32,6 +32,8 @@ export interface TestCase {
   expectedContractType: string;
   expectedPrice: number;
   expectedSize?: number;
+  expectedRisk?: number;
+  expectedToWin?: number;
   expectedTeam1?: string;
   expectedTeam2?: string;
   // NEW: Individual player prop fields

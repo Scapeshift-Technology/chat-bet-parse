@@ -259,6 +259,30 @@ export const parlayTestCases: ParlayTestCase[] = [
     referenceDate: new Date(2024, 11, 1)
   },
   {
+    description: 'YGP with leg-level dates (full year format)',
+    input: 'YGP CFB 11/29/2025 Villanova u54.5 @ -128 & 11/28/2025 Illinois st +3.5 @ -133 = $5k tw $15550',
+    expectedChatType: 'fill',
+    expectedRisk: 5000,
+    expectedToWin: 15550,
+    expectedUseFair: false,
+    expectedLegs: [
+      { contractType: 'TotalPoints', price: -128, teams: ['Villanova'], line: 54.5, isOver: false, league: 'CFB', sport: 'Football', eventDate: new Date(Date.UTC(2025, 10, 29)) },
+      { contractType: 'HandicapContestantLine', price: -133, team: 'Illinois st', line: 3.5, eventDate: new Date(Date.UTC(2025, 10, 28)) }
+    ]
+  },
+  {
+    description: 'YGP with comma-thousands syntax in to-win',
+    input: 'YGP 11/29/2025 Villanova u54.5 @ -128 &  Illinois st +3.5 @ -133= $5k tw $15,550',
+    expectedChatType: 'fill',
+    expectedRisk: 5000,
+    expectedToWin: 15550,
+    expectedUseFair: false,
+    expectedLegs: [
+      { contractType: 'TotalPoints', price: -128, teams: ['Villanova'], line: 54.5, isOver: false, eventDate: new Date(Date.UTC(2025, 10, 29)) },
+      { contractType: 'HandicapContestantLine', price: -133, team: 'Illinois st', line: 3.5 }
+    ]
+  },
+  {
     description: 'YGP with leg-level leagues',
     input: 'YGP MLB Cardinals @ +150 & NBA Lakers @ +120 = $100',
     expectedChatType: 'fill',

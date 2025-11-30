@@ -143,6 +143,8 @@ function validateTestCase(testCase: TestCase) {
   // Bet details
   expect(result.bet.Price).toBe(testCase.expectedPrice);
   expectIfDefined(result.bet.Size, testCase.expectedSize);
+  expectIfDefined(result.bet.Risk, testCase.expectedRisk);
+  expectIfDefined(result.bet.ToWin, testCase.expectedToWin);
 
   // ExecutionDtm - fills have it, orders don't
   if (testCase.expectedChatType === 'fill') {

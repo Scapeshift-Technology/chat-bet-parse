@@ -49,6 +49,36 @@ export const errorTestCases: ErrorTestCase[] = [
     expectedErrorType: 'InvalidSizeFormatError',
     expectedErrorMessage: 'Invalid size format: "= -1.0"'
   },
+  {
+    description: 'Invalid comma placement - comma after two digits (20,30)',
+    input: 'YG LAA TT o3.5 @ -110 = 20,30',
+    expectedErrorType: 'InvalidSizeFormatError',
+    expectedErrorMessage: 'Invalid comma placement in number: "20,30"'
+  },
+  {
+    description: 'Invalid comma placement - comma after one digit (1,2345)',
+    input: 'YG LAA TT o3.5 @ -110 = 1,2345',
+    expectedErrorType: 'InvalidSizeFormatError',
+    expectedErrorMessage: 'Invalid comma placement in number: "1,2345"'
+  },
+  {
+    description: 'Invalid comma placement - comma before last two digits (123,45)',
+    input: 'YG LAA TT o3.5 @ -110 = 123,45',
+    expectedErrorType: 'InvalidSizeFormatError',
+    expectedErrorMessage: 'Invalid comma placement in number: "123,45"'
+  },
+  {
+    description: 'Invalid comma placement with dollar sign ($1,23)',
+    input: 'YG LAA TT o3.5 @ -110 = $1,23',
+    expectedErrorType: 'InvalidSizeFormatError',
+    expectedErrorMessage: 'Invalid comma placement in number: "$1,23"'
+  },
+  {
+    description: 'Multiple commas with invalid spacing (1,23,456)',
+    input: 'YG LAA TT o3.5 @ -110 = 1,23,456',
+    expectedErrorType: 'InvalidSizeFormatError',
+    expectedErrorMessage: 'Invalid comma placement in number: "1,23,456"'
+  },
 
   // Invalid lines
   {

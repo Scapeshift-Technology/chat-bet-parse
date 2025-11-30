@@ -146,12 +146,49 @@ interface SizeParsingConfig {
   interpretation: SizeInterpretation;
 }
 
+/**
+ * Validates that commas in a number follow American thousands formatting
+ * Valid: 1,234 or 12,345 or 1,234,567
+ * Invalid: 1,23 or 123,45 or 1,2345 or 20,30
+ */
+function validateCommaPlacement(str: string): boolean {
+  // If no commas, it's valid
+  if (!str.includes(',')) {
+    return true;
+  }
+
+  // Remove leading $ if present for validation
+  const numPart = str.startsWith('$') ? str.substring(1) : str;
+
+  // Remove trailing 'k' if present for validation
+  const withoutK = numPart.toLowerCase().endsWith('k') ? numPart.slice(0, -1) : numPart;
+
+  // American thousands format: optional 1-3 digits, then groups of exactly 3 digits separated by commas
+  // Examples: 1,234 | 12,345 | 123,456 | 1,234,567 | 12,345,678
+  // The pattern is: 1-3 digits, followed by one or more groups of (comma + exactly 3 digits)
+  const commaPattern = /^\d{1,3}(,\d{3})+$/;
+
+  return commaPattern.test(withoutK);
+}
+
 function parseSize(sizeStr: string, rawInput: string, config: SizeParsingConfig): ParsedSize {
   const cleaned = sizeStr.trim();
 
+  // Validate comma placement before processing
+  if (!validateCommaPlacement(cleaned)) {
+    throw new InvalidSizeFormatError(
+      rawInput,
+      sizeStr,
+      `Invalid comma placement in number: "${sizeStr}". Use American thousands format (e.g., 1,234 or 12,345)`
+    );
+  }
+
+  // Remove commas from the string for comma-thousands syntax (e.g., "20,000" or "$15,550")
+  const withoutCommas = cleaned.replace(/,/g, '');
+
   // Dollar + K-notation combination: $11k, $2.5k
-  if (cleaned.startsWith('$') && cleaned.toLowerCase().endsWith('k')) {
-    const numPart = cleaned.substring(1, cleaned.length - 1);
+  if (withoutCommas.startsWith('$') && withoutCommas.toLowerCase().endsWith('k')) {
+    const numPart = withoutCommas.substring(1, withoutCommas.length - 1);
     const value = parseFloat(numPart);
     if (isNaN(value) || value < 0) {
       throw new InvalidSizeFormatError(
@@ -163,9 +200,9 @@ function parseSize(sizeStr: string, rawInput: string, config: SizeParsingConfig)
     return { value: value * 1000, format: 'k_notation' };
   }
 
-  // Dollar format: $200, $2.5
-  if (cleaned.startsWith('$')) {
-    const value = parseFloat(cleaned.substring(1));
+  // Dollar format: $200, $2.5, $15,550
+  if (withoutCommas.startsWith('$')) {
+    const value = parseFloat(withoutCommas.substring(1));
     if (isNaN(value) || value < 0) {
       throw new InvalidSizeFormatError(
         rawInput,
@@ -177,16 +214,16 @@ function parseSize(sizeStr: string, rawInput: string, config: SizeParsingConfig)
   }
 
   // K-notation: 4k, 2.5k
-  if (cleaned.toLowerCase().endsWith('k')) {
-    const value = parseFloat(cleaned.slice(0, -1));
+  if (withoutCommas.toLowerCase().endsWith('k')) {
+    const value = parseFloat(withoutCommas.slice(0, -1));
     if (isNaN(value) || value < 0) {
       throw new InvalidSizeFormatError(rawInput, sizeStr, 'positive number with k like 4k or 2.5k');
     }
     return { value: value * 1000, format: 'k_notation' };
   }
 
-  // Plain number or decimal format
-  const value = parseFloat(cleaned);
+  // Plain number or decimal format (including comma-thousands like 20,000)
+  const value = parseFloat(withoutCommas);
   if (isNaN(value) || value < 0) {
     const errorHint =
       config.interpretation === 'decimal_thousands'
@@ -196,7 +233,7 @@ function parseSize(sizeStr: string, rawInput: string, config: SizeParsingConfig)
   }
 
   // Apply interpretation based on config
-  if (config.interpretation === 'decimal_thousands' && cleaned.includes('.')) {
+  if (config.interpretation === 'decimal_thousands' && withoutCommas.includes('.')) {
     return { value: value * 1000, format: 'decimal_thousands' };
   } else if (config.interpretation === 'decimal_thousands') {
     return { value, format: 'plain_number' };
@@ -251,7 +288,7 @@ export function parseStraightSize(
   const text = sizeText.slice(1).trim();
 
   // Check for "tw" or "to win" syntax: "= $110 tw $100" or "= $110 to win $100"
-  const twMatch = text.match(/^([$\d.]+k?)\s+(?:tw|to\s+win)\s+([$\d.]+k?)$/i);
+  const twMatch = text.match(/^([$\d.,]+k?)\s+(?:tw|to\s+win)\s+([$\d.,]+k?)$/i);
   if (twMatch) {
     const riskParsed = parseSize(twMatch[1], rawInput, { interpretation });
     const toWinParsed = parseSize(twMatch[2], rawInput, { interpretation });
@@ -259,7 +296,7 @@ export function parseStraightSize(
   }
 
   // Check for "tp" or "to pay" syntax: "= $120 tp $220" or "= $120 to pay $220"
-  const tpMatch = text.match(/^([$\d.]+k?)\s+(?:tp|to\s+pay)\s+([$\d.]+k?)$/i);
+  const tpMatch = text.match(/^([$\d.,]+k?)\s+(?:tp|to\s+pay)\s+([$\d.,]+k?)$/i);
   if (tpMatch) {
     const riskParsed = parseSize(tpMatch[1], rawInput, { interpretation });
     const toPayParsed = parseSize(tpMatch[2], rawInput, { interpretation });
@@ -275,21 +312,21 @@ export function parseStraightSize(
   }
 
   // Check for "risk" keyword: "= risk $110"
-  const riskMatch = text.match(/^risk\s+([$\d.]+k?)$/i);
+  const riskMatch = text.match(/^risk\s+([$\d.,]+k?)$/i);
   if (riskMatch) {
     const riskParsed = parseSize(riskMatch[1], rawInput, { interpretation });
     return { risk: riskParsed.value };
   }
 
   // Check for "towin" keyword: "= towin $150"
-  const toWinMatch = text.match(/^towin\s+([$\d.]+k?)$/i);
+  const toWinMatch = text.match(/^towin\s+([$\d.,]+k?)$/i);
   if (toWinMatch) {
     const toWinParsed = parseSize(toWinMatch[1], rawInput, { interpretation });
     return { toWin: toWinParsed.value };
   }
 
   // Simple size format (backward compatibility): "= 2.5" or "= $100"
-  const sizeMatch = text.match(/^([$\d.]+k?)$/);
+  const sizeMatch = text.match(/^([$\d.,]+k?)$/);
   if (sizeMatch) {
     const sizeParsed = parseSize(sizeMatch[1], rawInput, { interpretation });
     return { size: sizeParsed.value };
@@ -1479,8 +1516,8 @@ export function parseParlaySize(sizeText: string, rawInput: string): ParsedParla
     );
   }
 
-  // Check for to-win override (supports $, k-notation, and decimal thousands)
-  const twMatch = text.match(/^([$\d.]+k?)\s+tw\s+([$\d.]+k?)$/i);
+  // Check for to-win override (supports $, k-notation, decimal thousands, and comma-thousands)
+  const twMatch = text.match(/^([$\d.,]+k?)\s+tw\s+([$\d.,]+k?)$/i);
 
   if (twMatch) {
     // Has to-win override - use parseFillSize for consistent parsing
@@ -1499,7 +1536,7 @@ export function parseParlaySize(sizeText: string, rawInput: string): ParsedParla
   }
 
   // Check for invalid tw usage (missing keyword)
-  if (text.match(/^[$\d.]+k?\s+[$\d.]+k?$/i)) {
+  if (text.match(/^[$\d.,]+k?\s+[$\d.,]+k?$/i)) {
     throw new InvalidSizeFormatError(
       rawInput,
       sizeText,
@@ -1508,7 +1545,7 @@ export function parseParlaySize(sizeText: string, rawInput: string): ParsedParla
   }
 
   // No to-win, calculate from fair odds - use parseFillSize for consistent parsing
-  const riskMatch = text.match(/^([$\d.]+k?)$/i);
+  const riskMatch = text.match(/^([$\d.,]+k?)$/i);
   if (!riskMatch) {
     throw new InvalidSizeFormatError(
       rawInput,
