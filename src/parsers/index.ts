@@ -853,7 +853,7 @@ function detectContractType(contractText: string, rawInput: string): ContractTyp
 
   // Single team game totals: team with period and over/under (e.g., "Pirates F5 u4.5")
   if (
-    /^(?:49|76)?[a-zA-Z\s&.-]+\s+(f5|f3|h1|1h|h2|2h|\d+(?:st|nd|rd|th)?\s*(?:inning|i|quarter|q|period|p))\s+(over|under|[ou])\s*\d+(?:\.\d+)?(?:[+-]\d+(?:\.\d+)?)?/i.test(
+    /^(?:49|76)?[a-zA-Z\s&.-]+\s+(f5|f3|h1|1h|h2|2h|q1|q2|q3|q4|p1|p2|p3|\d+(?:st|nd|rd|th)?\s*(?:inning|i|quarter|q|period|p))\s+(over|under|[ou])\s*\d+(?:\.\d+)?(?:[+-]\d+(?:\.\d+)?)?/i.test(
       contractText
     )
   ) {

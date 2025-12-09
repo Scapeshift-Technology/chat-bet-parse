@@ -1,5 +1,40 @@
 # chat-bet-parse
 
+## 0.6.11
+
+### Patch Changes
+
+- **Support for letter-first quarter/period formats in single-team game totals**: Fixed parser to recognize `q1`, `q2`, `q3`, `q4`, `p1`, `p2`, `p3` period formats when no league prefix is provided.
+
+  ### 🎯 Problem Solved
+
+  Previously, single-team game totals with letter-first period notation (e.g., `q1` instead of `1q`) required a league prefix to parse correctly.
+
+  **Before:**
+  ```typescript
+  const result = parseChat('YG pacers q1 u61 @ -111 = risk 3300');
+  // ❌ InvalidContractTypeError: Unable to determine contract type from: "pacers q1 u61"
+  ```
+
+  **After:**
+  ```typescript
+  const result = parseChat('YG pacers q1 u61 @ -111 = risk 3300');
+  // ✅ Successfully parses as TotalPoints contract
+  console.log(result.contract.Match.Team1); // "pacers"
+  console.log(result.contract.Line); // 61
+  console.log(result.contract.Period); // { PeriodTypeCode: 'Q', PeriodNumber: 1 }
+  ```
+
+  ### 🔧 Technical Details
+
+  Updated the contract type detection regex for single-team game totals to include letter-first period formats (`q1|q2|q3|q4|p1|p2|p3`), matching the pattern already used for two-team game totals.
+
+  ### ✅ Impact
+
+  - All 510 tests passing
+  - 2 new tests added for quarter period totals with and without league prefix
+  - Both `YG pacers q1 u61 @ -111 = risk 3300` and `YG NBA pacers q1 u61 @ -111 = risk 3300` now parse correctly
+
 ## 0.6.10
 
 ### Patch Changes

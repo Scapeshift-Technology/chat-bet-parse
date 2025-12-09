@@ -214,5 +214,31 @@ export const fillSizeTestCases: TestCase[] = [
     expectedLine: 3.5,
     expectedIsOver: true,
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
+  },
+  {
+    description: 'Fill size - risk keyword with quarter period total under (no league)',
+    input: 'YG pacers q1 u61 @ -111 = risk 3300',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: -111,
+    expectedRisk: 3300,
+    expectedTeam1: 'pacers',
+    expectedLine: 61,
+    expectedIsOver: false,
+    expectedPeriod: { PeriodTypeCode: 'Q', PeriodNumber: 1 }
+  },
+  {
+    description: 'Fill size - risk keyword with quarter period total under (with league)',
+    input: 'YG NBA pacers q1 u61 @ -111 = risk 3300',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: -111,
+    expectedRisk: 3300,
+    expectedTeam1: 'pacers',
+    expectedLine: 61,
+    expectedIsOver: false,
+    expectedPeriod: { PeriodTypeCode: 'Q', PeriodNumber: 1 },
+    expectedSport: 'Basketball',
+    expectedLeague: 'NBA'
   }
 ];
