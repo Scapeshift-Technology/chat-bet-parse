@@ -353,6 +353,19 @@ export interface ParseOptions {
    * Defaults to new Date() (current date/time).
    */
   referenceDate?: Date;
+  /**
+   * Implied chat prefix for unprefixed messages.
+   * When set, a message that does not start with a recognized prefix
+   * (YG/YGW/YGP/YGRR/IW/IWW/IWP/IWRR) is parsed as a straight bet as if the
+   * implied prefix were present ('IW' → order, 'YG' → fill), using the full
+   * existing grammar. Explicit prefixes always take precedence. In 'IW' mode
+   * one additional side-first order pattern is recognized:
+   * "Over 4 first five -105 Red Sox" (side word, line, first-five period
+   * phrase, bare signed American price, trailing team — a single-team GAME
+   * total, the team identifying the event).
+   * Unset by default: unprefixed messages throw UnrecognizedChatPrefixError.
+   */
+  impliedPrefix?: 'IW' | 'YG';
 }
 
 // ==============================================================================

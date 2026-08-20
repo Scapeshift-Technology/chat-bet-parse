@@ -2396,7 +2396,58 @@ export function parseChat(message: string, options?: ParseOptions): ParseResult 
     return parseChatOrder(message, options);
   } else if (upperTrimmed.startsWith('YG') || upperTrimmed.startsWith('YGW')) {
     return parseChatFill(message, options);
+  } else if (options?.impliedPrefix) {
+    return parseWithImpliedPrefix(trimmed, options.impliedPrefix, options);
   } else {
     throw new UnrecognizedChatPrefixError(message, trimmed.split(/\s+/)[0] || '');
   }
+}
+
+// ==============================================================================
+// IMPLIED PREFIX (unprefixed messages in designated chats)
+// ==============================================================================
+
+/**
+ * Side-first order pattern observed live (2026-08-19):
+ * "Over 4 first five -105 Red Sox" — side word, line, first-five period
+ * phrase, bare signed American price, trailing team. Rewritten to the
+ * canonical single-team game-total form before the standard grammar runs.
+ * Deliberately the ONLY nonstandard word order supported — new patterns are
+ * added when a real sample forces them, never speculatively.
+ */
+const SIDE_FIRST_F5_TOTAL =
+  /^(over|under)\s+(\d+(?:\.\d+)?)\s+(?:first\s*(?:5|five)|1st\s*(?:5|five))(?:\s*innings?)?\s+([+-]\d+(?:\.\d+)?)\s+(\S.*)$/i;
+
+/**
+ * Bet-signal gate for implied-prefix parsing: an explicit price/size marker
+ * (`@`) or a signed number (price or spread line). Without one, unprefixed
+ * text is conversation, not a bet — the grammar's default-price paths would
+ * otherwise silently turn chatter like "will lyk when im ready" into a
+ * moneyline order on a nonsense team.
+ */
+const IMPLIED_BET_SIGNAL = /@|[+-]\d/;
+
+/**
+ * Parse an unprefixed message as if `impliedPrefix` were present, using the
+ * full existing straight-bet grammar. Multi-line parlay/round-robin forms are
+ * not implied — those keep their explicit YGP/IWP/YGRR/IWRR prefixes.
+ */
+function parseWithImpliedPrefix(
+  trimmed: string,
+  impliedPrefix: 'IW' | 'YG',
+  options?: ParseOptions
+): ParseResult {
+  if (!IMPLIED_BET_SIGNAL.test(trimmed)) {
+    throw new UnrecognizedChatPrefixError(trimmed, trimmed.split(/\s+/)[0] || '');
+  }
+  if (impliedPrefix === 'IW') {
+    const sideFirst = trimmed.match(SIDE_FIRST_F5_TOTAL);
+    if (sideFirst) {
+      const [, side, line, price, team] = sideFirst;
+      const canonical = `IW ${team.trim()} F5 ${side[0].toLowerCase()}${line} @ ${price}`;
+      return parseChatOrder(canonical, options);
+    }
+    return parseChatOrder(`IW ${trimmed}`, options);
+  }
+  return parseChatFill(`YG ${trimmed}`, options);
 }
