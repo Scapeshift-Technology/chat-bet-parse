@@ -1,5 +1,27 @@
 # chat-bet-parse
 
+## 0.7.0
+
+### Minor Changes
+
+- **Implied-prefix parsing for designated chats** (`ParseOptions.impliedPrefix`): a message with no recognized prefix can now parse as a straight bet as if `IW` (order) or `YG` (fill) were present, using the full existing grammar. Off by default — unprefixed messages still throw `UnrecognizedChatPrefixError`. Explicit prefixes always win over the implied one.
+
+  ```typescript
+  parseChat('872 Athletics @ +145', { impliedPrefix: 'IW' });
+  // ✅ chatType 'order', HandicapContestantML, price +145
+  ```
+
+  A **bet-signal gate** keeps conversation out: implied parsing engages only when the text carries an `@` marker or a signed number — chatter like `will lyk when im ready` still throws instead of silently becoming a default-price moneyline order.
+
+- **One side-first order pattern** (implied-`IW` mode only), taken verbatim from a live counterparty's style: side word, line, first-five period phrase, bare signed price, trailing team — a single-team GAME total, the team identifying the event (matching the existing single-team convention).
+
+  ```typescript
+  parseChat('Over 4 first five -105 Red Sox', { impliedPrefix: 'IW' });
+  // ✅ ≡ 'IW Red Sox F5 o4 @ -105' — order, TotalPoints, {H,1}, line 4, -105
+  ```
+
+  Deliberately the only nonstandard word order supported; new patterns are added when real samples force them, never speculatively.
+
 ## 0.6.11
 
 ### Patch Changes

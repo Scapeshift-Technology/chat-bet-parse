@@ -59,6 +59,8 @@ export interface TestCase {
   expectedFreeBet?: boolean;
   // Reference date for year inference testing (optional)
   referenceDate?: Date;
+  // Implied prefix for unprefixed messages (optional)
+  impliedPrefix?: 'IW' | 'YG';
 }
 
 // Parlay test case - legs are validated separately

@@ -40,9 +40,11 @@ jobs:
         run: npm run typecheck
 
       - name: Run tests with coverage
+        # DATABASE_CONNECTION_STRING deliberately NOT passed: the SQL Server
+        # behind the grading integration suite was retired (2026-07); the
+        # suite skips without it (its designed no-DB behavior). See TODOS.md —
+        # the grading feature itself is slated for removal.
         run: npm run test:coverage
-        env:
-          DATABASE_CONNECTION_STRING: ${{ secrets.DATABASE_CONNECTION_STRING }}
 
   # Build job
   build:

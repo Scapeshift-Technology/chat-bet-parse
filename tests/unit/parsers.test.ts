@@ -34,6 +34,7 @@ import { specialFormatsTestCases } from '../fixtures/special-formats.fixtures';
 import { sportLeagueInferenceTestCases } from '../fixtures/sport-league-inference.fixtures';
 import { spreadsTestCases } from '../fixtures/spreads.fixtures';
 import { teamTotalsTestCases } from '../fixtures/team-totals.fixtures';
+import { impliedPrefixTestCases } from '../fixtures/implied-prefix.fixtures';
 import { writeinTestCases } from '../fixtures/writein.fixtures';
 import { parlayTestCases } from '../fixtures/parlay.fixtures';
 import { parlayErrorTestCases } from '../fixtures/parlay-errors.fixtures';
@@ -133,7 +134,13 @@ function validateLeg(actualLeg: any, expectedLeg: any): void {
  * Generic test function that validates a parsed result against expected values
  */
 function validateTestCase(testCase: TestCase) {
-  const options = testCase.referenceDate ? { referenceDate: testCase.referenceDate } : undefined;
+  const options =
+    testCase.referenceDate || testCase.impliedPrefix
+      ? {
+          ...(testCase.referenceDate ? { referenceDate: testCase.referenceDate } : {}),
+          ...(testCase.impliedPrefix ? { impliedPrefix: testCase.impliedPrefix } : {})
+        }
+      : undefined;
   const result = parseChat(testCase.input, options);
 
   // Basic result structure
@@ -465,6 +472,38 @@ describe('Chat Bet Parsing', () => {
   });
 
   // Writein
+  describe('Implied Prefix', () => {
+    test.each(impliedPrefixTestCases)('$description', validateTestCase);
+
+    test('unprefixed message without impliedPrefix still throws (default unchanged)', () => {
+      expect(() => parseChat('Over 4 first five -105 Red Sox')).toThrow(ChatBetParseError);
+    });
+
+    test('chatter under implied IW throws, never silently parses', () => {
+      expect(() => parseChat('will lyk when im ready', { impliedPrefix: 'IW' })).toThrow(
+        ChatBetParseError
+      );
+    });
+
+    test('date-like chatter (mid-token hyphen) under implied IW throws', () => {
+      expect(() => parseChat('available 8-20', { impliedPrefix: 'IW' })).toThrow(
+        ChatBetParseError
+      );
+    });
+
+    test('range-like chatter under implied IW throws', () => {
+      expect(() => parseChat('back around 3-4pm i think', { impliedPrefix: 'IW' })).toThrow(
+        ChatBetParseError
+      );
+    });
+
+    test('implied YG without size throws MissingSizeForFillError semantics', () => {
+      expect(() => parseChat('872 Athletics @ +145', { impliedPrefix: 'YG' })).toThrow(
+        ChatBetParseError
+      );
+    });
+  });
+
   describe('Writein', () => {
     test.each(writeinTestCases)('$description', validateTestCase);
   });
