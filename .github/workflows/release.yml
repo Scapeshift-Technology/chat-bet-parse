@@ -14,9 +14,12 @@ jobs:
       contents: read # Read needed for checkout
     strategy:
       matrix:
-        # 16.x dropped (EOL since 2023-09): its npm cannot provision esbuild's
-        # platform binary under `npm ci --ignore-scripts`, which broke the
-        # build step (v0.7.0 release run, 2026-08-20).
+        # 16.x dropped (EOL since 2023-09): esbuild's platform package
+        # (@esbuild/linux-x64) itself requires node>=18, so npm correctly
+        # omits it as an unsatisfiable optional dep. Before installs used
+        # --ignore-scripts this was masked by esbuild's postinstall fetching
+        # the binary over the network, outside the lockfile. engines is
+        # >=18 to match (mssql's runtime tree already required it).
         node-version: [18.x, 20.x]
     steps:
       - name: Check out repository
