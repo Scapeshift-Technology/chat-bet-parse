@@ -485,6 +485,18 @@ describe('Chat Bet Parsing', () => {
       );
     });
 
+    test('date-like chatter (mid-token hyphen) under implied IW throws', () => {
+      expect(() => parseChat('available 8-20', { impliedPrefix: 'IW' })).toThrow(
+        ChatBetParseError
+      );
+    });
+
+    test('range-like chatter under implied IW throws', () => {
+      expect(() => parseChat('back around 3-4pm i think', { impliedPrefix: 'IW' })).toThrow(
+        ChatBetParseError
+      );
+    });
+
     test('implied YG without size throws MissingSizeForFillError semantics', () => {
       expect(() => parseChat('872 Athletics @ +145', { impliedPrefix: 'YG' })).toThrow(
         ChatBetParseError

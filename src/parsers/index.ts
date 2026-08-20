@@ -2420,12 +2420,14 @@ const SIDE_FIRST_F5_TOTAL =
 
 /**
  * Bet-signal gate for implied-prefix parsing: an explicit price/size marker
- * (`@`) or a signed number (price or spread line). Without one, unprefixed
- * text is conversation, not a bet — the grammar's default-price paths would
- * otherwise silently turn chatter like "will lyk when im ready" into a
- * moneyline order on a nonsense team.
+ * (`@`) or a signed number written as its own token (price or spread line —
+ * `-105`, `+1.5`). Without one, unprefixed text is conversation, not a bet —
+ * the grammar's default-price paths would otherwise silently turn chatter
+ * like "will lyk when im ready" into a moneyline order on a nonsense team.
+ * The token boundary matters: mid-token hyphens ("available 8-20", "3-4pm")
+ * are dates and ranges, not signs.
  */
-const IMPLIED_BET_SIGNAL = /@|[+-]\d/;
+const IMPLIED_BET_SIGNAL = /@|(^|\s)[+-]\d/;
 
 /**
  * Parse an unprefixed message as if `impliedPrefix` were present, using the
