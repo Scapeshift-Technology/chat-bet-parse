@@ -4,6 +4,8 @@
 
 ### Minor Changes
 
+- **Node floor is now explicitly `>=18`** (`engines` bump; Node 16 dropped from the CI and release matrices). This makes existing reality official rather than changing it: the build toolchain (esbuild/tsup/rollup) and the `mssql` runtime dependency tree have required Node 18+ since before 0.6.11 — Node 16 release builds only ever "worked" via esbuild's postinstall fetching its binary over the network, outside the lockfile, a path the `--ignore-scripts` hardening deliberately closed.
+
 - **Implied-prefix parsing for designated chats** (`ParseOptions.impliedPrefix`): a message with no recognized prefix can now parse as a straight bet as if `IW` (order) or `YG` (fill) were present, using the full existing grammar. Off by default — unprefixed messages still throw `UnrecognizedChatPrefixError`. Explicit prefixes always win over the implied one.
 
   ```typescript

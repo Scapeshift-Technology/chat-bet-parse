@@ -14,7 +14,13 @@ jobs:
       contents: read # Read needed for checkout
     strategy:
       matrix:
-        node-version: [16.x, 18.x, 20.x]
+        # 16.x dropped (EOL since 2023-09): esbuild's platform package
+        # (@esbuild/linux-x64) itself requires node>=18, so npm correctly
+        # omits it as an unsatisfiable optional dep. Before installs used
+        # --ignore-scripts this was masked by esbuild's postinstall fetching
+        # the binary over the network, outside the lockfile. engines is
+        # >=18 to match (mssql's runtime tree already required it).
+        node-version: [18.x, 20.x]
     steps:
       - name: Check out repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4

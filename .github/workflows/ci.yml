@@ -16,7 +16,10 @@ jobs:
       contents: read # Read needed for checkout
     strategy:
       matrix:
-        node-version: [16.x, 18.x, 20.x]
+        # 16.x dropped alongside the release matrix + engines bump (>=18):
+        # the build toolchain and mssql's runtime tree require node>=18, so
+        # a green Node 16 lane certified a floor that was already false.
+        node-version: [18.x, 20.x]
     steps:
       - name: Check out repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
