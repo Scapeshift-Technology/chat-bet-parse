@@ -1455,7 +1455,7 @@ function parseMatchInfo(
   // Extract period if present
   let period: Period = { PeriodTypeCode: 'M', PeriodNumber: 0 }; // Default
   const periodPatterns = [
-    /\b(\d+(?:st|nd|rd|th)?\s*(?:inning|i))\b/i,
+    /\b(\d+(?:(?:st|nd|rd|th)\.?)?\s*(?:inning|i))\b/i,
     /\b(f5|f3|f7|h1|1h|h2|2h|q1|q2|q3|q4|p1|p2|p3)\b/i,
     /\b(\d+(?:st|nd|rd|th)?\s*(?:quarter|q))\b/i,
     /\b(\d+(?:st|nd|rd|th)?\s*(?:period|p))\b/i,

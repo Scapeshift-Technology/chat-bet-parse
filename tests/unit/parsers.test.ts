@@ -44,6 +44,7 @@ import { roundRobinErrorTestCases } from '../fixtures/round-robin-errors.fixture
 
 // Import nCr parser for unit tests
 import { parseNcrNotation } from '../../src/parsers/ncr';
+import { parsePeriod } from '../../src/parsers/utils';
 
 /**
  * HELPER FUNCTIONS FOR DRY TEST ASSERTIONS
@@ -353,6 +354,27 @@ describe('Chat Bet Parsing', () => {
   // Period Parsing
   describe('Period Parsing', () => {
     test.each(periodParsingTestCases)('$description', validateTestCase);
+
+    test('parses ordinal inning with trailing period like the period-free variant', () => {
+      const withPeriod = parseChat('YG 919 Tigers o0.5 1st. inning +113 = 10.0');
+      const withoutPeriod = parseChat('YG 919 Tigers o0.5 1st inning +113 = 10.0');
+
+      expect(withPeriod.chatType).toBe(withoutPeriod.chatType);
+      expect(withPeriod.contractType).toBe(withoutPeriod.contractType);
+      expect(withPeriod.rotationNumber).toBe(withoutPeriod.rotationNumber);
+      expect(withPeriod.contract).toEqual(withoutPeriod.contract);
+      expect(withPeriod.bet.Price).toBe(withoutPeriod.bet.Price);
+      expect(withPeriod.bet.Size).toBe(withoutPeriod.bet.Size);
+      expect(withPeriod.bet.Risk).toBe(withoutPeriod.bet.Risk);
+      expect(withPeriod.bet.ToWin).toBe(withoutPeriod.bet.ToWin);
+    });
+
+    test('parsePeriod accepts ordinal inning token with trailing period', () => {
+      expect(parsePeriod('1st. inning', '1st. inning')).toEqual({
+        PeriodTypeCode: 'I',
+        PeriodNumber: 1
+      });
+    });
   });
 
   // Price Parsing

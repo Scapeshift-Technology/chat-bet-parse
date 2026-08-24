@@ -1,5 +1,11 @@
 # chat-bet-parse
 
+## 0.7.1
+
+### Patch Changes
+
+- Fixed inning period parsing for ordinal suffixes with a trailing period, so inputs like `1st. inning` are recognized the same as `1st inning` instead of being folded into the team name.
+
 ## 0.7.0
 
 ### Minor Changes
