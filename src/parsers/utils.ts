@@ -426,7 +426,7 @@ export function parsePeriod(periodStr: string, rawInput: string): Period {
   }
 
   // Inning patterns
-  const inningMatch = cleaned.match(/^(?:(\d+)(?:st|nd|rd|th)?\s*inning?|i(\d+)|(\d+)i)$/);
+  const inningMatch = cleaned.match(/^(?:(\d+)(?:(?:st|nd|rd|th)\.?)?\s*inning?|i(\d+)|(\d+)i)$/);
   if (inningMatch) {
     const iNum = parseInt(inningMatch[1] || inningMatch[2] || inningMatch[3]);
     if (iNum >= 1 && iNum <= 15) {
