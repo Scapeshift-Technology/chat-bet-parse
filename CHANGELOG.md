@@ -1,5 +1,13 @@
 # chat-bet-parse
 
+## 0.9.0
+
+### Minor Changes
+
+- **BREAKING: the SQL Server contract-grading integration is removed** (`src/grading/` — `gradeContract`/grading client, the deprecated `mapParseResultToSqlParameters`/`validateGradingParameters` wrappers, and the grading types/exports). The SQL Server it graded against was retired in July 2026 and is not coming back; the integration suite had been permanently skipping in CI since. Use `mapParseResultToContractLegSpec`/`validateContractLegSpec` from the tracking module for structured mapping.
+
+- **`mssql` is no longer a dependency** (nor `@types/mssql`): the grading client was its only consumer, so the package now has zero runtime dependencies and is safe to pull into dependency-sensitive consumers (browser bundles, dependency-free shared packages).
+
 ## 0.8.0
 
 ### Minor Changes
