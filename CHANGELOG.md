@@ -1,5 +1,15 @@
 # chat-bet-parse
 
+## 0.10.0
+
+### Minor Changes
+
+- **New `chat-bet-parse/signals` subpath entry** exporting the pre-parse text signals: `BET_CANDIDATE_SIGNAL` (moved here; still re-exported from the root), new `EXPLICIT_PREFIX_SIGNAL` ("first token is a recognized bet prefix"), and new `RECOGNIZED_PREFIXES`. The entry is ~0.6 KB with no parser body, so browser consumers can gate on the grammar's own definitions without bundling the parser. The parser's implied-prefix gate is built on the same `BET_CANDIDATE_SIGNAL` object, and a test suite pins `EXPLICIT_PREFIX_SIGNAL` to actual `parseChat` prefix recognition — the signals cannot drift from the grammar.
+
+- **`"sideEffects": false`** declared in package.json: all entries are side-effect-free, enabling reliable tree-shaking of root imports.
+
+- **Prefix delimiters unified to any whitespace**: `IWP`/`YGP`/`IWRR`/`YGRR` dispatch and the `IWW`/`YGW` writein rewrite previously required a literal space (or, for some forms, a literal LF) after the prefix; a tab or CRLF made the parser reject an otherwise valid message. All prefixed forms now accept any whitespace delimiter, so the parser's behavior matches the exported `EXPLICIT_PREFIX_SIGNAL` exactly (pinned by an alignment test).
+
 ## 0.9.0
 
 ### Minor Changes

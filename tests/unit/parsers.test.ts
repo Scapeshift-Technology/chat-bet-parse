@@ -11,18 +11,28 @@ import {
   isParlay,
   isRoundRobin,
   ChatBetParseError,
-  BET_CANDIDATE_SIGNAL
+  BET_CANDIDATE_SIGNAL,
 } from '../../src/index';
 
 // Import test types
-import { TestCase, ErrorTestCase, ParlayTestCase, RoundRobinTestCase, NcrNotationTestCase, NcrNotationErrorTestCase } from '../fixtures/types';
+import {
+  TestCase,
+  ErrorTestCase,
+  ParlayTestCase,
+  RoundRobinTestCase,
+  NcrNotationTestCase,
+  NcrNotationErrorTestCase,
+} from '../fixtures/types';
 
 // Import test fixtures directly from individual files
 import { edgeCaseTestCases } from '../fixtures/edge-cases.fixtures';
 import { errorTestCases, writeinErrorTestCases } from '../fixtures/error-cases.fixtures';
 import { eventDateTestCases } from '../fixtures/event-date.fixtures';
 import { eventDateErrorTestCases } from '../fixtures/event-date-errors.fixtures';
-import { gameSequenceTestCases, enhancedGameNumberTestCases } from '../fixtures/game-sequence.fixtures';
+import {
+  gameSequenceTestCases,
+  enhancedGameNumberTestCases,
+} from '../fixtures/game-sequence.fixtures';
 import { gameTotalsTestCases } from '../fixtures/game-totals.fixtures';
 import { individualContestantTestCases } from '../fixtures/individual-contestants.fixtures';
 import { moneylinesTestCases } from '../fixtures/moneylines.fixtures';
@@ -90,8 +100,9 @@ function validateLeg(actualLeg: any, expectedLeg: any): void {
 
   // Validate leg contract details
   if (expectedLeg.team) {
-    expect('Contestant' in actualLeg.contract &&
-      actualLeg.contract.Contestant).toBe(expectedLeg.team);
+    expect('Contestant' in actualLeg.contract && actualLeg.contract.Contestant).toBe(
+      expectedLeg.team
+    );
   }
   if (expectedLeg.teams) {
     expect(actualLeg.contract.Match.Team1).toBe(expectedLeg.teams[0]);
@@ -128,7 +139,9 @@ function validateLeg(actualLeg: any, expectedLeg: any): void {
   // Writein-specific validations
   expectContractProperty(actualLeg.contract, 'Description', expectedLeg.description);
   if (expectedLeg.writeinEventDate) {
-    expect('EventDate' in actualLeg.contract && actualLeg.contract.EventDate).toEqual(expectedLeg.writeinEventDate);
+    expect('EventDate' in actualLeg.contract && actualLeg.contract.EventDate).toEqual(
+      expectedLeg.writeinEventDate
+    );
   }
 }
 
@@ -140,7 +153,7 @@ function validateTestCase(testCase: TestCase) {
     testCase.referenceDate || testCase.impliedPrefix
       ? {
           ...(testCase.referenceDate ? { referenceDate: testCase.referenceDate } : {}),
-          ...(testCase.impliedPrefix ? { impliedPrefix: testCase.impliedPrefix } : {})
+          ...(testCase.impliedPrefix ? { impliedPrefix: testCase.impliedPrefix } : {}),
         }
       : undefined;
   const result = parseChat(testCase.input, options);
@@ -316,7 +329,6 @@ function validateRoundRobinTestCase(testCase: RoundRobinTestCase) {
 }
 
 describe('Chat Bet Parsing', () => {
-
   // Edge Cases
   describe('Edge Cases', () => {
     test.each(edgeCaseTestCases)('$description', validateTestCase);
@@ -373,7 +385,7 @@ describe('Chat Bet Parsing', () => {
     test('parsePeriod accepts ordinal inning token with trailing period', () => {
       expect(parsePeriod('1st. inning', '1st. inning')).toEqual({
         PeriodTypeCode: 'I',
-        PeriodNumber: 1
+        PeriodNumber: 1,
       });
     });
   });
@@ -509,9 +521,7 @@ describe('Chat Bet Parsing', () => {
     });
 
     test('date-like chatter (mid-token hyphen) under implied IW throws', () => {
-      expect(() => parseChat('available 8-20', { impliedPrefix: 'IW' })).toThrow(
-        ChatBetParseError
-      );
+      expect(() => parseChat('available 8-20', { impliedPrefix: 'IW' })).toThrow(ChatBetParseError);
     });
 
     test('range-like chatter under implied IW throws', () => {
@@ -536,7 +546,11 @@ describe('Chat Bet Parsing', () => {
     });
 
     test('BET_CANDIDATE_SIGNAL rejects digit-glued ranges and plain chatter', () => {
-      for (const text of ['available 8-20', 'back around 3-4pm i think', 'will lyk when im ready']) {
+      for (const text of [
+        'available 8-20',
+        'back around 3-4pm i think',
+        'will lyk when im ready',
+      ]) {
         expect(BET_CANDIDATE_SIGNAL.test(text)).toBe(false);
       }
     });
@@ -594,13 +608,41 @@ describe('Chat Bet Parsing', () => {
   // Additional specific parser tests
   describe('Specific Parser Functions', () => {
     test('parseChatOrder should reject YG message', () => {
-      expect(() => parseChatOrder('YG Padres/Pirates u0.5 @ +100 = 1.0'))
-        .toThrow('Expected order (IW) message');
+      expect(() => parseChatOrder('YG Padres/Pirates u0.5 @ +100 = 1.0')).toThrow(
+        'Expected order (IW) message'
+      );
     });
 
     test('parseChatFill should reject IW message', () => {
-      expect(() => parseChatFill('IW Padres/Pirates u0.5 @ +100'))
-        .toThrow('Expected fill (YG) message');
+      expect(() => parseChatFill('IW Padres/Pirates u0.5 @ +100')).toThrow(
+        'Expected fill (YG) message'
+      );
     });
+  });
+});
+
+describe('Leading whitespace before prefixed messages', () => {
+  const { parseChat } = require('../../src/index');
+
+  // ExecutionDtm is stamped with new Date() at parse time, so it (like
+  // rawInput) is normalized out of the equality check.
+  const scrub = (r: any) => ({
+    ...r,
+    rawInput: undefined,
+    bet: r.bet ? { ...r.bet, ExecutionDtm: undefined } : r.bet,
+  });
+
+  it.each([
+    ['  YGP 872 Cardinals/Cubs o8.5 @ -110 & 701 Lakers @ +120 = $100', 'fill'],
+    ['\nIWP Lakers @ +120 & Warriors @ -110', 'order'],
+    ['  IWRR 4c2 Lakers @ +120 & Warriors @ -110 & Celtics @ +105 & Nets @ +115', 'order'],
+    ['  YGRR 3c2 Lakers @ +120 & Warriors @ -110 & Celtics @ +105 = $100 per', 'fill'],
+    ['\n  IW Yankees @ -110', 'order'],
+    ['  YG Yankees @ -110 = $100', 'fill'],
+    ['  IWW 12/25 NBA Lakers score 120+ points @ +200', 'order'],
+  ])('parses %s identically to its trimmed form', (padded, chatType) => {
+    const result = parseChat(padded);
+    expect(result.chatType).toBe(chatType);
+    expect(scrub(result)).toEqual(scrub(parseChat(padded.trim())));
   });
 });
