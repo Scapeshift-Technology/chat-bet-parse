@@ -15,9 +15,6 @@ export * from './errors/index';
 // Export utilities for advanced use cases
 export * from './parsers/utils';
 
-// Export grading functionality
-export * from './grading/index';
-
 // Export tracking functionality
 export * from './tracking/index';
 

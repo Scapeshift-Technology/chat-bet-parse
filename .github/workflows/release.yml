@@ -19,7 +19,7 @@ jobs:
         # omits it as an unsatisfiable optional dep. Before installs used
         # --ignore-scripts this was masked by esbuild's postinstall fetching
         # the binary over the network, outside the lockfile. engines is
-        # >=18 to match (mssql's runtime tree already required it).
+        # >=18 to match.
         node-version: [18.x, 20.x]
     steps:
       - name: Check out repository
@@ -53,10 +53,6 @@ jobs:
         run: npm run typecheck
 
       - name: Run tests with coverage
-        # DATABASE_CONNECTION_STRING deliberately NOT passed: the SQL Server
-        # behind the grading integration suite was retired (2026-07); the
-        # suite skips without it (its designed no-DB behavior). See TODOS.md —
-        # the grading feature itself is slated for removal.
         run: npm run test:coverage
 
       - name: Build package

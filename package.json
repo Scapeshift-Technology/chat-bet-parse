@@ -1,6 +1,6 @@
 {
   "name": "chat-bet-parse",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "TypeScript package for parsing sports betting contract text into structured data types compatible with SQL Server stored procedures",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -54,12 +54,8 @@
     "url": "https://github.com/Scapeshift-Technology/chat-bet-parse/issues"
   },
   "homepage": "https://github.com/Scapeshift-Technology/chat-bet-parse#readme",
-  "dependencies": {
-    "mssql": "^11.0.1"
-  },
   "devDependencies": {
     "@types/jest": "^29.5.12",
-    "@types/mssql": "^9.1.5",
     "@types/node": "^20.11.30",
     "@typescript-eslint/eslint-plugin": "^7.3.1",
     "@typescript-eslint/parser": "^7.3.1",

@@ -1,6 +1,5 @@
 /**
- * Shared contract validation utilities
- * Used by both tracking and grading mappers to reduce duplication
+ * Shared contract validation utilities used by the tracking mappers
  */
 
 import type { Contract, ContractSportCompetitionMatchType } from '../types';

@@ -10,7 +10,6 @@
  *
  * This module does NOT export:
  * - Parsing functions (which may have Node.js dependencies)
- * - Database/grading functions (which require mssql)
  * - Tracking functions (which may have Node.js dependencies)
  */
 

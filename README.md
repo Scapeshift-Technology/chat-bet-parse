@@ -1,6 +1,6 @@
 # chat-bet-parse
 
-A TypeScript npm package for parsing sports betting chat messages into structured data types compatible with SQL Server stored procedures. Supports both chat orders (IW - "I want") and chat fills (YG - "You got") across multiple sports including MLB and NBA, with optional auto-grading functionality against real game results.
+A TypeScript npm package for parsing sports betting chat messages into structured data types compatible with SQL Server stored procedures. Supports both chat orders (IW - "I want") and chat fills (YG - "You got") across multiple sports including MLB and NBA.
 
 ## Features
 
@@ -10,8 +10,7 @@ A TypeScript npm package for parsing sports betting chat messages into structure
 - 🎲 **Round robin support** - nCr notation for complex parlay combinations (YGRR/IWRR)
 - 🔒 **Type-safe** - Full TypeScript support with discriminated unions
 - 🗃️ **SQL Server ready** - Types designed for stored procedure integration
-- ⚡ **Fast & lightweight** - Zero runtime dependencies for parsing
-- 🏆 **Contract grading** - SQL Server integration for grading parsed contracts (optional)
+- ⚡ **Fast & lightweight** - Zero runtime dependencies
 - 🧪 **Well tested** - Comprehensive test suite with 100% coverage
 
 ## Installation
@@ -755,77 +754,6 @@ Parses chat orders (IW messages) where size is optional and interpreted as liter
 #### `parseChatFill(message: string, options?: ParseOptions)`
 
 Parses chat fills (YG messages) where size is required and decimal values are interpreted as thousands.
-
-## Contract Grading
-
-The package includes optional SQL Server integration for grading parsed contracts against actual game outcomes. This functionality requires a licensed connection to Scapeshift's SQL Server database.
-
-**Supported grading types:**
-- **Game Totals**: Over/under on total points scored
-- **Team Totals**: Over/under on team-specific points
-- **Moneylines**: Straight win/loss outcomes
-- **Spreads**: Point spread with handicap lines
-- **Series**: Multi-game series outcomes
-- **Props**: Player/team proposition bets (basic implementation)
-- **Writeins**: Custom event contracts with user-defined descriptions
-
-**Grade results:**
-- `'W'` - Win
-- `'L'` - Loss
-- `'P'` - Push (tie)
-- `'?'` - Unable to grade (missing data, incomplete game, etc.)
-
-### SQL Server Function
-
-The grading functionality is powered by the `dbo.Contract_CALCULATE_Grade_fn` SQL Server function which is deployed on Scapeshift's SQL Server database:
-
-```sql
-
-**Function Signature:**
-```sql
-dbo.Contract_CALCULATE_Grade_fn(
-    @MatchScheduledDate DATE,
-    @Contestant1 CHAR(50),
-    @Contestant2 CHAR(50) = NULL,
-    @DaySequence TINYINT = NULL,
-    @MatchContestantType CHAR(10) = NULL,
-    @PeriodTypeCode CHAR(2),
-    @PeriodNumber TINYINT,
-    @ContractType VARCHAR(30),
-    @Line DECIMAL(5,2) = NULL,
-    @IsOver BIT = NULL,
-    @SelectedContestant CHAR(50) = NULL,
-    @TiesLose BIT = 0,
-    @Prop VARCHAR(20) = NULL,
-    @PropContestantType CHAR(10) = NULL,
-    @IsYes BIT = NULL,
-    @SeriesLength TINYINT = NULL,
-    @EventDate DATE = NULL,
-    @WriteInDescription VARCHAR(255) = NULL
-) RETURNS CHAR(1)
-```
-
-**Valid Contestant Types:**
-- **Individual**: Individual competitors (e.g., tennis players, golfers)
-- **TeamAdHoc**: Teams that register to play a single event together (e.g., doubles tennis pairs)
-- **TeamLeague**: Teams that play together as a unit across multiple events (e.g., MLB teams, NBA teams)
-
-**Contract Types Supported:**
-- **TotalPoints**: Game total over/under bets
-- **TotalPointsContestant**: Team total over/under bets
-- **HandicapContestantML**: Moneyline (straight win/loss) bets
-- **HandicapContestantLine**: Point spread bets
-- **PropOU**: Proposition over/under bets
-- **PropYN**: Proposition yes/no bets
-- **Series**: Multi-game series outcome bets
-- **Writein**: Custom event contracts with user-defined descriptions
-
-**Implementation Notes:**
-- PropYN grading may require enhancement for specific prop types
-- Series grading requires all games in the series to be completed
-- Function only accepts unambiguous contestant name matches
-
-See [src/grading/README.md](src/grading/README.md) for detailed grading documentation.
 
 ## Development
 
