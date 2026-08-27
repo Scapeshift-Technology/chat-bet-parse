@@ -1,5 +1,22 @@
 # chat-bet-parse
 
+## 0.8.0
+
+### Minor Changes
+
+- **Team-glued American prices now parse** (`gurdians-128` class, from a live counterparty sample 2026-08-26 — "First 5 gurdians-128 ml" previously swallowed the price into the team name and silently defaulted to -110): a letter-ending team stem immediately followed by a signed 3-5 digit **integer** at a token end is split into contestant + price.
+
+  ```typescript
+  parseChat('IW First 5 gurdians-128 ml');
+  // ✅ Contestant 'gurdians', F5 moneyline, price -128 (was: Contestant 'gurdians-128', price -110)
+  parseChat('First 5 gurdians-128 ml', { impliedPrefix: 'IW' });
+  // ✅ same — previously threw UnrecognizedChatPrefixError
+  ```
+
+  The split is deliberately narrow: a real price token always wins — standalone (`Team-128 -125`) or explicit (`@ -120`) — and a contradictory glued number then stays in the team text to fail loudly rather than being silently reinterpreted; glued decimals and small numbers stay spread lines (`Angels+1.5` is still Line 1.5 @ default -110); digit-glued forms stay untouched (`available 8-20`, `F5-128` — dates/ranges, and a stem must END in a letter). k-notation/`$` after `@` is a size, not a price, so `YG Yankees+105 @ 4k` parses as price +105, size $4,000.
+
+- **Bet-signal gate widened and exported**: the implied-prefix gate now accepts letter-glued signed numbers, and its candidate core is exported as `BET_CANDIDATE_SIGNAL` so downstream pre-parse gates (chat consumers deciding whether to attempt an implied parse) can mirror one definition instead of maintaining a drift-prone copy.
+
 ## 0.7.1
 
 ### Patch Changes

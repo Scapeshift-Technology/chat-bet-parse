@@ -243,5 +243,11 @@ export const writeinErrorTestCases: ErrorTestCase[] = [
     input: 'YG writein 2024/11/5 Trump to win presidency @ +150',
     expectedErrorType: 'MissingSizeForFillError',
     expectedErrorMessage: 'Fill (YG/YGP/YGRR) messages require a size'
+  }  ,
+  {
+    description: 'explicit @ price with a contradictory team-glued price stays an error (explicit price wins; glued token left in the team, which fails validation)',
+    input: 'IW Yankees+105 @ -120',
+    expectedErrorType: 'InvalidTeamFormatError',
+    expectedErrorMessage: 'Invalid team format: "Yankees+105"'
   }
 ];

@@ -132,5 +132,25 @@ export const impliedPrefixTestCases: TestCase[] = [
     expectedPrice: 145,
     expectedTeam1: 'Athletics',
     expectedRotationNumber: 872
+  },
+  {
+    description: 'implied IW F5 moneyline with team-glued price (live 2026-08-26 sample)',
+    input: 'First 5 gurdians-128 ml',
+    impliedPrefix: 'IW',
+    expectedChatType: 'order',
+    expectedContractType: 'HandicapContestantML',
+    expectedPrice: -128,
+    expectedTeam1: 'gurdians',
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 }
+  },
+  {
+    description: 'implied IW team-glued spread passes the bet-signal gate',
+    input: 'Angels+1.5',
+    impliedPrefix: 'IW',
+    expectedChatType: 'order',
+    expectedContractType: 'HandicapContestantLine',
+    expectedPrice: -110,
+    expectedTeam1: 'Angels',
+    expectedLine: 1.5
   }
 ];

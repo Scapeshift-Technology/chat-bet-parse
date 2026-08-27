@@ -297,5 +297,78 @@ export const specialFormatsTestCases: TestCase[] = [
     expectedLeague: 'CBK',
     expectedSport: 'Basketball',
     expectedTiesLose: false
+  },
+
+  // Team-glued American prices ("gurdians-128" class): a letter-ending team
+  // stem glued to a signed 3+ digit integer is a PRICE; glued small/decimal
+  // numbers stay spread lines, and digit-glued forms stay untouched.
+  {
+    description: 'IW F5 moneyline with price glued to the team name',
+    input: 'IW First 5 gurdians-128 ml',
+    expectedChatType: 'order',
+    expectedContractType: 'HandicapContestantML',
+    expectedPrice: -128,
+    expectedTeam1: 'gurdians',
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 },
+    expectedTiesLose: false
+  },
+  {
+    description: 'IW moneyline with plus price glued to the team name',
+    input: 'IW Yankees+105',
+    expectedChatType: 'order',
+    expectedContractType: 'HandicapContestantML',
+    expectedPrice: 105,
+    expectedTeam1: 'Yankees',
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
+  },
+  {
+    description: 'YG fill with team-glued price and dollar size',
+    input: 'YG gurdians-128 = $500',
+    expectedChatType: 'fill',
+    expectedContractType: 'HandicapContestantML',
+    expectedPrice: -128,
+    expectedSize: 500,
+    expectedTeam1: 'gurdians',
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
+  },
+  {
+    description: 'team-glued spread with standalone price is untouched by the glued-price split',
+    input: 'IW Angels+1.5 -125',
+    expectedChatType: 'order',
+    expectedContractType: 'HandicapContestantLine',
+    expectedPrice: -125,
+    expectedTeam1: 'Angels',
+    expectedLine: 1.5,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
+  },
+  {
+    description: 'team-glued spread with no price keeps the -110 default (glued decimal is a line, not a price)',
+    input: 'IW Angels+1.5',
+    expectedChatType: 'order',
+    expectedContractType: 'HandicapContestantLine',
+    expectedPrice: -110,
+    expectedTeam1: 'Angels',
+    expectedLine: 1.5,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
+  },
+  {
+    description: 'explicit @ price wins over a team-glued number — glued token stays in the team name',
+    input: 'YG Guardians-128 @ -115 = 2k',
+    expectedChatType: 'fill',
+    expectedContractType: 'HandicapContestantML',
+    expectedPrice: -115,
+    expectedSize: 2000,
+    expectedTeam1: 'Guardians-128',
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
+  },
+  {
+    description: 'k-notation after @ is a size, not a price — the team-glued price still splits',
+    input: 'YG Yankees+105 @ 4k',
+    expectedChatType: 'fill',
+    expectedContractType: 'HandicapContestantML',
+    expectedPrice: 105,
+    expectedSize: 4000,
+    expectedTeam1: 'Yankees',
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
   }
 ];

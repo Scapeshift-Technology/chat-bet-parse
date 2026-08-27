@@ -585,18 +585,41 @@ function tokenizeChat(message: string, options?: ParseOptions): TokenResult {
   }
 
   // Parse price if present and not already found
+  let priceSlotWasSize = false;
   if (price === undefined && priceIndex > 0 && priceIndex < parts.length) {
     const priceStr = parts[priceIndex];
-    // Handle k-notation where price might be missing (default to -110)
     if (priceStr.toLowerCase().endsWith('k') || priceStr.startsWith('$')) {
-      price = -110; // Default price for k-notation
-      // Adjust sizeIndex since this is actually the size
+      // k-notation/$ after @ is a SIZE, not a price — record it and leave
+      // price unset so a team-glued price below can still claim the slot
+      // (the -110 default applies after, preserving prior behavior).
+      priceSlotWasSize = true;
       if (sizeIndex === -1) {
         sizeIndex = priceIndex;
       }
     } else {
       price = parsePrice(priceStr, rawInput);
     }
+  }
+
+  // Check for a price glued to a team name (e.g., "gurdians-128", "Yankees+105"):
+  // a letter-ending stem immediately followed by a signed 3+ digit INTEGER at a
+  // token end. Three digits keeps glued decimals/small numbers ("Angels+1.5")
+  // as spread lines, and the letter requirement keeps digit-glued ranges and
+  // dates ("8-20", "F5-128") untouched. Runs only when no explicit or
+  // standalone price was found — a real price token always wins, and a
+  // contradictory glued number then stays in the team text to fail loudly
+  // rather than being silently reinterpreted.
+  if (price === undefined) {
+    const gluedTeamPriceMatch = contractText.match(/([A-Za-z])([+-]\d{3,5})(?=\s|$)/);
+    if (gluedTeamPriceMatch) {
+      price = parsePrice(gluedTeamPriceMatch[2], rawInput);
+      contractText = contractText.replace(gluedTeamPriceMatch[0], gluedTeamPriceMatch[1]);
+    }
+  }
+
+  // k-notation default price (unchanged behavior when no glued price claimed it)
+  if (price === undefined && priceSlotWasSize) {
+    price = -110;
   }
 
   // Parse size if present (using extended syntax support)
@@ -2419,15 +2442,24 @@ const SIDE_FIRST_F5_TOTAL =
   /^(over|under)\s+(\d+(?:\.\d+)?)\s+(?:first\s*(?:5|five)|1st\s*(?:5|five))(?:\s*innings?)?\s+([+-]\d+(?:\.\d+)?)\s+(\S.*)$/i;
 
 /**
- * Bet-signal gate for implied-prefix parsing: an explicit price/size marker
- * (`@`) or a signed number written as its own token (price or spread line —
- * `-105`, `+1.5`). Without one, unprefixed text is conversation, not a bet —
- * the grammar's default-price paths would otherwise silently turn chatter
- * like "will lyk when im ready" into a moneyline order on a nonsense team.
- * The token boundary matters: mid-token hyphens ("available 8-20", "3-4pm")
- * are dates and ranges, not signs.
+ * Candidate heuristic for "this text plausibly carries a bet": a signed
+ * number at a token boundary (`-105`, `+1.5`) or glued to a word
+ * (`gurdians-128`, `Angels+1.5`). Digit-glued forms ("available 8-20",
+ * "3-4pm") are dates and ranges, not signs, and stay excluded. Exported so
+ * downstream pre-parse gates (e.g. a chat consumer deciding whether to
+ * attempt an implied-prefix parse at all) mirror ONE definition instead of
+ * maintaining a drift-prone copy.
  */
-const IMPLIED_BET_SIGNAL = /@|(^|\s)[+-]\d/;
+export const BET_CANDIDATE_SIGNAL = /(^|\s|[A-Za-z])[+-]\d/;
+
+/**
+ * Bet-signal gate for implied-prefix parsing: an explicit price/size marker
+ * (`@`) or a candidate signed number (BET_CANDIDATE_SIGNAL). Without one,
+ * unprefixed text is conversation, not a bet — the grammar's default-price
+ * paths would otherwise silently turn chatter like "will lyk when im ready"
+ * into a moneyline order on a nonsense team.
+ */
+const IMPLIED_BET_SIGNAL = new RegExp(`@|${BET_CANDIDATE_SIGNAL.source}`);
 
 /**
  * Parse an unprefixed message as if `impliedPrefix` were present, using the

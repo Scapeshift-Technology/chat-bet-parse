@@ -4,7 +4,7 @@
  */
 
 // Export main parsing functions
-export { parseChat, parseChatOrder, parseChatFill } from './parsers/index';
+export { parseChat, parseChatOrder, parseChatFill, BET_CANDIDATE_SIGNAL } from './parsers/index';
 
 // Export all types
 export * from './types/index';

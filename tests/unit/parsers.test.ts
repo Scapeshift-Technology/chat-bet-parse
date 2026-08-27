@@ -10,7 +10,8 @@ import {
   isWritein,
   isParlay,
   isRoundRobin,
-  ChatBetParseError
+  ChatBetParseError,
+  BET_CANDIDATE_SIGNAL
 } from '../../src/index';
 
 // Import test types
@@ -523,6 +524,21 @@ describe('Chat Bet Parsing', () => {
       expect(() => parseChat('872 Athletics @ +145', { impliedPrefix: 'YG' })).toThrow(
         ChatBetParseError
       );
+    });
+
+    // BET_CANDIDATE_SIGNAL is exported so downstream pre-parse gates can
+    // mirror the implied-prefix bet signal from ONE definition (consumers
+    // pin their local copy to this regex's source in a parity test).
+    test('BET_CANDIDATE_SIGNAL accepts token-boundary and letter-glued signed numbers', () => {
+      for (const text of ['Red Sox -1.5 -110', 'First 5 gurdians-128 ml', 'Angels+1.5']) {
+        expect(BET_CANDIDATE_SIGNAL.test(text)).toBe(true);
+      }
+    });
+
+    test('BET_CANDIDATE_SIGNAL rejects digit-glued ranges and plain chatter', () => {
+      for (const text of ['available 8-20', 'back around 3-4pm i think', 'will lyk when im ready']) {
+        expect(BET_CANDIDATE_SIGNAL.test(text)).toBe(false);
+      }
     });
   });
 
