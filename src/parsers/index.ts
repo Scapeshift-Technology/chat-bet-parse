@@ -27,6 +27,7 @@ import type {
 } from '../types/index';
 
 import { knownLeagues, knownSports, leagueSportMap } from '../types/index';
+import { BET_CANDIDATE_SIGNAL } from '../signals';
 
 import {
   InvalidChatFormatError,
@@ -319,10 +320,10 @@ function tokenizeChat(message: string, options?: ParseOptions): TokenResult {
   // Pre-process to handle spacing around = sign
   let processedMessage = message.trim();
 
-  // Handle IWW/YGW shorthand for writeins
-  if (processedMessage.toUpperCase().startsWith('IWW ')) {
+  // Handle IWW/YGW shorthand for writeins (any whitespace delimiter)
+  if (/^IWW\s/i.test(processedMessage)) {
     processedMessage = 'IW writein ' + processedMessage.substring(4);
-  } else if (processedMessage.toUpperCase().startsWith('YGW ')) {
+  } else if (/^YGW\s/i.test(processedMessage)) {
     processedMessage = 'YG writein ' + processedMessage.substring(4);
   }
 
@@ -1770,7 +1771,7 @@ export function parseChatFill(message: string, options?: ParseOptions): ParseRes
  */
 function parseParlayFill(rawInput: string, options?: ParseOptions): ParseResultParlay {
   // 1. Extract "YGP" prefix
-  let text = rawInput.slice(3).trim();
+  let text = rawInput.trim().slice(3).trim();
 
   // 2. Parse parlay-level keywords (pusheslose, tieslose, freebet)
   // Only parse keywords from the first line before legs start
@@ -1957,7 +1958,7 @@ function parseParlayFill(rawInput: string, options?: ParseOptions): ParseResultP
  */
 function parseParlayOrder(rawInput: string, options?: ParseOptions): ParseResultParlay {
   // 1. Extract "IWP" prefix
-  let text = rawInput.slice(3).trim();
+  let text = rawInput.trim().slice(3).trim();
 
   // 2. Parse parlay-level keywords (pusheslose, tieslose, freebet)
   // Only parse keywords from the first line before legs start
@@ -2122,7 +2123,7 @@ function parseParlayOrder(rawInput: string, options?: ParseOptions): ParseResult
  */
 function parseRoundRobinFill(rawInput: string, options?: ParseOptions): ParseResultRoundRobin {
   // 1. Extract "YGRR" prefix
-  let text = rawInput.slice(4).trim();
+  let text = rawInput.trim().slice(4).trim();
 
   // 2. Parse round robin-level keywords (same as parlays)
   const allowedKeys = ['pusheslose', 'tieslose', 'freebet'];
@@ -2277,7 +2278,7 @@ function parseRoundRobinFill(rawInput: string, options?: ParseOptions): ParseRes
  */
 function parseRoundRobinOrder(rawInput: string, options?: ParseOptions): ParseResultRoundRobin {
   // 1. Extract "IWRR" prefix
-  let text = rawInput.slice(4).trim();
+  let text = rawInput.trim().slice(4).trim();
 
   // 2. Parse round robin-level keywords (same as parlays)
   const allowedKeys = ['pusheslose', 'tieslose', 'freebet'];
@@ -2396,21 +2397,21 @@ export function parseChat(message: string, options?: ParseOptions): ParseResult 
   const trimmed = message.trim();
   const upperTrimmed = trimmed.toUpperCase();
 
-  // Check for round robin first (before parlay)
-  if (upperTrimmed.startsWith('YGRR ') || upperTrimmed.startsWith('YGRR\n')) {
+  // Check for round robin first (before parlay); any whitespace delimiter
+  if (/^YGRR\s/.test(upperTrimmed)) {
     return parseRoundRobinFill(message, options);
   }
 
-  if (upperTrimmed.startsWith('IWRR ') || upperTrimmed.startsWith('IWRR\n')) {
+  if (/^IWRR\s/.test(upperTrimmed)) {
     return parseRoundRobinOrder(message, options);
   }
 
   // Check for parlay prefixes
-  if (upperTrimmed.startsWith('YGP ') || upperTrimmed.startsWith('YGP\n')) {
+  if (/^YGP\s/.test(upperTrimmed)) {
     return parseParlayFill(message, options);
   }
 
-  if (upperTrimmed.startsWith('IWP ') || upperTrimmed.startsWith('IWP\n')) {
+  if (/^IWP\s/.test(upperTrimmed)) {
     return parseParlayOrder(message, options);
   }
 
@@ -2440,17 +2441,6 @@ export function parseChat(message: string, options?: ParseOptions): ParseResult 
  */
 const SIDE_FIRST_F5_TOTAL =
   /^(over|under)\s+(\d+(?:\.\d+)?)\s+(?:first\s*(?:5|five)|1st\s*(?:5|five))(?:\s*innings?)?\s+([+-]\d+(?:\.\d+)?)\s+(\S.*)$/i;
-
-/**
- * Candidate heuristic for "this text plausibly carries a bet": a signed
- * number at a token boundary (`-105`, `+1.5`) or glued to a word
- * (`gurdians-128`, `Angels+1.5`). Digit-glued forms ("available 8-20",
- * "3-4pm") are dates and ranges, not signs, and stay excluded. Exported so
- * downstream pre-parse gates (e.g. a chat consumer deciding whether to
- * attempt an implied-prefix parse at all) mirror ONE definition instead of
- * maintaining a drift-prone copy.
- */
-export const BET_CANDIDATE_SIGNAL = /(^|\s|[A-Za-z])[+-]\d/;
 
 /**
  * Bet-signal gate for implied-prefix parsing: an explicit price/size marker

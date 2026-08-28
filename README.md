@@ -755,6 +755,20 @@ Parses chat orders (IW messages) where size is optional and interpreted as liter
 
 Parses chat fills (YG messages) where size is required and decimal values are interpreted as thousands.
 
+## Pre-parse Signals (`chat-bet-parse/signals`)
+
+A tiny dependency-light subpath entry exposing the text signals a chat consumer needs *before* deciding to run the parser — safe for browser bundles (~0.6 KB, no parser body):
+
+```typescript
+import { EXPLICIT_PREFIX_SIGNAL, BET_CANDIDATE_SIGNAL, RECOGNIZED_PREFIXES } from 'chat-bet-parse/signals';
+
+EXPLICIT_PREFIX_SIGNAL.test('YG Yankees @ -110 = $100'); // true — first token is a recognized prefix
+BET_CANDIDATE_SIGNAL.test('First 5 gurdians-128 ml');    // true — carries a bet-like signed number
+BET_CANDIDATE_SIGNAL.test('will lyk when im ready');     // false — conversation
+```
+
+These are facts about this package's grammar (the parser's own gates are built on the same definitions, and tests pin them to actual parser behavior), so downstream pre-parse gates should import them rather than maintain copies. All three are also re-exported from the package root.
+
 ## Development
 
 ```bash

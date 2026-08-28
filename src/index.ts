@@ -4,7 +4,11 @@
  */
 
 // Export main parsing functions
-export { parseChat, parseChatOrder, parseChatFill, BET_CANDIDATE_SIGNAL } from './parsers/index';
+export { parseChat, parseChatOrder, parseChatFill } from './parsers/index';
+
+// Export pre-parse text signals (also available dependency-light via the
+// chat-bet-parse/signals subpath entry)
+export * from './signals';
 
 // Export all types
 export * from './types/index';
