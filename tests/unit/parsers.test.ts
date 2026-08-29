@@ -707,6 +707,32 @@ describe('Period word-phrases in totals (live 🙈 2026-08-28: "first 5 under 4-
     expect(r.bet!.Price).toBe(-105);
   });
 
+  it('word phrases join the same reserved-vocabulary class as the compact codes', () => {
+    // A contestant consisting solely of a period phrase fails loudly with
+    // the SAME empty-team error the compact code always produced — the word
+    // forms become reserved words exactly like F5/H1/H2 already were, never
+    // a silent reinterpretation. (Codex review 2026-08-29: pinned as a
+    // deliberate equivalence, not a regression.)
+    expect(() => parseChat('YG First Five @ -105 = $100')).toThrow('Team name cannot be empty');
+    expect(() => parseChat('YG F5 @ -105 = $100')).toThrow('Team name cannot be empty');
+  });
+
+  it('leaves prop phrases containing "first" untouched', () => {
+    const scorer = parseChat('IW Chiefs first td scorer Kelce @ +200');
+    expect(scorer.contractType).toBe('PropYN');
+    expect((scorer.contract as any).Contestant).toBe('Chiefs first td scorer Kelce');
+    const firstToScore = parseChat('YG first team to score Chiefs @ -110 = $100');
+    expect(firstToScore.contractType).toBe('PropYN');
+    expect((firstToScore.contract as any).Contestant).toBe('first team to score Chiefs');
+  });
+
+  it('parses the "first 5 innings" suffix form as a total', () => {
+    const r = parseChat('yg Astros first 5 innings under 4 -105 = $4k');
+    expect(r.contractType).toBe('TotalPoints');
+    expect((r.contract as any).Period).toEqual({ PeriodTypeCode: 'H', PeriodNumber: 1 });
+    expect(r.bet!.Price).toBe(-105);
+  });
+
   it('still routes word-period moneylines to contestant-ML', () => {
     const r = parseChat('yg Astros first 5 -105 = $4k');
     expect(r.contractType).toBe('HandicapContestantML');
