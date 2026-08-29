@@ -570,17 +570,36 @@ function tokenizeChat(message: string, options?: ParseOptions): TokenResult {
     }
   }
 
-  // Check for attached prices in over/under patterns (e.g., "u2.5-125", "o2.5+125")
+  // Normalize period word-phrases to the compact codes every later stage
+  // (attached-price extraction, contract-type detection, period-at-start
+  // reordering) already recognizes. parsePeriod accepts both spellings, so
+  // this only widens recognition — "first 5 under 4" used to route to
+  // contestant-ML with the whole tail swallowed as a contestant name
+  // (live 🙈, 2026-08-28). The optional "innings" suffix mirrors the
+  // side-first pattern's vocabulary.
+  contractText = contractText
+    .replace(/\b(?:first|1st)\s+(?:five|5)(?:\s+innings?)?\b/gi, 'F5')
+    .replace(/\b(?:first|1st)\s+(?:half|h)\b/gi, 'H1')
+    .replace(/\b(?:second|2nd)\s+(?:half|h)\b/gi, 'H2');
+
+  // Check for attached prices in over/under patterns (e.g., "u2.5-125",
+  // "o2.5+125", "under 4-105"). The [ou] shorthand pattern runs first so its
+  // behavior stays byte-identical; the word-form fallback covers prices glued
+  // to spelled-out totals, which previously stayed in the text and let the
+  // -110 default book a wrong risk.
   if (price === undefined) {
-    const attachedPriceMatch = contractText.match(/([ou])(\d+(?:\.\d+)?)([+-]\d+(?:\.\d+)?)/i);
+    const attachedPriceMatch =
+      contractText.match(/([ou])(\d+(?:\.\d+)?)([+-]\d+(?:\.\d+)?)/i) ??
+      contractText.match(/\b(over|under)\s*(\d+(?:\.\d+)?)([+-]\d+(?:\.\d+)?)/i);
     if (attachedPriceMatch) {
       // Extract the attached price and clean the contract text
       const attachedPriceStr = attachedPriceMatch[3];
       price = parsePrice(attachedPriceStr, rawInput);
-      // Remove the attached price from contract text
+      // Strip just the price, preserving the indicator+line exactly as
+      // written (for [ou] shorthand this equals the old m[1]+m[2] rebuild).
       contractText = contractText.replace(
         attachedPriceMatch[0],
-        attachedPriceMatch[1] + attachedPriceMatch[2]
+        attachedPriceMatch[0].slice(0, -attachedPriceMatch[3].length)
       );
     }
   }

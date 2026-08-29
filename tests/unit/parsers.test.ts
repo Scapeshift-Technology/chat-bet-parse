@@ -646,3 +646,97 @@ describe('Leading whitespace before prefixed messages', () => {
     expect(scrub(result)).toEqual(scrub(parseChat(padded.trim())));
   });
 });
+
+describe('Period word-phrases in totals (live 🙈 2026-08-28: "first 5 under 4-105")', () => {
+  // Root causes fixed together because either alone leaves the live message
+  // wrong: (1) detectContractType's totals branches only knew compact period
+  // codes, so "first 5" routed to contestant-ML with the tail swallowed as a
+  // contestant name; (2) the attached-price extractor only knew [ou]
+  // shorthand, so a price glued to a word-form total ("under 4-105") stayed
+  // in the text and the -110 default applied — booking risk 4400 on a -105
+  // ticket.
+  const asTotal = (input: string, line: number, isOver: boolean, price: number) => {
+    const r = parseChat(input);
+    expect(r.contractType).toBe('TotalPoints');
+    expect((r.contract as any).Line).toBe(line);
+    expect((r.contract as any).IsOver).toBe(isOver);
+    expect((r.contract as any).Period).toEqual({ PeriodTypeCode: 'H', PeriodNumber: 1 });
+    expect(r.bet!.Price).toBe(price);
+    return r;
+  };
+
+  it('parses the live message verbatim (glued integer line-price)', () => {
+    const r = asTotal('yg Astros first 5 under 4-105 = $4k', 4, false, -105);
+    expect(r.bet!.Risk).toBe(4200);
+    expect(r.bet!.ToWin).toBe(4000);
+  });
+
+  it.each([
+    ['yg Astros first 5 under 4 -105 = $4k', 4, false, -105],
+    ['yg Astros first 5 u4 -105 = $4k', 4, false, -105],
+    ['yg Astros 1st 5 under 4.5 -105 = $4k', 4.5, false, -105],
+    ['yg Astros first five over 8.5 +102 = $4k', 8.5, true, 102],
+    ['yg Astros 1st half under 4 -105 = $4k', 4, false, -105],
+    ['yg Astros first half over 8.5 -110 = $4k', 8.5, true, -110],
+  ])('parses %s as an F5/H1 total', (input, line, isOver, price) => {
+    asTotal(input as string, line as number, isOver as boolean, price as number);
+  });
+
+  it('extracts a price glued to a word-form total even with a compact period', () => {
+    asTotal('yg Astros F5 under 4-105 = $4k', 4, false, -105);
+  });
+
+  it('extracts a glued price on a full-game word-form total', () => {
+    const r = parseChat('yg Astros under 8.5-105 = $4k');
+    expect(r.contractType).toBe('TotalPoints');
+    expect((r.contract as any).Line).toBe(8.5);
+    expect(r.bet!.Price).toBe(-105);
+  });
+
+  it('normalizes second-half phrases too', () => {
+    const r = parseChat('yg Vanderbilt second half under 24.5 -105 = $1k');
+    expect(r.contractType).toBe('TotalPoints');
+    expect((r.contract as any).Period).toEqual({ PeriodTypeCode: 'H', PeriodNumber: 2 });
+    expect(r.bet!.Price).toBe(-105);
+  });
+
+  it('leaves [ou] shorthand attached-price behavior byte-identical', () => {
+    const r = parseChat('yg Astros F5 u4.5-105 = $4k');
+    expect(r.contractType).toBe('TotalPoints');
+    expect((r.contract as any).Line).toBe(4.5);
+    expect(r.bet!.Price).toBe(-105);
+  });
+
+  it('word phrases join the same reserved-vocabulary class as the compact codes', () => {
+    // A contestant consisting solely of a period phrase fails loudly with
+    // the SAME empty-team error the compact code always produced — the word
+    // forms become reserved words exactly like F5/H1/H2 already were, never
+    // a silent reinterpretation. (Codex review 2026-08-29: pinned as a
+    // deliberate equivalence, not a regression.)
+    expect(() => parseChat('YG First Five @ -105 = $100')).toThrow('Team name cannot be empty');
+    expect(() => parseChat('YG F5 @ -105 = $100')).toThrow('Team name cannot be empty');
+  });
+
+  it('leaves prop phrases containing "first" untouched', () => {
+    const scorer = parseChat('IW Chiefs first td scorer Kelce @ +200');
+    expect(scorer.contractType).toBe('PropYN');
+    expect((scorer.contract as any).Contestant).toBe('Chiefs first td scorer Kelce');
+    const firstToScore = parseChat('YG first team to score Chiefs @ -110 = $100');
+    expect(firstToScore.contractType).toBe('PropYN');
+    expect((firstToScore.contract as any).Contestant).toBe('first team to score Chiefs');
+  });
+
+  it('parses the "first 5 innings" suffix form as a total', () => {
+    const r = parseChat('yg Astros first 5 innings under 4 -105 = $4k');
+    expect(r.contractType).toBe('TotalPoints');
+    expect((r.contract as any).Period).toEqual({ PeriodTypeCode: 'H', PeriodNumber: 1 });
+    expect(r.bet!.Price).toBe(-105);
+  });
+
+  it('still routes word-period moneylines to contestant-ML', () => {
+    const r = parseChat('yg Astros first 5 -105 = $4k');
+    expect(r.contractType).toBe('HandicapContestantML');
+    expect((r.contract as any).Period).toEqual({ PeriodTypeCode: 'H', PeriodNumber: 1 });
+    expect(r.bet!.Price).toBe(-105);
+  });
+});
