@@ -1,5 +1,13 @@
 # chat-bet-parse
 
+## 0.11.0
+
+### Minor Changes
+
+- **Period word-phrases now parse in totals** (from a live fill sample 2026-08-28 — "YG Astros first 5 under 4-105 = $4k" previously routed to contestant-moneyline with the whole tail swallowed as the contestant name): the tokenizer normalizes "first 5"/"first five"/"1st 5" (optional "innings" suffix), "first half"/"1st half"/"first h", and the second-half word forms to the compact codes (`F5`/`H1`/`H2`) every later stage already recognizes. `parsePeriod` accepted these spellings all along; the contract-type detector's totals branches did not — so the same bet parsed correctly as "Astros F5 under 4" and incorrectly as "Astros first 5 under 4".
+
+- **Attached prices extract from word-form totals** ("under 4-105", "over 8.5+102"): the attached-price extractor only knew `[ou]` shorthand (`u4.5-105`), so a price glued to a spelled-out total stayed in the text and the -110 default silently booked a wrong risk (4,400 on a -105 ticket that should book 4,200). The `[ou]` shorthand pattern still runs first and its behavior is byte-identical; the word-form fallback strips just the price, preserving the indicator and line as written.
+
 ## 0.10.0
 
 ### Minor Changes
