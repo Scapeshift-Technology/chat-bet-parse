@@ -1635,6 +1635,16 @@ function calculateFinalRiskAndToWin(
  * Parse a chat order (IW message)
  */
 export function parseChatOrder(message: string, options?: ParseOptions): ParseResultStraight {
+  // A leading Parlay keyword is free-form parlay text (parseChat routes it);
+  // letting it fall through would contestant-swallow the whole message into
+  // a moneyline on "Parlay ..." at the default price — fail loudly instead.
+  if (/^(?:iw|yg)\s+parlay\s/i.test(message.trim())) {
+    throw new InvalidChatFormatError(
+      message,
+      'Free-form parlay text must be parsed via parseChat'
+    );
+  }
+
   const tokens = tokenizeChat(message, options);
 
   if (tokens.chatType !== 'order') {
@@ -1707,6 +1717,14 @@ export function parseChatOrder(message: string, options?: ParseOptions): ParseRe
  * Parse a chat fill (YG message)
  */
 export function parseChatFill(message: string, options?: ParseOptions): ParseResultStraight {
+  // See parseChatOrder: leading Parlay keyword = free-form parlay text.
+  if (/^(?:iw|yg)\s+parlay\s/i.test(message.trim())) {
+    throw new InvalidChatFormatError(
+      message,
+      'Free-form parlay text must be parsed via parseChat'
+    );
+  }
+
   const tokens = tokenizeChat(message, options);
 
   if (tokens.chatType !== 'fill') {
@@ -2412,6 +2430,159 @@ function parseRoundRobinOrder(rawInput: string, options?: ParseOptions): ParseRe
   };
 }
 
+/**
+ * Free-form parlay: `Parlay <leg> and|& <leg> [...] @ <combined price>
+ * [= size]` after a bare YG/IW prefix (or implied). Live sample 2026-08-26:
+ * "yg Parlay Cubs ml and over 8.5 @ +265 = $3500" — before this grammar the
+ * straight path contestant-swallowed the whole text into a moneyline on
+ * "Parlay Cubs ml and" at the default -110, a wrong-contract fill.
+ *
+ * Unlike YGP/IWP, legs carry NO individual prices — the single @ price
+ * prices the whole ticket — so a leg containing `@` or a price-shaped
+ * signed integer fails loudly toward the per-leg-priced grammar instead of
+ * being reinterpreted. A team-less total leg ("over 8.5") inherits the
+ * nearest prior leg's team: that is the human reading (the same game's
+ * total), and without it the leg would contestant-swallow AND be
+ * un-matchable downstream (combo legs must carry participants).
+ */
+function parseFreeformParlay(
+  text: string,
+  rawInput: string,
+  chatType: 'order' | 'fill',
+  options?: ParseOptions
+): ParseResultParlay {
+  const body = text.trim().replace(/^parlay\s+/i, '');
+
+  // Size section first (fills: `= $risk [tw $x]`).
+  const eqIndex = body.indexOf('=');
+  const sizeText = eqIndex === -1 ? undefined : body.slice(eqIndex).trim();
+  const priced = eqIndex === -1 ? body : body.slice(0, eqIndex);
+
+  if (chatType === 'order' && sizeText !== undefined) {
+    throw new InvalidParlayStructureError(
+      rawInput,
+      'Free-form parlay orders take no size — price the ticket with @ only'
+    );
+  }
+
+  // Combined price after the LAST @; legs themselves must not contain @.
+  const atIndex = priced.lastIndexOf('@');
+  let price: number | undefined;
+  let legsText: string;
+  if (atIndex === -1) {
+    legsText = priced.trim();
+  } else {
+    legsText = priced.slice(0, atIndex).trim();
+    const priceStr = priced.slice(atIndex + 1).trim();
+    if (!priceStr) {
+      throw new InvalidParlayStructureError(rawInput, 'Free-form parlay @ needs a combined price');
+    }
+    price = parsePrice(priceStr, rawInput);
+  }
+
+  if (legsText.includes('@')) {
+    throw new InvalidParlayStructureError(
+      rawInput,
+      'Free-form parlay legs carry no per-leg @ prices — use YGP/IWP for per-leg pricing'
+    );
+  }
+
+  const legTexts = legsText
+    .split(/\s+and\s+|\s*&\s*/i)
+    .map(l => l.trim())
+    .filter(l => l);
+  if (legTexts.length < 2) {
+    throw new InvalidParlayStructureError(rawInput, 'Parlay requires at least 2 legs');
+  }
+
+  const legs: ParseResultStraight[] = [];
+  let lastTeam: string | undefined;
+  for (let i = 0; i < legTexts.length; i++) {
+    let legText = legTexts[i];
+    if (/[+-]\d{3,5}(?!\d)/.test(legText)) {
+      throw new InvalidParlayLegError(
+        rawInput,
+        i + 1,
+        'Free-form parlay legs carry no prices — use YGP/IWP for per-leg pricing'
+      );
+    }
+    if (/^(?:over|under|[ou])\s*\d/i.test(legText)) {
+      if (lastTeam === undefined) {
+        throw new InvalidParlayLegError(
+          rawInput,
+          i + 1,
+          'Team-less total leg has no prior leg to inherit a game from'
+        );
+      }
+      legText = `${lastTeam} ${legText}`;
+    }
+    try {
+      const legResult = parseChatOrder(`IW ${legText}`, options);
+      const match = (legResult.contract as { Match?: { Team1?: string } }).Match;
+      if (match?.Team1) {
+        lastTeam = match.Team1;
+      }
+      // The straight grammar default-prices bare orders at -110; a
+      // free-form leg is proven price-free above, so undefined is the
+      // truth and -110 would be fabrication.
+      legs.push({ ...legResult, bet: { ...legResult.bet, Price: undefined } });
+    } catch (error) {
+      if (error instanceof InvalidParlayLegError) throw error;
+      throw new InvalidParlayLegError(rawInput, i + 1, (error as Error).message);
+    }
+  }
+
+  if (chatType === 'order') {
+    if (price === undefined) {
+      throw new InvalidParlayStructureError(
+        rawInput,
+        'Free-form parlay orders need a combined @ price'
+      );
+    }
+    return {
+      chatType: 'order',
+      betType: 'parlay',
+      bet: {
+        Price: price,
+        Risk: undefined,
+        ToWin: undefined,
+        ExecutionDtm: undefined,
+        IsFreeBet: false,
+      },
+      useFair: true,
+      legs,
+    };
+  }
+
+  if (sizeText === undefined) {
+    throw new MissingSizeForFillError(rawInput);
+  }
+  const { risk, toWin, useFair } = parseParlaySize(sizeText, rawInput);
+  let finalToWin = toWin;
+  if (useFair) {
+    if (price === undefined || risk === undefined) {
+      throw new InvalidParlayStructureError(
+        rawInput,
+        'Free-form parlay fill needs a combined @ price or an explicit tw'
+      );
+    }
+    finalToWin = calculateParlayFairToWin([price], risk);
+  }
+  return {
+    chatType: 'fill',
+    betType: 'parlay',
+    bet: {
+      Price: price,
+      Risk: risk,
+      ToWin: finalToWin,
+      ExecutionDtm: new Date(),
+      IsFreeBet: false,
+    },
+    useFair,
+    legs,
+  };
+}
+
 export function parseChat(message: string, options?: ParseOptions): ParseResult {
   const trimmed = message.trim();
   const upperTrimmed = trimmed.toUpperCase();
@@ -2432,6 +2603,17 @@ export function parseChat(message: string, options?: ParseOptions): ParseResult 
 
   if (/^IWP\s/.test(upperTrimmed)) {
     return parseParlayOrder(message, options);
+  }
+
+  // Free-form parlays: bare YG/IW + leading Parlay keyword (combined price).
+  const freeform = upperTrimmed.match(/^(YG|IW)\s+PARLAY\s/);
+  if (freeform) {
+    return parseFreeformParlay(
+      trimmed.replace(/^(?:yg|iw)\s+/i, ''),
+      message,
+      freeform[1] === 'YG' ? 'fill' : 'order',
+      options
+    );
   }
 
   // Existing straight bet logic
@@ -2482,6 +2664,9 @@ function parseWithImpliedPrefix(
 ): ParseResult {
   if (!IMPLIED_BET_SIGNAL.test(trimmed)) {
     throw new UnrecognizedChatPrefixError(trimmed, trimmed.split(/\s+/)[0] || '');
+  }
+  if (/^parlay\s/i.test(trimmed)) {
+    return parseFreeformParlay(trimmed, trimmed, impliedPrefix === 'YG' ? 'fill' : 'order', options);
   }
   if (impliedPrefix === 'IW') {
     const sideFirst = trimmed.match(SIDE_FIRST_F5_TOTAL);

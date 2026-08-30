@@ -157,6 +157,18 @@ Warriors @ -110
 = $100 tw $800
 ```
 
+**Free-form Parlays (combined price)**
+
+A bare `YG`/`IW` prefix followed by the `Parlay` keyword parses a
+combined-price parlay: legs separated by `and` or `&`, one `@ price` for the
+whole ticket, no per-leg prices (per-leg pricing is YGP/IWP's shape and
+fails loudly here). A team-less total leg inherits the nearest prior leg's
+team — `Cubs ml and over 8.5` reads as the Cubs game's total.
+
+- `YG Parlay Cubs ml and over 8.5 @ +265 = $3500` (fill; to-win from +265)
+- `YG Parlay Cubs ml & over 8.5 @ +265 = $3500 tw $9000` (explicit to-win)
+- `IW Parlay Cubs ml and Yankees +1.5 @ +265` (order; combined price, no size)
+
 ### Round Robins (YGRR/IWRR)
 
 **Basic Round Robins - nCr Notation**
