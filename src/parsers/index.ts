@@ -2485,7 +2485,12 @@ function parseFreeformParlay(
   chatType: 'order' | 'fill',
   options?: ParseOptions
 ): ParseResultParlay {
-  let body = text.trim().replace(/^parlay\b[\s.,:!?-]*/i, '');
+  // Strip the keyword plus any adjacent junk. The junk class must consume
+  // at least everything LEADING_PARLAY's \b boundary admits — a narrower
+  // strip leaves "&"/"'" behind, which are legal team characters and would
+  // silently dirty the first leg's contestant ("& Cubs"). Structural @ and
+  // = survive so a degenerate "Parlay @ +265" still reaches the 2-leg check.
+  let body = text.trim().replace(/^parlay\b[^\w@=]*/i, '');
 
   // Parlay-level keywords, leading position only (YGP semantics).
   let pusheslose: boolean | undefined;

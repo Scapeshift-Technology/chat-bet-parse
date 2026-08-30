@@ -826,6 +826,21 @@ describe('Chat Bet Parsing', () => {
       expect(team.betType).toBe('straight');
     });
 
+    test('keyword-adjacent punctuation never dirties the first leg team', () => {
+      // '&' and apostrophes are legal team characters, so junk left behind
+      // by a too-narrow keyword strip silently parses as "& Cubs" — the
+      // strip must consume at least everything the router boundary admits.
+      for (const raw of [
+        "Parlay& Cubs ml and over 8.5 @ +265",
+        "Parlay' Cubs ml and over 8.5 @ +265",
+        'Parlay: Cubs ml and over 8.5 @ +265',
+      ]) {
+        const result = parseChat(raw, { impliedPrefix: 'IW' });
+        if (!isParlay(result)) throw new Error('expected parlay');
+        expect(result.legs[0].contract).toMatchObject({ Match: { Team1: 'Cubs' } });
+      }
+    });
+
     test('priceless implied parlay order fails LOUDLY, never silently (live MSG#2749 shape)', () => {
       // "Parlay Cubs ml and over 8.5" with the price in a later message —
       // under the old grammar this contestant-swallowed into a phantom
