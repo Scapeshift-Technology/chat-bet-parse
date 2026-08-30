@@ -1640,10 +1640,7 @@ export function parseChatOrder(message: string, options?: ParseOptions): ParseRe
   // letting it fall through would contestant-swallow the whole message into
   // a moneyline on "Parlay ..." at the default price — fail loudly instead.
   if (/^(?:iw|yg)\s+parlay\b/i.test(message.trim())) {
-    throw new InvalidChatFormatError(
-      message,
-      'Free-form parlay text must be parsed via parseChat'
-    );
+    throw new InvalidChatFormatError(message, 'Free-form parlay text must be parsed via parseChat');
   }
 
   const tokens = tokenizeChat(message, options);
@@ -1720,10 +1717,7 @@ export function parseChatOrder(message: string, options?: ParseOptions): ParseRe
 export function parseChatFill(message: string, options?: ParseOptions): ParseResultStraight {
   // See parseChatOrder: leading Parlay keyword = free-form parlay text.
   if (/^(?:iw|yg)\s+parlay\b/i.test(message.trim())) {
-    throw new InvalidChatFormatError(
-      message,
-      'Free-form parlay text must be parsed via parseChat'
-    );
+    throw new InvalidChatFormatError(message, 'Free-form parlay text must be parsed via parseChat');
   }
 
   const tokens = tokenizeChat(message, options);
@@ -2502,7 +2496,12 @@ function parseFreeformParlay(
     const key = keywordMatch[1].toLowerCase();
     const value = keywordMatch[2];
     if (value !== 'true') {
-      throw new InvalidKeywordValueError(rawInput, key, value, `Invalid ${key} value: must be "true"`);
+      throw new InvalidKeywordValueError(
+        rawInput,
+        key,
+        value,
+        `Invalid ${key} value: must be "true"`
+      );
     }
     if (key === 'pusheslose') pusheslose = true;
     if (key === 'tieslose') tieslose = true;
@@ -2544,10 +2543,7 @@ function parseFreeformParlay(
     );
   }
   if (/\b(?:pusheslose|tieslose|freebet):/i.test(legsText)) {
-    throw new InvalidParlayStructureError(
-      rawInput,
-      'Parlay keywords go before the first leg'
-    );
+    throw new InvalidParlayStructureError(rawInput, 'Parlay keywords go before the first leg');
   }
 
   const legTexts = splitFreeformLegs(legsText);
@@ -2731,7 +2727,12 @@ function parseWithImpliedPrefix(
     throw new UnrecognizedChatPrefixError(trimmed, trimmed.split(/\s+/)[0] || '');
   }
   if (LEADING_PARLAY.test(trimmed)) {
-    return parseFreeformParlay(trimmed, trimmed, impliedPrefix === 'YG' ? 'fill' : 'order', options);
+    return parseFreeformParlay(
+      trimmed,
+      trimmed,
+      impliedPrefix === 'YG' ? 'fill' : 'order',
+      options
+    );
   }
   if (impliedPrefix === 'IW') {
     const sideFirst = trimmed.match(SIDE_FIRST_F5_TOTAL);
