@@ -101,19 +101,91 @@ describe('signals entry', () => {
   });
 
   describe('BET_CANDIDATE_SIGNAL', () => {
-    it.each(['First 5 gurdians-128 ml', 'Angels+1.5', 'yankees -105', '+120 lakers'])(
-      'matches bet-like text: %s',
-      text => {
-        expect(BET_CANDIDATE_SIGNAL.test(text)).toBe(true);
-      }
-    );
+    it.each([
+      'First 5 gurdians-128 ml',
+      'Angels+1.5',
+      'yankees -105',
+      '+120 lakers',
+      // Digit-glued prices in a totals context — the ONLY context the
+      // grammar consumes them, so the signal admits exactly that: over/under
+      // (word or o/u shorthand) + number + glued signed 3-5 digit price.
+      // The first two are live counterparty orders the old signal silently
+      // rejected; the rest pin shorthand, glued-word, caps, trailing
+      // punctuation, and decimal-odds forms, which all parse too.
+      'Astros first 5 under 4-105',
+      'First 5 giants over 4.5+105',
+      'yanks over 8-110',
+      'u4.5-105 astros',
+      'o8.5+102 cubs',
+      'over4.5+105 giants',
+      'ASTROS FIRST 5 UNDER 4-105',
+      'Astros first 5 under 4-105.',
+      'Astros first 5 under 4-105.5',
+    ])('matches bet-like text: %s', text => {
+      expect(BET_CANDIDATE_SIGNAL.test(text)).toBe(true);
+    });
 
-    it.each(['they won 8-5 yesterday', 'meet @ 5', 'available 8-20', 'no bet here'])(
-      'does not match: %s',
-      text => {
-        expect(BET_CANDIDATE_SIGNAL.test(text)).toBe(false);
-      }
-    );
+    it.each([
+      'they won 8-5 yesterday',
+      'meet @ 5',
+      'available 8-20',
+      'no bet here',
+      // Digit-glued signs OUTSIDE a totals context stay excluded — the
+      // grammar never consumes them, and admitting them lets the implied
+      // default-price path silently mint phantom moneyline orders on
+      // nonsense contestant text (verified: 'they lost 110-105 last night'
+      // parses as an ML order on that whole string at -110 if admitted).
+      'they lost 110-105 last night',
+      'call me at 555-1234',
+      'see you 3-45pm',
+      'posted 2026-08-28',
+      'went 12-45 on the road trip',
+      'buy the range 100-150',
+      // Known-silent by owner decision 2026-08-29: a digit-glued price after
+      // a period marker has no totals context, no live sample, and would
+      // ALSO mis-parse into a contestant swallow if admitted.
+      'First 5-128 gurdians ml',
+      // The totals words alone do not admit unsigned/short-glued forms.
+      'over 4.5 was the total',
+      'under 8-20 minutes left',
+      'rollover 4-105 balance',
+    ])('does not match: %s', text => {
+      expect(BET_CANDIDATE_SIGNAL.test(text)).toBe(false);
+    });
+
+    /**
+     * Alignment property, on the path the signal actually feeds: consumers
+     * gate UNPREFIXED text with this signal before an implied-prefix parse.
+     * Every digit-glued form the signal admits must parse via
+     * `impliedPrefix` — an admitted-but-unparseable live class means the
+     * signal has drifted ahead of the grammar.
+     */
+    it.each([
+      'Astros first 5 under 4-105',
+      'First 5 giants over 4.5+105',
+      'yanks over 8-110',
+      'astros u4.5-105',
+      'Astros first 5 under 4-105.5',
+    ])('admitted glued-total forms parse implied: %s', text => {
+      expect(BET_CANDIDATE_SIGNAL.test(text)).toBe(true);
+      expect(() => parseChat(text, { impliedPrefix: 'IW' })).not.toThrow();
+    });
+
+    /**
+     * Anti-phantom property: the totals-context restriction exists because
+     * an admitted digit-glued sign the grammar does NOT consume would fall
+     * through to the implied default-price path and silently mint a
+     * moneyline order on nonsense contestant text. Pin that the excluded
+     * forms would indeed mis-parse if force-fed, so nobody "simplifies" the
+     * branch back to context-free without hitting this test.
+     */
+    it('excluded digit-glued chatter would default-price mis-parse if admitted', () => {
+      const text = 'they lost 110-105 last night';
+      expect(BET_CANDIDATE_SIGNAL.test(text)).toBe(false);
+      const result = parseChat(`IW ${text}`);
+      expect(result.contract).toMatchObject({ Contestant: text });
+      expect(result.bet).toMatchObject({ Price: -110 });
+    });
   });
 
   describe('root re-exports', () => {
