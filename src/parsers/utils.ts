@@ -1064,6 +1064,16 @@ function escapeRegex(str: string): string {
 }
 
 /**
+ * Prop phrases whose canonical names contain the word "and" ("points and
+ * assists"). Derived from PROP_TYPE_MAP so the free-form parlay leg
+ * splitter — which splits on "and" — can protect them without a second,
+ * drift-prone list.
+ */
+export const PROP_PHRASES_WITH_AND: readonly string[] = Object.keys(PROP_TYPE_MAP).filter(key =>
+  / and /.test(key)
+);
+
+/**
  * Detect prop type from text and return standardized info
  * Note: Matches longest phrases first to avoid partial matches
  */

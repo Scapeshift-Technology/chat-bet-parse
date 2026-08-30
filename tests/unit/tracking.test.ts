@@ -202,6 +202,24 @@ describe('ContractLegSpec Mapping', () => {
     test.each(writeinTestCases)('$description', validateContractLegSpecMapping);
   });
 
+  describe('Free-form Parlays', () => {
+    test('legs map with Price null; the combined price lives on result.bet.Price', () => {
+      // Free-form legs are deliberately price-free (the single @ price
+      // prices the whole ticket), so the combo leg mapper truthfully emits
+      // Price: null per leg — consumers read the ticket economics from the
+      // top-level bet (Price/Risk/ToWin), never from the legs.
+      const parseResult = parseChat('YG Parlay Cubs ml and over 8.5 @ +265 = $3500');
+      const specs = mapParseResultToContractLegSpec(parseResult) as ContractLegSpec[];
+      expect(Array.isArray(specs)).toBe(true);
+      expect(specs).toHaveLength(2);
+      expect(specs[0].Price).toBeNull();
+      expect(specs[1].Price).toBeNull();
+      expect(parseResult.bet.Price).toBe(265);
+      expect(parseResult.bet.Risk).toBe(3500);
+      expect(parseResult.bet.ToWin).toBe(9275);
+    });
+  });
+
   describe('Date Handling', () => {
     test('should use provided eventDate option', () => {
       const parseResult = parseChat('IW Athletics @ +145');

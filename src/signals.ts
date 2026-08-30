@@ -47,12 +47,25 @@ export const EXPLICIT_PREFIX_SIGNAL = new RegExp(
 
 /**
  * Candidate heuristic for "this text plausibly carries a bet": a signed
- * number at a token boundary (`-105`, `+1.5`) or glued to a word
- * (`gurdians-128`, `Angels+1.5`). Digit-glued forms ("available 8-20",
- * "3-4pm") are dates and ranges, not signs, and stay excluded. Downstream
- * pre-parse gates (e.g. a chat consumer deciding whether to attempt an
- * implied-prefix parse at all) mirror this ONE definition instead of
- * maintaining a drift-prone copy; the parser's own implied-prefix gate is
- * built on it too.
+ * number at a token boundary (`-105`, `+1.5`), glued to a word
+ * (`gurdians-128`, `Angels+1.5`), or glued to a total's number in an
+ * over/under context (`under 4-105`, `over 4.5+105`, `u4.5-105`, and the
+ * punctuated/decimal forms `4-105.`, `4-105.5`). The digit-glued branch is
+ * deliberately restricted to the totals context — the ONLY place the
+ * grammar consumes a digit-glued price — because a context-free `\d[+-]\d`
+ * admits chatter ("they lost 110-105", phone numbers) that the implied
+ * default-price path would then silently mint into a moneyline order on
+ * nonsense contestant text; the anti-phantom test pins this. American
+ * prices are never shorter than 3 digits, which keeps dates, times, and
+ * short ranges ("available 8-20", "3-45pm") excluded even after over/under.
+ * A leading `Parlay` token is bet evidence in its own right (the free-form
+ * parlay grammar) — even priceless, so an order whose price arrives in a
+ * later message reaches the parser and fails LOUDLY (operator alert lane)
+ * instead of staying silent. Leading-token only: mid-sentence "parlay"
+ * chatter stays excluded. Downstream pre-parse gates (e.g. a chat consumer
+ * deciding whether to attempt an implied-prefix parse at all) mirror this
+ * ONE definition instead of maintaining a drift-prone copy; the parser's
+ * own implied-prefix gate is built on it too.
  */
-export const BET_CANDIDATE_SIGNAL = /(^|\s|[A-Za-z])[+-]\d/;
+export const BET_CANDIDATE_SIGNAL =
+  /(^|\s|[A-Za-z])[+-]\d|\b(?:over|under|[ou])\s*\d+(?:\.\d+)?[+-]\d{3,5}(?!\d)|^\s*parlay\b/i;

@@ -585,6 +585,273 @@ describe('Chat Bet Parsing', () => {
     test.each(parlayErrorTestCases)('$description', validateErrorTestCase);
   });
 
+  /**
+   * Free-form parlays (live sample 2026-08-26, calchas order-triage chat):
+   * "yg Parlay Cubs ml and over 8.5 @ +265 = $3500". Before this grammar
+   * existed the straight path silently swallowed the whole text as a
+   * moneyline contestant ("Parlay Cubs ml and") at the default -110 — a
+   * wrong-contract fill. Shape: `Parlay <leg> and|& <leg> [...] @ <combined
+   * price> [= size]`; legs carry NO per-leg prices (that is YGP/IWP's
+   * shape), the single @ price prices the whole parlay.
+   */
+  describe('Free-form Parlays', () => {
+    test('live sample: yg Parlay ... @ +265 = $3500 parses as a 2-leg parlay fill', () => {
+      const result = parseChat('yg Parlay Cubs ml and over 8.5 @ +265 = $3500');
+      expect(isParlay(result)).toBe(true);
+      if (!isParlay(result)) return;
+      expect(result.chatType).toBe('fill');
+      expect(result.legs).toHaveLength(2);
+      expect(result.legs[0].contract).toMatchObject({ HasContestant: true });
+      // A team-less total leg inherits the nearest prior leg's game — the
+      // human reading of "Cubs ml and over 8.5" is the Cubs game's total.
+      // Without inheritance the straight grammar contestant-swallows
+      // "over 8.5" into a moneyline on that literal string, and a no-name
+      // leg can never be entity-matched downstream.
+      expect(result.legs[1].contractType).toBe('TotalPoints');
+      expect(result.legs[1].contract).toMatchObject({
+        Match: { Team1: 'Cubs' },
+        Line: 8.5,
+        IsOver: true,
+      });
+      // Legs carry no individual prices — the combined price governs.
+      expect(result.legs[0].bet.Price).toBeUndefined();
+      expect(result.legs[1].bet.Price).toBeUndefined();
+      expect(result.bet.Risk).toBe(3500);
+      expect(result.bet.ToWin).toBe(9275); // 3500 × 2.65 from +265
+      expect(result.useFair).toBe(true);
+    });
+
+    test('"and" is the ONLY separator — & stays team-name text and fails loudly', () => {
+      // '&' is legal INSIDE team names (Texas A&M, William & Mary), so
+      // treating it as a separator silently corrupts those into fake legs —
+      // the same wrong-grading class this grammar exists to kill. An
+      // &-separated message therefore keeps '&' in the leg text and dies on
+      // the 2-leg minimum (loud, alert lane) instead of mis-booking.
+      expect(() => parseChat('YG Parlay Cubs ml & over 8.5 @ +265 = $3500')).toThrow(
+        /at least 2 legs/
+      );
+    });
+
+    test('ampersand team names survive intact', () => {
+      const result = parseChat('YG Parlay Texas A&M ml and over 48.5 @ +265 = $100');
+      expect(isParlay(result)).toBe(true);
+      if (!isParlay(result)) return;
+      expect(result.legs).toHaveLength(2);
+      expect(result.legs[0].contract).toMatchObject({ Match: { Team1: 'Texas A&M' } });
+      const spaced = parseChat('YG Parlay William & Mary ml and over 120.5 @ +265 = $100');
+      if (!isParlay(spaced)) throw new Error('expected parlay');
+      expect(spaced.legs).toHaveLength(2);
+      expect(spaced.legs[0].contract).toMatchObject({ Match: { Team1: 'William & Mary' } });
+    });
+
+    test('"N and a half" is a spoken line, not a leg boundary', () => {
+      const result = parseChat('YG Parlay Cubs ml and over 8 and a half @ +265 = $3500');
+      expect(isParlay(result)).toBe(true);
+      if (!isParlay(result)) return;
+      expect(result.legs).toHaveLength(2);
+      expect(result.legs[1].contractType).toBe('TotalPoints');
+      expect(result.legs[1].contract).toMatchObject({ Line: 8.5, IsOver: true });
+    });
+
+    test('combo prop phrases containing "and" are never severed into legs', () => {
+      // Whatever the leg grammar makes of the prop text, the splitter must
+      // yield exactly 2 legs — severing 'points and assists' silently mints
+      // a phantom third leg, which is the corruption class under test.
+      try {
+        const result = parseChat(
+          'YG Parlay Lebron points and assists over 40.5 and Cubs ml @ +500 = $100'
+        );
+        if (!isParlay(result)) throw new Error('expected parlay');
+        expect(result.legs).toHaveLength(2);
+      } catch (e) {
+        // A leg-grammar rejection is acceptable (loud) — but it must be
+        // about leg 1's prop text, never a phantom leg beyond 2.
+        expect((e as Error).message).toMatch(/Leg [12]/);
+      }
+    });
+
+    test('duplicate separators collapse instead of minting empty legs', () => {
+      const result = parseChat('YG Parlay Cubs ml and and over 8.5 @ +265 = $3500');
+      expect(isParlay(result)).toBe(true);
+      if (!isParlay(result)) return;
+      expect(result.legs).toHaveLength(2);
+    });
+
+    test('leading parlay-level keywords apply (freebet/tieslose)', () => {
+      const free = parseChat('YG Parlay freebet:true Cubs ml and over 8.5 @ +265 = $3500');
+      if (!isParlay(free)) throw new Error('expected parlay');
+      expect(free.bet.IsFreeBet).toBe(true);
+      const ties = parseChat('YG Parlay tieslose:true Cubs ml and over 8.5 @ +265 = $3500');
+      if (!isParlay(ties)) throw new Error('expected parlay');
+      expect(ties.pushesLose).toBe(true);
+    });
+
+    test('non-leading keyword-looking tokens throw instead of vanishing into a leg', () => {
+      expect(() =>
+        parseChat('YG Parlay Cubs ml and freebet:true over 8.5 @ +265 = $3500')
+      ).toThrow(ChatBetParseError);
+    });
+
+    test('three legs split on and', () => {
+      const result = parseChat('YG Parlay Cubs ml and Yankees ml and over 8.5 @ +600 = $1000');
+      expect(isParlay(result)).toBe(true);
+      if (!isParlay(result)) return;
+      expect(result.legs).toHaveLength(3);
+      expect(result.bet.ToWin).toBe(6000);
+    });
+
+    test('explicit to-win overrides the combined-price fair calculation', () => {
+      const result = parseChat('YG Parlay Cubs ml and over 8.5 @ +265 = $3500 tw $9000');
+      expect(isParlay(result)).toBe(true);
+      if (!isParlay(result)) return;
+      expect(result.bet.Risk).toBe(3500);
+      expect(result.bet.ToWin).toBe(9000);
+      expect(result.useFair).toBe(false);
+    });
+
+    test('fill without @ price parses when to-win is explicit', () => {
+      const result = parseChat('YG Parlay Cubs ml and over 8.5 = $3500 tw $9000');
+      expect(isParlay(result)).toBe(true);
+      if (!isParlay(result)) return;
+      expect(result.bet.Risk).toBe(3500);
+      expect(result.bet.ToWin).toBe(9000);
+    });
+
+    test('IW order form carries the combined price, no size', () => {
+      const result = parseChat('IW Parlay Cubs ml and over 8.5 @ +265');
+      expect(isParlay(result)).toBe(true);
+      if (!isParlay(result)) return;
+      expect(result.chatType).toBe('order');
+      expect(result.legs).toHaveLength(2);
+      expect(result.bet.Price).toBe(265);
+      expect(result.bet.Risk).toBeUndefined();
+    });
+
+    test('implied IW routes a leading Parlay token to the free-form grammar', () => {
+      const result = parseChat('Parlay Cubs ml and over 8.5 @ +265', { impliedPrefix: 'IW' });
+      expect(isParlay(result)).toBe(true);
+      if (!isParlay(result)) return;
+      expect(result.chatType).toBe('order');
+      expect(result.bet.Price).toBe(265);
+    });
+
+    test('implied YG routes to the free-form fill grammar', () => {
+      const result = parseChat('parlay Cubs ml and over 8.5 @ +265 = $3500', {
+        impliedPrefix: 'YG',
+      });
+      expect(isParlay(result)).toBe(true);
+      if (!isParlay(result)) return;
+      expect(result.chatType).toBe('fill');
+      expect(result.bet.Risk).toBe(3500);
+    });
+
+    test('direct straight-path calls throw loudly instead of contestant-swallowing', () => {
+      expect(() => parseChatFill('YG Parlay Cubs ml and over 8.5 @ +265 = $3500')).toThrow(
+        ChatBetParseError
+      );
+      expect(() => parseChatOrder('IW Parlay Cubs ml and over 8.5 @ +265')).toThrow(
+        ChatBetParseError
+      );
+    });
+
+    test('unprefixed Parlay text without impliedPrefix still throws (default unchanged)', () => {
+      expect(() => parseChat('Parlay Cubs ml and over 8.5 @ +265')).toThrow(ChatBetParseError);
+    });
+
+    test('single leg throws: a parlay needs 2+ legs', () => {
+      expect(() => parseChat('YG Parlay Cubs ml @ +265 = $3500')).toThrow(/at least 2 legs/);
+    });
+
+    test('per-leg @ prices throw and point to YGP/IWP', () => {
+      expect(() =>
+        parseChat('YG Parlay Cubs ml @ -115 and over 8.5 @ +265 = $3500')
+      ).toThrow(/YGP|IWP|per-leg/i);
+    });
+
+    test('price-shaped signed integers inside a leg throw instead of reinterpreting', () => {
+      expect(() => parseChat('YG Parlay gurdians-128 and over 8.5 @ +265 = $3500')).toThrow(
+        ChatBetParseError
+      );
+    });
+
+    test('spread lines inside legs are NOT price-shaped and parse fine', () => {
+      const result = parseChat('YG Parlay Cubs +1.5 and over 8.5 @ +265 = $3500');
+      expect(isParlay(result)).toBe(true);
+      if (!isParlay(result)) return;
+      expect(result.legs[0].contract).toMatchObject({ Line: 1.5 });
+    });
+
+    test('fill without size throws', () => {
+      expect(() => parseChat('YG Parlay Cubs ml and over 8.5 @ +265')).toThrow(ChatBetParseError);
+    });
+
+    test('fill with size but neither price nor to-win throws', () => {
+      expect(() => parseChat('YG Parlay Cubs ml and over 8.5 = $3500')).toThrow(ChatBetParseError);
+    });
+
+    test('order with a size section throws (orders are priced, not sized)', () => {
+      expect(() => parseChat('IW Parlay Cubs ml and over 8.5 @ +265 = $3500')).toThrow(
+        ChatBetParseError
+      );
+    });
+
+    test('a leading team-less total leg throws — no game to inherit', () => {
+      expect(() => parseChat('YG Parlay over 8.5 and Cubs ml @ +265 = $3500')).toThrow(
+        ChatBetParseError
+      );
+    });
+
+    test('implied fill with explicit tw and no @ parses (Parlay keyword is the bet signal)', () => {
+      const result = parseChat('Parlay Cubs ml and over 8.5 = $3500 tw $9000', {
+        impliedPrefix: 'YG',
+      });
+      expect(isParlay(result)).toBe(true);
+      if (!isParlay(result)) return;
+      expect(result.bet.ToWin).toBe(9000);
+    });
+
+    test('punctuated Parlay keyword still routes to the free-form grammar, never straight', () => {
+      // The signal admits '^\s*parlay\b', so the router and straight-path
+      // guards must recognize the same boundary — a mismatch lets
+      // 'Parlay.' forms fall through to straight parsing where '.' is
+      // legal team text and the missing price defaults to -110.
+      const result = parseChat('Parlay. Cubs ml and over 8.5 @ +265', { impliedPrefix: 'IW' });
+      expect(isParlay(result)).toBe(true);
+      expect(() => parseChat('IW Parlay. @ -110')).toThrow(ChatBetParseError);
+      expect(() => parseChat('YG Parlay. = $100')).toThrow(ChatBetParseError);
+      expect(() => parseChat('Parlay...', { impliedPrefix: 'IW' })).toThrow(ChatBetParseError);
+      expect(() => parseChatOrder('IW Parlay. Cubs ml @ -110')).toThrow(ChatBetParseError);
+      // A team merely STARTING with the letters stays a normal straight bet.
+      const team = parseChat('IW Parlayers ml @ -110');
+      expect(team.betType).toBe('straight');
+    });
+
+    test('keyword-adjacent punctuation never dirties the first leg team', () => {
+      // '&' and apostrophes are legal team characters, so junk left behind
+      // by a too-narrow keyword strip silently parses as "& Cubs" — the
+      // strip must consume at least everything the router boundary admits.
+      for (const raw of [
+        "Parlay& Cubs ml and over 8.5 @ +265",
+        "Parlay' Cubs ml and over 8.5 @ +265",
+        'Parlay: Cubs ml and over 8.5 @ +265',
+      ]) {
+        const result = parseChat(raw, { impliedPrefix: 'IW' });
+        if (!isParlay(result)) throw new Error('expected parlay');
+        expect(result.legs[0].contract).toMatchObject({ Match: { Team1: 'Cubs' } });
+      }
+    });
+
+    test('priceless implied parlay order fails LOUDLY, never silently (live MSG#2749 shape)', () => {
+      // "Parlay Cubs ml and over 8.5" with the price in a later message —
+      // under the old grammar this contestant-swallowed into a phantom
+      // straight order; now the keyword admits it and the parse fails loud
+      // (operator alert lane), never silent, never a phantom.
+      expect(() =>
+        parseChat('Parlay Cubs ml and over 8.5', { impliedPrefix: 'IW' })
+      ).toThrow(/combined @ price/);
+    });
+  });
+
   // nCr Notation Parsing (Unit Tests - Stage 3)
   describe('nCr Notation Parsing', () => {
     test.each(ncrNotationTestCases)('$description', validateNcrTestCase);
