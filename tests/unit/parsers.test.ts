@@ -810,6 +810,22 @@ describe('Chat Bet Parsing', () => {
       expect(result.bet.ToWin).toBe(9000);
     });
 
+    test('punctuated Parlay keyword still routes to the free-form grammar, never straight', () => {
+      // The signal admits '^\s*parlay\b', so the router and straight-path
+      // guards must recognize the same boundary — a mismatch lets
+      // 'Parlay.' forms fall through to straight parsing where '.' is
+      // legal team text and the missing price defaults to -110.
+      const result = parseChat('Parlay. Cubs ml and over 8.5 @ +265', { impliedPrefix: 'IW' });
+      expect(isParlay(result)).toBe(true);
+      expect(() => parseChat('IW Parlay. @ -110')).toThrow(ChatBetParseError);
+      expect(() => parseChat('YG Parlay. = $100')).toThrow(ChatBetParseError);
+      expect(() => parseChat('Parlay...', { impliedPrefix: 'IW' })).toThrow(ChatBetParseError);
+      expect(() => parseChatOrder('IW Parlay. Cubs ml @ -110')).toThrow(ChatBetParseError);
+      // A team merely STARTING with the letters stays a normal straight bet.
+      const team = parseChat('IW Parlayers ml @ -110');
+      expect(team.betType).toBe('straight');
+    });
+
     test('priceless implied parlay order fails LOUDLY, never silently (live MSG#2749 shape)', () => {
       // "Parlay Cubs ml and over 8.5" with the price in a later message —
       // under the old grammar this contestant-swallowed into a phantom

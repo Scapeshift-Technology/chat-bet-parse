@@ -1639,7 +1639,7 @@ export function parseChatOrder(message: string, options?: ParseOptions): ParseRe
   // A leading Parlay keyword is free-form parlay text (parseChat routes it);
   // letting it fall through would contestant-swallow the whole message into
   // a moneyline on "Parlay ..." at the default price — fail loudly instead.
-  if (/^(?:iw|yg)\s+parlay\s/i.test(message.trim())) {
+  if (/^(?:iw|yg)\s+parlay\b/i.test(message.trim())) {
     throw new InvalidChatFormatError(
       message,
       'Free-form parlay text must be parsed via parseChat'
@@ -1719,7 +1719,7 @@ export function parseChatOrder(message: string, options?: ParseOptions): ParseRe
  */
 export function parseChatFill(message: string, options?: ParseOptions): ParseResultStraight {
   // See parseChatOrder: leading Parlay keyword = free-form parlay text.
-  if (/^(?:iw|yg)\s+parlay\s/i.test(message.trim())) {
+  if (/^(?:iw|yg)\s+parlay\b/i.test(message.trim())) {
     throw new InvalidChatFormatError(
       message,
       'Free-form parlay text must be parsed via parseChat'
@@ -2469,13 +2469,23 @@ function splitFreeformLegs(legsText: string): string[] {
     .filter(part => part);
 }
 
+/**
+ * Leading-Parlay detection, shared by the parseChat router, the implied
+ * router, and the straight-path guards. Must recognize the SAME boundary as
+ * BET_CANDIDATE_SIGNAL's `^\s*parlay\b` branch — a narrower check here lets
+ * punctuated forms ("Parlay. Cubs ml …") fall through to straight parsing,
+ * where '.' is legal team text and the missing price defaults to -110: the
+ * silent wrong-contract class again.
+ */
+const LEADING_PARLAY = /^parlay\b/i;
+
 function parseFreeformParlay(
   text: string,
   rawInput: string,
   chatType: 'order' | 'fill',
   options?: ParseOptions
 ): ParseResultParlay {
-  let body = text.trim().replace(/^parlay\s+/i, '');
+  let body = text.trim().replace(/^parlay\b[\s.,:!?-]*/i, '');
 
   // Parlay-level keywords, leading position only (YGP semantics).
   let pusheslose: boolean | undefined;
@@ -2653,7 +2663,7 @@ export function parseChat(message: string, options?: ParseOptions): ParseResult 
   }
 
   // Free-form parlays: bare YG/IW + leading Parlay keyword (combined price).
-  const freeform = upperTrimmed.match(/^(YG|IW)\s+PARLAY\s/);
+  const freeform = upperTrimmed.match(/^(YG|IW)\s+PARLAY\b/);
   if (freeform) {
     return parseFreeformParlay(
       trimmed.replace(/^(?:yg|iw)\s+/i, ''),
@@ -2715,7 +2725,7 @@ function parseWithImpliedPrefix(
   if (!IMPLIED_BET_SIGNAL.test(trimmed)) {
     throw new UnrecognizedChatPrefixError(trimmed, trimmed.split(/\s+/)[0] || '');
   }
-  if (/^parlay\s/i.test(trimmed)) {
+  if (LEADING_PARLAY.test(trimmed)) {
     return parseFreeformParlay(trimmed, trimmed, impliedPrefix === 'YG' ? 'fill' : 'order', options);
   }
   if (impliedPrefix === 'IW') {
