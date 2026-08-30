@@ -78,6 +78,7 @@ import {
   calculateTotalParlays,
   calculateParlayFairToWin,
   calculateRoundRobinFairToWin,
+  PROP_PHRASES_WITH_AND,
 } from './utils';
 
 // ==============================================================================
@@ -2445,13 +2446,54 @@ function parseRoundRobinOrder(rawInput: string, options?: ParseOptions): ParseRe
  * total), and without it the leg would contestant-swallow AND be
  * un-matchable downstream (combo legs must carry participants).
  */
+/**
+ * Split free-form parlay legs on the word `and`. `and` alone is the
+ * separator — `&` is legal INSIDE team names (Texas A&M, William & Mary),
+ * so treating it as a separator silently corrupts those into fake legs;
+ * an &-separated message instead keeps `&` in the leg text and dies loudly
+ * on the 2-leg minimum. Two protected `and` contexts never split:
+ * spoken half-lines ("over 8 and a half" → normalized to 8.5) and combo
+ * prop phrases from the grammar's own vocabulary ("points and assists").
+ */
+function splitFreeformLegs(legsText: string): string[] {
+  const AND_MARK = '\u0001';
+  let text = legsText;
+  for (const phrase of PROP_PHRASES_WITH_AND) {
+    const re = new RegExp(phrase.replace(/ /g, '\\s+'), 'gi');
+    text = text.replace(re, m => m.replace(/\s+and\s+/gi, AND_MARK));
+  }
+  text = text.replace(/(\d+)\s+and\s+a\s+half\b/gi, '$1.5');
+  return text
+    .split(/\s+and\s+/i)
+    .map(part => part.split(AND_MARK).join(' and ').trim())
+    .filter(part => part);
+}
+
 function parseFreeformParlay(
   text: string,
   rawInput: string,
   chatType: 'order' | 'fill',
   options?: ParseOptions
 ): ParseResultParlay {
-  const body = text.trim().replace(/^parlay\s+/i, '');
+  let body = text.trim().replace(/^parlay\s+/i, '');
+
+  // Parlay-level keywords, leading position only (YGP semantics).
+  let pusheslose: boolean | undefined;
+  let tieslose: boolean | undefined;
+  let freebet: boolean | undefined;
+  const KEYWORD_TOKEN = /^(pusheslose|tieslose|freebet):(\S+)\s+/i;
+  let keywordMatch;
+  while ((keywordMatch = body.match(KEYWORD_TOKEN))) {
+    const key = keywordMatch[1].toLowerCase();
+    const value = keywordMatch[2];
+    if (value !== 'true') {
+      throw new InvalidKeywordValueError(rawInput, key, value, `Invalid ${key} value: must be "true"`);
+    }
+    if (key === 'pusheslose') pusheslose = true;
+    if (key === 'tieslose') tieslose = true;
+    if (key === 'freebet') freebet = true;
+    body = body.slice(keywordMatch[0].length);
+  }
 
   // Size section first (fills: `= $risk [tw $x]`).
   const eqIndex = body.indexOf('=');
@@ -2486,11 +2528,14 @@ function parseFreeformParlay(
       'Free-form parlay legs carry no per-leg @ prices — use YGP/IWP for per-leg pricing'
     );
   }
+  if (/\b(?:pusheslose|tieslose|freebet):/i.test(legsText)) {
+    throw new InvalidParlayStructureError(
+      rawInput,
+      'Parlay keywords go before the first leg'
+    );
+  }
 
-  const legTexts = legsText
-    .split(/\s+and\s+|\s*&\s*/i)
-    .map(l => l.trim())
-    .filter(l => l);
+  const legTexts = splitFreeformLegs(legsText);
   if (legTexts.length < 2) {
     throw new InvalidParlayStructureError(rawInput, 'Parlay requires at least 2 legs');
   }
@@ -2547,9 +2592,10 @@ function parseFreeformParlay(
         Risk: undefined,
         ToWin: undefined,
         ExecutionDtm: undefined,
-        IsFreeBet: false,
+        IsFreeBet: freebet || false,
       },
       useFair: true,
+      pushesLose: pusheslose || tieslose || undefined,
       legs,
     };
   }
@@ -2576,9 +2622,10 @@ function parseFreeformParlay(
       Risk: risk,
       ToWin: finalToWin,
       ExecutionDtm: new Date(),
-      IsFreeBet: false,
+      IsFreeBet: freebet || false,
     },
     useFair,
+    pushesLose: pusheslose || tieslose || undefined,
     legs,
   };
 }
@@ -2650,7 +2697,10 @@ const SIDE_FIRST_F5_TOTAL =
  * paths would otherwise silently turn chatter like "will lyk when im ready"
  * into a moneyline order on a nonsense team.
  */
-const IMPLIED_BET_SIGNAL = new RegExp(`@|${BET_CANDIDATE_SIGNAL.source}`);
+const IMPLIED_BET_SIGNAL = new RegExp(
+  `@|${BET_CANDIDATE_SIGNAL.source}`,
+  BET_CANDIDATE_SIGNAL.flags
+);
 
 /**
  * Parse an unprefixed message as if `impliedPrefix` were present, using the

@@ -58,10 +58,14 @@ export const EXPLICIT_PREFIX_SIGNAL = new RegExp(
  * nonsense contestant text; the anti-phantom test pins this. American
  * prices are never shorter than 3 digits, which keeps dates, times, and
  * short ranges ("available 8-20", "3-45pm") excluded even after over/under.
- * Downstream pre-parse gates (e.g. a chat consumer deciding whether to
- * attempt an implied-prefix parse at all) mirror this ONE definition
- * instead of maintaining a drift-prone copy; the parser's own
- * implied-prefix gate is built on it too.
+ * A leading `Parlay` token is bet evidence in its own right (the free-form
+ * parlay grammar) — even priceless, so an order whose price arrives in a
+ * later message reaches the parser and fails LOUDLY (operator alert lane)
+ * instead of staying silent. Leading-token only: mid-sentence "parlay"
+ * chatter stays excluded. Downstream pre-parse gates (e.g. a chat consumer
+ * deciding whether to attempt an implied-prefix parse at all) mirror this
+ * ONE definition instead of maintaining a drift-prone copy; the parser's
+ * own implied-prefix gate is built on it too.
  */
 export const BET_CANDIDATE_SIGNAL =
-  /(^|\s|[A-Za-z])[+-]\d|\b(?:over|under|[ou])\s*\d+(?:\.\d+)?[+-]\d{3,5}(?!\d)/i;
+  /(^|\s|[A-Za-z])[+-]\d|\b(?:over|under|[ou])\s*\d+(?:\.\d+)?[+-]\d{3,5}(?!\d)|^\s*parlay\b/i;

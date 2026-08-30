@@ -121,6 +121,12 @@ describe('signals entry', () => {
       'ASTROS FIRST 5 UNDER 4-105',
       'Astros first 5 under 4-105.',
       'Astros first 5 under 4-105.5',
+      // A leading Parlay keyword is itself bet evidence (free-form parlay
+      // grammar) — even priceless, so a price-in-next-message order reaches
+      // the parser and fails LOUD instead of staying silent.
+      'Parlay Cubs ml and over 8.5 @ +265',
+      'Parlay Cubs ml and over 8.5',
+      '  parlay Cubs ml and over 8.5 = $3500 tw $9000',
     ])('matches bet-like text: %s', text => {
       expect(BET_CANDIDATE_SIGNAL.test(text)).toBe(true);
     });
@@ -149,6 +155,9 @@ describe('signals entry', () => {
       'over 4.5 was the total',
       'under 8-20 minutes left',
       'rollover 4-105 balance',
+      // The Parlay keyword branch is leading-token only.
+      'that parlay hit last night',
+      'parlays are killing me',
     ])('does not match: %s', text => {
       expect(BET_CANDIDATE_SIGNAL.test(text)).toBe(false);
     });
