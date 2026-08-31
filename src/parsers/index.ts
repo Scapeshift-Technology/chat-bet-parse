@@ -131,10 +131,7 @@ function setUnconsumedDiagnostics(
   diagnostics.unconsumedText = tokens.join(' ');
 }
 
-function setPriceSource(
-  diagnostics: ParseDiagnostics | undefined,
-  priceSource: PriceSource
-): void {
+function setPriceSource(diagnostics: ParseDiagnostics | undefined, priceSource: PriceSource): void {
   if (!diagnostics || diagnostics.priceSource !== 'default') return;
   diagnostics.priceSource = priceSource;
 }
@@ -2729,7 +2726,11 @@ function completeAggregateDiagnostics(
     diagnostics.contractText = bodyStart === -1 ? '' : trimmed.slice(bodyStart + 1).trim();
   }
 
-  if (diagnostics.priceSource === 'default' && result.bet.Price !== undefined && message.includes('@')) {
+  if (
+    diagnostics.priceSource === 'default' &&
+    result.bet.Price !== undefined &&
+    message.includes('@')
+  ) {
     diagnostics.priceSource = 'explicitAt';
   }
 }

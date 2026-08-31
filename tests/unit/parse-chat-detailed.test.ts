@@ -6,17 +6,11 @@ import {
   type ParseDiagnostics,
 } from '../../src/index';
 
-function expectDiagnostics(
-  actual: ParseDiagnostics,
-  expected: Partial<ParseDiagnostics>
-): void {
+function expectDiagnostics(actual: ParseDiagnostics, expected: Partial<ParseDiagnostics>): void {
   expect(actual).toMatchObject(expected);
 }
 
-function expectOrderShape(
-  actual: OrderShapeAssessment,
-  expected: OrderShapeAssessment
-): void {
+function expectOrderShape(actual: OrderShapeAssessment, expected: OrderShapeAssessment): void {
   expect(actual).toEqual(expected);
 }
 
