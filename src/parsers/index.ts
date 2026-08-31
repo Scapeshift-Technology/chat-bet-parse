@@ -24,6 +24,9 @@ import type {
   ContractWritein,
   KnownLeague,
   ParseOptions,
+  ParseDiagnostics,
+  ParseChatDetailedResult,
+  OrderShapeAssessment,
 } from '../types/index';
 
 import { knownLeagues, knownSports, leagueSportMap } from '../types/index';
@@ -117,6 +120,24 @@ interface WriteInTokens {
 }
 
 type TokenResult = ParsedTokens | WriteInTokens;
+type PriceSource = ParseDiagnostics['priceSource'];
+
+function setUnconsumedDiagnostics(
+  diagnostics: ParseDiagnostics | undefined,
+  tokens: string[]
+): void {
+  if (!diagnostics) return;
+  diagnostics.unconsumedTokens = tokens;
+  diagnostics.unconsumedText = tokens.join(' ');
+}
+
+function setPriceSource(
+  diagnostics: ParseDiagnostics | undefined,
+  priceSource: PriceSource
+): void {
+  if (!diagnostics || diagnostics.priceSource !== 'default') return;
+  diagnostics.priceSource = priceSource;
+}
 
 /**
  * Type guard to check if tokens are writein
@@ -132,7 +153,8 @@ function tokenizeWritein(
   parts: string[],
   chatType: 'order' | 'fill',
   rawInput: string,
-  options?: ParseOptions
+  options?: ParseOptions,
+  diagnostics?: ParseDiagnostics
 ): WriteInTokens {
   // Expected format: IW/YG writein [keywords] [LEAGUE] DATE DESCRIPTION [@ price] [= size]
   const referenceDate = options?.referenceDate;
@@ -174,6 +196,10 @@ function tokenizeWritein(
       descriptionEndIndex = i;
       break;
     }
+  }
+
+  if (diagnostics) {
+    diagnostics.contractText = parts.slice(1, descriptionEndIndex).join(' ');
   }
 
   // Parse keywords from the beginning
@@ -276,7 +302,13 @@ function tokenizeWritein(
       }
     } else {
       price = parsePrice(priceStr, rawInput);
+      setPriceSource(diagnostics, 'explicitAt');
     }
+  }
+
+  if (priceIndex > 0) {
+    const unconsumedEndIndex = sizeIndex > 0 ? sizeIndex - 1 : parts.length;
+    setUnconsumedDiagnostics(diagnostics, parts.slice(priceIndex + 1, unconsumedEndIndex));
   }
 
   // Parse size if present
@@ -314,7 +346,11 @@ function tokenizeWritein(
 /**
  * Break down the chat message into tokens according to EBNF grammar
  */
-function tokenizeChat(message: string, options?: ParseOptions): TokenResult {
+function tokenizeChat(
+  message: string,
+  options?: ParseOptions,
+  diagnostics?: ParseDiagnostics
+): TokenResult {
   const rawInput = message; // Preserve original input for error reporting
   const referenceDate = options?.referenceDate;
 
@@ -358,7 +394,7 @@ function tokenizeChat(message: string, options?: ParseOptions): TokenResult {
 
   // Early detection of writein contracts
   if (parts.length >= 2 && parts[1].toLowerCase() === 'writein') {
-    return tokenizeWritein(parts, chatType, rawInput, options);
+    return tokenizeWritein(parts, chatType, rawInput, options, diagnostics);
   }
 
   let currentIndex = 1;
@@ -522,6 +558,7 @@ function tokenizeChat(message: string, options?: ParseOptions): TokenResult {
       break;
     }
   }
+  const markerContractEndIndex = contractEndIndex;
 
   // Handle special case where price is embedded in contract text (e.g., "Mariners -1.5 +135")
   // Look for USA odds patterns in the contract text
@@ -542,6 +579,8 @@ function tokenizeChat(message: string, options?: ParseOptions): TokenResult {
         // This looks like a price - split the contract text here
         contractEndIndex = i;
         price = parsePrice(parts[i], rawInput);
+        setPriceSource(diagnostics, 'standaloneToken');
+        setUnconsumedDiagnostics(diagnostics, parts.slice(i + 1, markerContractEndIndex));
         break;
       }
       // Otherwise, it's likely a spread line, keep it in the contract text
@@ -596,6 +635,7 @@ function tokenizeChat(message: string, options?: ParseOptions): TokenResult {
       // Extract the attached price and clean the contract text
       const attachedPriceStr = attachedPriceMatch[3];
       price = parsePrice(attachedPriceStr, rawInput);
+      setPriceSource(diagnostics, 'totalGlued');
       // Strip just the price, preserving the indicator+line exactly as
       // written (for [ou] shorthand this equals the old m[1]+m[2] rebuild).
       contractText = contractText.replace(
@@ -619,7 +659,13 @@ function tokenizeChat(message: string, options?: ParseOptions): TokenResult {
       }
     } else {
       price = parsePrice(priceStr, rawInput);
+      setPriceSource(diagnostics, 'explicitAt');
     }
+  }
+
+  if (priceIndex > 0) {
+    const unconsumedEndIndex = sizeIndex > 0 ? sizeIndex - 1 : parts.length;
+    setUnconsumedDiagnostics(diagnostics, parts.slice(priceIndex + 1, unconsumedEndIndex));
   }
 
   // Check for a price glued to a team name (e.g., "gurdians-128", "Yankees+105"):
@@ -634,6 +680,7 @@ function tokenizeChat(message: string, options?: ParseOptions): TokenResult {
     const gluedTeamPriceMatch = contractText.match(/([A-Za-z])([+-]\d{3,5})(?=\s|$)/);
     if (gluedTeamPriceMatch) {
       price = parsePrice(gluedTeamPriceMatch[2], rawInput);
+      setPriceSource(diagnostics, 'teamGlued');
       contractText = contractText.replace(gluedTeamPriceMatch[0], gluedTeamPriceMatch[1]);
     }
   }
@@ -786,6 +833,10 @@ function tokenizeChat(message: string, options?: ParseOptions): TokenResult {
         contractText = `${restOfContract} ${period}`;
       }
     }
+  }
+
+  if (diagnostics) {
+    diagnostics.contractText = contractText;
   }
 
   return {
@@ -1635,7 +1686,11 @@ function calculateFinalRiskAndToWin(
 /**
  * Parse a chat order (IW message)
  */
-export function parseChatOrder(message: string, options?: ParseOptions): ParseResultStraight {
+function parseChatOrderInternal(
+  message: string,
+  options?: ParseOptions,
+  diagnostics?: ParseDiagnostics
+): ParseResultStraight {
   // A leading Parlay keyword is free-form parlay text (parseChat routes it);
   // letting it fall through would contestant-swallow the whole message into
   // a moneyline on "Parlay ..." at the default price — fail loudly instead.
@@ -1643,7 +1698,7 @@ export function parseChatOrder(message: string, options?: ParseOptions): ParseRe
     throw new InvalidChatFormatError(message, 'Free-form parlay text must be parsed via parseChat');
   }
 
-  const tokens = tokenizeChat(message, options);
+  const tokens = tokenizeChat(message, options, diagnostics);
 
   if (tokens.chatType !== 'order') {
     throw new InvalidChatFormatError(tokens.rawInput, 'Expected order (IW) message');
@@ -1711,16 +1766,24 @@ export function parseChatOrder(message: string, options?: ParseOptions): ParseRe
   };
 }
 
+export function parseChatOrder(message: string, options?: ParseOptions): ParseResultStraight {
+  return parseChatOrderInternal(message, options);
+}
+
 /**
  * Parse a chat fill (YG message)
  */
-export function parseChatFill(message: string, options?: ParseOptions): ParseResultStraight {
+function parseChatFillInternal(
+  message: string,
+  options?: ParseOptions,
+  diagnostics?: ParseDiagnostics
+): ParseResultStraight {
   // See parseChatOrder: leading Parlay keyword = free-form parlay text.
   if (/^(?:iw|yg)\s+parlay\b/i.test(message.trim())) {
     throw new InvalidChatFormatError(message, 'Free-form parlay text must be parsed via parseChat');
   }
 
-  const tokens = tokenizeChat(message, options);
+  const tokens = tokenizeChat(message, options, diagnostics);
 
   if (tokens.chatType !== 'fill') {
     throw new InvalidChatFormatError(tokens.rawInput, 'Expected fill (YG) message');
@@ -1788,6 +1851,10 @@ export function parseChatFill(message: string, options?: ParseOptions): ParseRes
       IsFreeBet: tokens.isFreeBet,
     },
   };
+}
+
+export function parseChatFill(message: string, options?: ParseOptions): ParseResultStraight {
+  return parseChatFillInternal(message, options);
 }
 
 /**
@@ -2641,7 +2708,133 @@ function parseFreeformParlay(
   };
 }
 
-export function parseChat(message: string, options?: ParseOptions): ParseResult {
+function createParseDiagnostics(rawInput: string): ParseDiagnostics {
+  return {
+    rawInput,
+    contractText: '',
+    unconsumedText: '',
+    unconsumedTokens: [],
+    priceSource: 'default',
+  };
+}
+
+function completeAggregateDiagnostics(
+  message: string,
+  result: ParseResult,
+  diagnostics: ParseDiagnostics
+): void {
+  if (!diagnostics.contractText) {
+    const trimmed = message.trim();
+    const bodyStart = trimmed.search(/\s/);
+    diagnostics.contractText = bodyStart === -1 ? '' : trimmed.slice(bodyStart + 1).trim();
+  }
+
+  if (diagnostics.priceSource === 'default' && result.bet.Price !== undefined && message.includes('@')) {
+    diagnostics.priceSource = 'explicitAt';
+  }
+}
+
+function assessOrderShape(
+  result: ParseResult,
+  diagnostics: ParseDiagnostics
+): OrderShapeAssessment {
+  if (result.betType === 'parlay') {
+    return {
+      kind: 'structured',
+      confidence: 'strong',
+      reasons: ['has parlay structure'],
+    };
+  }
+
+  if (result.betType === 'roundRobin') {
+    return {
+      kind: 'structured',
+      confidence: 'strong',
+      reasons: ['has round robin structure'],
+    };
+  }
+
+  switch (result.contractType) {
+    case 'HandicapContestantLine':
+      return {
+        kind: 'structured',
+        confidence: 'strong',
+        reasons: ['has spread line'],
+      };
+    case 'TotalPoints':
+    case 'TotalPointsContestant':
+      return {
+        kind: 'structured',
+        confidence: 'strong',
+        reasons: ['has total'],
+      };
+    case 'PropOU':
+    case 'PropYN':
+      return {
+        kind: 'structured',
+        confidence: 'strong',
+        reasons: ['has prop'],
+      };
+    case 'Series':
+      return {
+        kind: 'structured',
+        confidence: 'strong',
+        reasons: ['has series'],
+      };
+    case 'Writein':
+      return {
+        kind: 'structured',
+        confidence: 'strong',
+        reasons: ['has writein contract'],
+      };
+    case 'HandicapContestantML':
+      break;
+  }
+
+  const structuralReasons: string[] = [];
+  if (result.rotationNumber !== undefined) {
+    structuralReasons.push('has rotation number');
+  }
+  if (/\bml\b/i.test(diagnostics.contractText)) {
+    structuralReasons.push('has explicit ml token');
+  }
+  if (
+    'Period' in result.contract &&
+    (result.contract.Period.PeriodTypeCode !== 'M' || result.contract.Period.PeriodNumber !== 0)
+  ) {
+    structuralReasons.push('has explicit period marker');
+  }
+  if (diagnostics.priceSource === 'teamGlued') {
+    structuralReasons.push('has team-glued price');
+  }
+
+  if (structuralReasons.length > 0) {
+    return {
+      kind: 'structured',
+      confidence: 'strong',
+      reasons: structuralReasons,
+    };
+  }
+
+  const bareReason =
+    diagnostics.priceSource === 'default'
+      ? 'bare free-form contestant with default price'
+      : diagnostics.priceSource === 'standaloneToken'
+        ? 'bare free-form contestant with standalone price'
+        : 'bare free-form contestant with explicit @ price';
+
+  return {
+    kind: 'bareMoneyline',
+    confidence: 'weak',
+    reasons: [bareReason],
+  };
+}
+
+function parseChatInternal(
+  message: string,
+  options?: ParseOptions,
+  diagnostics?: ParseDiagnostics
+): ParseResult {
   const trimmed = message.trim();
   const upperTrimmed = trimmed.toUpperCase();
 
@@ -2676,14 +2869,33 @@ export function parseChat(message: string, options?: ParseOptions): ParseResult 
 
   // Existing straight bet logic
   if (upperTrimmed.startsWith('IW') || upperTrimmed.startsWith('IWW')) {
-    return parseChatOrder(message, options);
+    return parseChatOrderInternal(message, options, diagnostics);
   } else if (upperTrimmed.startsWith('YG') || upperTrimmed.startsWith('YGW')) {
-    return parseChatFill(message, options);
+    return parseChatFillInternal(message, options, diagnostics);
   } else if (options?.impliedPrefix) {
-    return parseWithImpliedPrefix(trimmed, options.impliedPrefix, options);
+    return parseWithImpliedPrefix(trimmed, options.impliedPrefix, options, diagnostics);
   } else {
     throw new UnrecognizedChatPrefixError(message, trimmed.split(/\s+/)[0] || '');
   }
+}
+
+export function parseChat(message: string, options?: ParseOptions): ParseResult {
+  return parseChatInternal(message, options);
+}
+
+export function parseChatDetailed(
+  message: string,
+  options?: ParseOptions
+): ParseChatDetailedResult {
+  const diagnostics = createParseDiagnostics(message);
+  const result = parseChatInternal(message, options, diagnostics);
+  completeAggregateDiagnostics(message, result, diagnostics);
+
+  return {
+    result,
+    diagnostics,
+    orderShape: assessOrderShape(result, diagnostics),
+  };
 }
 
 // ==============================================================================
@@ -2721,7 +2933,8 @@ const IMPLIED_BET_SIGNAL = new RegExp(
 function parseWithImpliedPrefix(
   trimmed: string,
   impliedPrefix: 'IW' | 'YG',
-  options?: ParseOptions
+  options?: ParseOptions,
+  diagnostics?: ParseDiagnostics
 ): ParseResult {
   if (!IMPLIED_BET_SIGNAL.test(trimmed)) {
     throw new UnrecognizedChatPrefixError(trimmed, trimmed.split(/\s+/)[0] || '');
@@ -2739,9 +2952,9 @@ function parseWithImpliedPrefix(
     if (sideFirst) {
       const [, side, line, price, team] = sideFirst;
       const canonical = `IW ${team.trim()} F5 ${side[0].toLowerCase()}${line} @ ${price}`;
-      return parseChatOrder(canonical, options);
+      return parseChatOrderInternal(canonical, options, diagnostics);
     }
-    return parseChatOrder(`IW ${trimmed}`, options);
+    return parseChatOrderInternal(`IW ${trimmed}`, options, diagnostics);
   }
-  return parseChatFill(`YG ${trimmed}`, options);
+  return parseChatFillInternal(`YG ${trimmed}`, options, diagnostics);
 }

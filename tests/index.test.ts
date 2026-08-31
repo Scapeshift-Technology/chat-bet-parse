@@ -5,7 +5,7 @@
  * to ensure that the documentation matches the actual behavior of the library.
  */
 
-import { parseChat, isTotalPoints } from '../src/index';
+import { parseChat, parseChatDetailed, isTotalPoints } from '../src/index';
 import type { ContractSportCompetitionMatchTotalPoints } from '../src/index';
 
 describe('README Examples', () => {
@@ -86,4 +86,18 @@ describe('README Examples', () => {
       }
     });
   });
-}); 
+});
+
+describe('parseChatDetailed main entry export', () => {
+  it('returns parseChat result with order-shape assessment from the package entrypoint', () => {
+    const detailed = parseChatDetailed('IW Rockies +1.5 @ -105');
+
+    expect(detailed.result).toEqual(parseChat('IW Rockies +1.5 @ -105'));
+    expect(detailed.diagnostics.contractText).toBe('Rockies +1.5');
+    expect(detailed.orderShape).toEqual({
+      kind: 'structured',
+      confidence: 'strong',
+      reasons: ['has spread line'],
+    });
+  });
+});
