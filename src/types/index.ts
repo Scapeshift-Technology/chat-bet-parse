@@ -332,6 +332,30 @@ export interface ParseResultRoundRobin extends ParseResultBase {
 export type ParseResult = ParseResultStraight | ParseResultParlay | ParseResultRoundRobin;
 
 // ==============================================================================
+// DETAILED PARSE RESULT TYPES
+// ==============================================================================
+
+export interface ParseDiagnostics {
+  rawInput: string;
+  contractText: string;
+  unconsumedText: string;
+  unconsumedTokens: string[];
+  priceSource: 'explicitAt' | 'standaloneToken' | 'teamGlued' | 'totalGlued' | 'default';
+}
+
+export interface OrderShapeAssessment {
+  kind: 'structured' | 'bareMoneyline';
+  confidence: 'strong' | 'weak';
+  reasons: string[];
+}
+
+export interface ParseChatDetailedResult {
+  result: ParseResult;
+  diagnostics: ParseDiagnostics;
+  orderShape: OrderShapeAssessment;
+}
+
+// ==============================================================================
 // DEPRECATED TYPE ALIASES (for backwards compatibility)
 // ==============================================================================
 
