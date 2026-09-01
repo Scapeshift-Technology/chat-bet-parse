@@ -5,6 +5,7 @@
 
 import {
   parseChat,
+  parseChatDetailed,
   parseChatOrder,
   parseChatFill,
   isWritein,
@@ -421,6 +422,59 @@ describe('Chat Bet Parsing', () => {
   });
 
   // Extended Size Parsing (tw, tp, risk, towin) - checks bet.Risk/ToWin instead of bet.Size
+  // A trailing $-marked amount is an unambiguous size even without '=':
+  // "yg orioles first 5 under 5.5 -105 $2500" failed MissingSizeForFillError
+  // and the fill silently never got logged (live miss, 2026-08-30). The $
+  // sigil is required — a bare trailing number stays an error rather than a
+  // guess.
+  describe('Trailing $-size without "="', () => {
+    test('fill with standalone price and trailing $ size (live 2026-08-30 miss)', () => {
+      const result = parseChat('yg orioles first 5 under 5.5 -105 $2500');
+      expect(result.chatType).toBe('fill');
+      expect(result.bet.Price).toBe(-105);
+      expect(result.bet.Size).toBe(2500);
+      expect(result.bet.Risk).toBe(2625);
+      expect(result.bet.ToWin).toBe(2500);
+    });
+
+    test('trailing $-size leaves no unconsumed diagnostics', () => {
+      const { diagnostics } = parseChatDetailed('yg orioles first 5 under 5.5 -105 $2500');
+      expect(diagnostics.unconsumedTokens).toEqual([]);
+    });
+
+    test('fill with @ price and trailing $ size', () => {
+      const result = parseChat('YG Padres ml @ -105 $2500');
+      expect(result.chatType).toBe('fill');
+      expect(result.bet.Price).toBe(-105);
+      expect(result.bet.Size).toBe(2500);
+    });
+
+    test('trailing $-and-k combination', () => {
+      const result = parseChat('YG Lakers ML -110 $2.5k');
+      expect(result.bet.Size).toBe(2500);
+    });
+
+    test('order takes a trailing $ amount as stated size', () => {
+      const result = parseChat('IW Yankees -120 $500');
+      expect(result.chatType).toBe('order');
+      expect(result.bet.Price).toBe(-120);
+      expect(result.bet.Size).toBe(500);
+    });
+
+    test('bare trailing number without $ still fails for fills', () => {
+      expect(() => parseChat('yg orioles first 5 under 5.5 -105 2500')).toThrow(
+        ChatBetParseError
+      );
+    });
+
+    test('explicit "=" size is unchanged and wins over the trailing rule', () => {
+      const result = parseChat('yg orioles first 5 under 5.5 -107 = $2500');
+      expect(result.bet.Price).toBe(-107);
+      expect(result.bet.Size).toBe(2500);
+      expect(result.bet.Risk).toBe(2675);
+    });
+  });
+
   describe('Extended Size Parsing', () => {
     test('tw syntax - risk with to-win override', () => {
       const result = parseChat('YG Lakers ML @ -105 = $110 tw $100');

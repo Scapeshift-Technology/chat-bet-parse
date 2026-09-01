@@ -521,6 +521,23 @@ function tokenizeChat(
     }
   }
 
+  // A trailing $-marked amount is an unambiguous size even without '=':
+  // "yg orioles first 5 under 5.5 -105 $2500" threw
+  // MissingSizeForFillError and the fill silently never got logged (live
+  // miss, 2026-08-30). The $ sigil is required — a bare trailing number
+  // stays an error rather than a guess. priceIndex !== last keeps the
+  // existing "@ $X" size handling byte-identical.
+  if (sizeIndex === -1) {
+    const last = parts.length - 1;
+    if (
+      last > currentIndex &&
+      priceIndex !== last &&
+      /^\$\d[\d,]*(?:\.\d+)?k?$/i.test(parts[last])
+    ) {
+      sizeIndex = last;
+    }
+  }
+
   // Check for multiple @ symbols
   if (atSymbolCount > 1) {
     if (chatType === 'fill') {
@@ -548,9 +565,10 @@ function tokenizeChat(
   // Extract contract text (everything between rotation number and price/@)
   let contractEndIndex = parts.length;
 
-  // Find the first @ or = to determine where contract text ends
+  // Find the first @ or = to determine where contract text ends; a
+  // trailing $-size claimed above ends the contract the same way.
   for (let i = currentIndex; i < parts.length; i++) {
-    if (parts[i] === '@' || parts[i] === '=') {
+    if (parts[i] === '@' || parts[i] === '=' || i === sizeIndex) {
       contractEndIndex = i;
       break;
     }
@@ -661,7 +679,10 @@ function tokenizeChat(
   }
 
   if (priceIndex > 0) {
-    const unconsumedEndIndex = sizeIndex > 0 ? sizeIndex - 1 : parts.length;
+    // '='-form sizes exclude the '=' marker; a trailing $-size has no
+    // marker, so the window runs up to the size token itself.
+    const unconsumedEndIndex =
+      sizeIndex > 0 ? (parts[sizeIndex - 1] === '=' ? sizeIndex - 1 : sizeIndex) : parts.length;
     setUnconsumedDiagnostics(diagnostics, parts.slice(priceIndex + 1, unconsumedEndIndex));
   }
 
