@@ -526,15 +526,23 @@ function tokenizeChat(
   // MissingSizeForFillError and the fill silently never got logged (live
   // miss, 2026-08-30). The $ sigil is required — a bare trailing number
   // stays an error rather than a guess. priceIndex !== last keeps the
-  // existing "@ $X" size handling byte-identical.
+  // existing "@ $X" size handling byte-identical. The claim probes the
+  // real size parser so only tokens it accepts are claimed — a malformed
+  // "$1,23" keeps its prior behavior (unconsumed for orders, missing-size
+  // for fills) instead of trading one error for another.
   if (sizeIndex === -1) {
     const last = parts.length - 1;
-    if (
-      last > currentIndex &&
-      priceIndex !== last &&
-      /^\$\d[\d,]*(?:\.\d+)?k?$/i.test(parts[last])
-    ) {
-      sizeIndex = last;
+    if (last > currentIndex && priceIndex !== last && parts[last].startsWith('$')) {
+      try {
+        if (chatType === 'order') {
+          parseOrderSize(parts[last], rawInput);
+        } else {
+          parseFillSize(parts[last], rawInput);
+        }
+        sizeIndex = last;
+      } catch {
+        // Not a well-formed size token — prior behavior stands.
+      }
     }
   }
 

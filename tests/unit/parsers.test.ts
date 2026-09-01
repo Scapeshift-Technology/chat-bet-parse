@@ -473,6 +473,33 @@ describe('Chat Bet Parsing', () => {
       expect(result.bet.Size).toBe(2500);
       expect(result.bet.Risk).toBe(2675);
     });
+
+    test('malformed $-token is not claimed — order keeps its prior clean parse', () => {
+      // "$1,23" fails the size parser's comma validation; claiming it would
+      // trade a clean order parse for InvalidSizeFormatError.
+      const result = parseChat('IW Yankees -120 $1,23');
+      expect(result.chatType).toBe('order');
+      expect(result.bet.Price).toBe(-120);
+      expect(result.bet.Size).toBeUndefined();
+    });
+
+    test('malformed $-token on a fill still reads as missing size', () => {
+      expect(() => parseChat('yg orioles first 5 under 5.5 -105 $1,23')).toThrow(
+        ChatBetParseError
+      );
+    });
+
+    test('parlay leg trailing $-amount becomes leg size (deliberate; ticket math unaffected)', () => {
+      const result = parseChat('YGP Lakers ml @ +120 $500 & Warriors ml @ -110 = $100');
+      expect(isParlay(result)).toBe(true);
+      const parlay = result as unknown as {
+        bet: { Risk?: number; ToWin?: number };
+        legs: Array<{ bet?: { Size?: number } }>;
+      };
+      // Ticket risk/to-win still come from the ticket-level "= $100".
+      expect(parlay.bet.Risk).toBe(100);
+      expect(parlay.legs[0].bet?.Size).toBe(500);
+    });
   });
 
   describe('Extended Size Parsing', () => {
