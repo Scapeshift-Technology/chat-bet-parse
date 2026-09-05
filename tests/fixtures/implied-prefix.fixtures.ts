@@ -23,7 +23,7 @@ export const impliedPrefixTestCases: TestCase[] = [
     expectedTeam1: 'Red Sox',
     expectedLine: 4,
     expectedIsOver: true,
-    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 }
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 },
   },
   {
     description: 'implied IW side-first F5 total, half-point line, "1st 5", plus price',
@@ -35,7 +35,7 @@ export const impliedPrefixTestCases: TestCase[] = [
     expectedTeam1: 'Yankees',
     expectedLine: 4.5,
     expectedIsOver: false,
-    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 }
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 },
   },
   {
     description: 'implied IW side-first F5 total, "first 5 innings" phrase, mixed case',
@@ -47,7 +47,7 @@ export const impliedPrefixTestCases: TestCase[] = [
     expectedTeam1: 'Guardians',
     expectedLine: 3,
     expectedIsOver: true,
-    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 }
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 },
   },
 
   // --- Implied IW over the full existing grammar (no new formats) ---
@@ -59,7 +59,7 @@ export const impliedPrefixTestCases: TestCase[] = [
     expectedContractType: 'HandicapContestantML',
     expectedPrice: 145,
     expectedTeam1: 'Athletics',
-    expectedRotationNumber: 872
+    expectedRotationNumber: 872,
   },
   {
     description: 'implied IW two-team F5 game total',
@@ -72,7 +72,7 @@ export const impliedPrefixTestCases: TestCase[] = [
     expectedTeam2: 'SF',
     expectedLine: 4.5,
     expectedIsOver: true,
-    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 }
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 },
   },
   {
     description: 'implied IW team total',
@@ -83,7 +83,7 @@ export const impliedPrefixTestCases: TestCase[] = [
     expectedPrice: -115,
     expectedTeam1: 'LAA',
     expectedLine: 3.5,
-    expectedIsOver: true
+    expectedIsOver: true,
   },
   {
     description: 'implied IW spread with rotation number',
@@ -94,7 +94,7 @@ export const impliedPrefixTestCases: TestCase[] = [
     expectedPrice: 135,
     expectedTeam1: 'Mariners',
     expectedLine: -1.5,
-    expectedRotationNumber: 870
+    expectedRotationNumber: 870,
   },
 
   // --- Implied YG (fill default) over the full existing grammar ---
@@ -108,7 +108,7 @@ export const impliedPrefixTestCases: TestCase[] = [
     expectedSize: 8925,
     expectedTeam1: 'LAA',
     expectedLine: 3.5,
-    expectedIsOver: true
+    expectedIsOver: true,
   },
 
   // --- Explicit prefixes always win over the implied one ---
@@ -121,7 +121,7 @@ export const impliedPrefixTestCases: TestCase[] = [
     expectedPrice: -110,
     expectedSize: 4000,
     expectedTeam1: 'Athletics',
-    expectedRotationNumber: 872
+    expectedRotationNumber: 872,
   },
   {
     description: 'explicit IW wins over implied YG',
@@ -131,7 +131,7 @@ export const impliedPrefixTestCases: TestCase[] = [
     expectedContractType: 'HandicapContestantML',
     expectedPrice: 145,
     expectedTeam1: 'Athletics',
-    expectedRotationNumber: 872
+    expectedRotationNumber: 872,
   },
   {
     description: 'implied IW F5 moneyline with team-glued price (live 2026-08-26 sample)',
@@ -141,7 +141,7 @@ export const impliedPrefixTestCases: TestCase[] = [
     expectedContractType: 'HandicapContestantML',
     expectedPrice: -128,
     expectedTeam1: 'gurdians',
-    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 }
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 },
   },
   {
     description: 'implied IW team-glued spread passes the bet-signal gate',
@@ -151,6 +151,134 @@ export const impliedPrefixTestCases: TestCase[] = [
     expectedContractType: 'HandicapContestantLine',
     expectedPrice: -110,
     expectedTeam1: 'Angels',
-    expectedLine: 1.5
-  }
+    expectedLine: 1.5,
+  },
+  {
+    description: 'implied IW total with bare o1/2 half point',
+    input: 'Jays o1/2 -110',
+    impliedPrefix: 'IW',
+    expectedChatType: 'order',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: -110,
+    expectedTeam1: 'Jays',
+    expectedLine: 0.5,
+    expectedIsOver: true,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+  },
+  {
+    description: 'implied IW total with unicode bare under half point',
+    input: 'Jays u½ -110',
+    impliedPrefix: 'IW',
+    expectedChatType: 'order',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: -110,
+    expectedTeam1: 'Jays',
+    expectedLine: 0.5,
+    expectedIsOver: false,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+  },
+  // Spread half fractions and glued spread prices: live 2026-09-04
+  // "Jays +1/2-119 first five" lost the order before the half-point line
+  // and trailing period could be recognized.
+  {
+    description:
+      'implied IW spread with glued ASCII half fraction line-price and trailing first five',
+    input: 'Jays +1/2-119 first five',
+    impliedPrefix: 'IW',
+    expectedChatType: 'order',
+    expectedContractType: 'HandicapContestantLine',
+    expectedPrice: -119,
+    expectedTeam1: 'Jays',
+    expectedLine: 0.5,
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 },
+  },
+  {
+    description:
+      'implied IW spread with glued unicode half fraction line-price and trailing first five',
+    input: 'Jays +½-119 first five',
+    impliedPrefix: 'IW',
+    expectedChatType: 'order',
+    expectedContractType: 'HandicapContestantLine',
+    expectedPrice: -119,
+    expectedTeam1: 'Jays',
+    expectedLine: 0.5,
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 },
+  },
+  {
+    description: 'implied IW spread with standalone ASCII positive half fraction',
+    input: 'Jays +1/2 -119',
+    impliedPrefix: 'IW',
+    expectedChatType: 'order',
+    expectedContractType: 'HandicapContestantLine',
+    expectedPrice: -119,
+    expectedTeam1: 'Jays',
+    expectedLine: 0.5,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+  },
+  {
+    description: 'implied IW spread with standalone ASCII negative half fraction',
+    input: 'Jays -1/2 -119',
+    impliedPrefix: 'IW',
+    expectedChatType: 'order',
+    expectedContractType: 'HandicapContestantLine',
+    expectedPrice: -119,
+    expectedTeam1: 'Jays',
+    expectedLine: -0.5,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+  },
+  {
+    description: 'implied IW spread with standalone unicode half fraction',
+    input: 'Jays +½ -119',
+    impliedPrefix: 'IW',
+    expectedChatType: 'order',
+    expectedContractType: 'HandicapContestantLine',
+    expectedPrice: -119,
+    expectedTeam1: 'Jays',
+    expectedLine: 0.5,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+  },
+  {
+    description: 'implied IW spread with glued decimal line-price',
+    input: 'Jays +0.5-119',
+    impliedPrefix: 'IW',
+    expectedChatType: 'order',
+    expectedContractType: 'HandicapContestantLine',
+    expectedPrice: -119,
+    expectedTeam1: 'Jays',
+    expectedLine: 0.5,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+  },
+  {
+    description: 'implied IW spread with glued decimal line-price and no leading period',
+    input: 'Jays +1.5-119',
+    impliedPrefix: 'IW',
+    expectedChatType: 'order',
+    expectedContractType: 'HandicapContestantLine',
+    expectedPrice: -119,
+    expectedTeam1: 'Jays',
+    expectedLine: 1.5,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+  },
+  {
+    description: 'implied IW spread with period before glued decimal line-price',
+    input: 'Jays F5 +0.5-119',
+    impliedPrefix: 'IW',
+    expectedChatType: 'order',
+    expectedContractType: 'HandicapContestantLine',
+    expectedPrice: -119,
+    expectedTeam1: 'Jays',
+    expectedLine: 0.5,
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 },
+  },
+  {
+    description: 'implied IW spread with trailing first five after standalone price',
+    input: 'Jays +0.5 -119 first five',
+    impliedPrefix: 'IW',
+    expectedChatType: 'order',
+    expectedContractType: 'HandicapContestantLine',
+    expectedPrice: -119,
+    expectedTeam1: 'Jays',
+    expectedLine: 0.5,
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 },
+  },
 ];

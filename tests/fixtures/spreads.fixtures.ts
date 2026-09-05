@@ -16,7 +16,7 @@ export const spreadsTestCases: TestCase[] = [
     expectedSize: 3.0,
     expectedRotationNumber: 871,
     expectedTeam1: 'Rangers',
-    expectedLine: 1.5
+    expectedLine: 1.5,
   },
 
   // Fills (YG)
@@ -29,7 +29,7 @@ export const spreadsTestCases: TestCase[] = [
     expectedSize: 2500,
     expectedRotationNumber: 870,
     expectedTeam1: 'Mariners',
-    expectedLine: -1.5
+    expectedLine: -1.5,
   },
   {
     description: 'YG Spread positive line with k-notation',
@@ -40,7 +40,7 @@ export const spreadsTestCases: TestCase[] = [
     expectedSize: 1500,
     expectedRotationNumber: 871,
     expectedTeam1: 'Rangers',
-    expectedLine: 1.5
+    expectedLine: 1.5,
   },
   {
     description: 'YG First five handicap line bet',
@@ -52,7 +52,7 @@ export const spreadsTestCases: TestCase[] = [
     expectedRotationNumber: 9909,
     expectedTeam1: 'SD',
     expectedLine: 0.5,
-    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 }
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 },
   },
   {
     description: 'YG Second half spread with period at beginning',
@@ -63,7 +63,7 @@ export const spreadsTestCases: TestCase[] = [
     expectedSize: 1000,
     expectedTeam1: 'Vanderbilt',
     expectedLine: 2.5,
-    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 2 }
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 2 },
   },
   // New CFB test case for TDD
   {
@@ -77,7 +77,7 @@ export const spreadsTestCases: TestCase[] = [
     expectedLine: -51,
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
     expectedSport: 'Football',
-    expectedLeague: 'CFB'
+    expectedLeague: 'CFB',
   },
   // Regression test: team name containing "over" should not be parsed as total
   {
@@ -89,7 +89,7 @@ export const spreadsTestCases: TestCase[] = [
     expectedSize: 3000,
     expectedTeam1: 'Hanover',
     expectedLine: 51.5,
-    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
   },
   // Regression test: team name starting with "Over" should not be parsed as total
   {
@@ -101,6 +101,6 @@ export const spreadsTestCases: TestCase[] = [
     expectedSize: 1200,
     expectedTeam1: 'Overland',
     expectedLine: -7.5,
-    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
-  }
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+  },
 ];

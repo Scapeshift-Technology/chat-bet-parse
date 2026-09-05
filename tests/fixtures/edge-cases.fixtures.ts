@@ -16,7 +16,7 @@ export const edgeCaseTestCases: TestCase[] = [
     expectedTeam2: 'Patriots',
     expectedLine: 45.5,
     expectedIsOver: false,
-    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
   },
   {
     description: 'Handle teams with ampersands',
@@ -27,9 +27,9 @@ export const edgeCaseTestCases: TestCase[] = [
     expectedTeam1: 'A&M',
     expectedLine: 21.5,
     expectedIsOver: true,
-    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
   },
-  
+
   {
     description: 'Handle high NBA totals',
     input: 'IW Thunder/Nuggets o240.5 @ -110',
@@ -40,7 +40,7 @@ export const edgeCaseTestCases: TestCase[] = [
     expectedTeam2: 'Nuggets',
     expectedLine: 240.5,
     expectedIsOver: true,
-    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
   },
   {
     description: 'Handle case insensitive input',
@@ -51,6 +51,68 @@ export const edgeCaseTestCases: TestCase[] = [
     expectedTeam1: 'laa',
     expectedLine: 3.5,
     expectedIsOver: true,
-    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
-  }
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+  },
+  // Half-point fraction normalization must run before positional date
+  // extraction: live 2026-09-04 "Jays u8 1/2 -110" previously consumed
+  // "1/2" as a phantom Jan. 2 event date instead of line 8.5.
+  {
+    description: 'implied IW total with ASCII half fraction is not parsed as a date',
+    input: 'Jays u8 1/2 -110',
+    impliedPrefix: 'IW',
+    expectedChatType: 'order',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: -110,
+    expectedTeam1: 'Jays',
+    expectedLine: 8.5,
+    expectedIsOver: false,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+  },
+  {
+    description: 'implied IW spread with mixed-number half fraction',
+    input: 'Jays +1 1/2 -119',
+    impliedPrefix: 'IW',
+    expectedChatType: 'order',
+    expectedContractType: 'HandicapContestantLine',
+    expectedPrice: -119,
+    expectedTeam1: 'Jays',
+    expectedLine: 1.5,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+  },
+  {
+    description: 'implied IW total with unicode attached half fraction',
+    input: 'Jays u8½ -110',
+    impliedPrefix: 'IW',
+    expectedChatType: 'order',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: -110,
+    expectedTeam1: 'Jays',
+    expectedLine: 8.5,
+    expectedIsOver: false,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+  },
+  {
+    description: 'implied IW spread with unicode mixed-number half fraction',
+    input: 'Jays +1½ -119',
+    impliedPrefix: 'IW',
+    expectedChatType: 'order',
+    expectedContractType: 'HandicapContestantLine',
+    expectedPrice: -119,
+    expectedTeam1: 'Jays',
+    expectedLine: 1.5,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+  },
+  {
+    description: 'standalone positional 1/2 remains an event date',
+    input: 'YG 1/2 Jays +1.5 -110 = 1k',
+    referenceDate: new Date('2026-09-04T12:00:00.000Z'),
+    expectedChatType: 'fill',
+    expectedContractType: 'HandicapContestantLine',
+    expectedPrice: -110,
+    expectedSize: 1000,
+    expectedTeam1: 'Jays',
+    expectedLine: 1.5,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+    expectedEventDate: new Date('2027-01-02T00:00:00.000Z'),
+  },
 ];

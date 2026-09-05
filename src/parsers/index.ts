@@ -39,6 +39,7 @@ import {
   InvalidContractTypeError,
   InvalidRotationNumberError,
   InvalidTeamFormatError,
+  InvalidPeriodFormatError,
   InvalidWriteinFormatError,
   InvalidDateError,
   InvalidKeywordValueError,
@@ -134,6 +135,93 @@ function setUnconsumedDiagnostics(
 function setPriceSource(diagnostics: ParseDiagnostics | undefined, priceSource: PriceSource): void {
   if (!diagnostics || diagnostics.priceSource !== 'default') return;
   diagnostics.priceSource = priceSource;
+}
+
+function normalizeHalfPointFractions(text: string): string {
+  return text
+    .replace(/(^|[\s@=])([+-]?(?:[ou])?\d+)\s+1\/2(?=$|[\s@=]|[+-])/gi, '$1$2.5')
+    .replace(/(^|[\s@=])([+-]|[ou])1\/2(?=$|[\s@=]|[+-])/gi, '$1$20.5')
+    .replace(/(^|[\s@=])([+-]?(?:[ou])?\d+)½(?=$|[\s@=]|[+-])/gi, '$1$2.5')
+    .replace(/(^|[\s@=])([+-]|[ou])½(?=$|[\s@=]|[+-])/gi, '$1$20.5');
+}
+
+function normalizePeriodWordPhrases(text: string): string {
+  return text
+    .replace(/\b(?:first|1st)\s+(?:five|5)(?:\s+innings?)?\b/gi, 'F5')
+    .replace(/\b(?:first|1st)\s+(?:half|h)\b/gi, 'H1')
+    .replace(/\b(?:second|2nd)\s+(?:half|h)\b/gi, 'H2');
+}
+
+const PERIOD_TEXT_PATTERNS = [
+  /\b(\d+(?:(?:st|nd|rd|th)\.?)?\s*(?:inning|i))\b/i,
+  /\b(f5|f3|f7|h1|1h|h2|2h|q1|q2|q3|q4|p1|p2|p3)\b/i,
+  /\b(\d+(?:st|nd|rd|th)?\s*(?:quarter|q))\b/i,
+  /\b(\d+(?:st|nd|rd|th)?\s*(?:period|p))\b/i,
+  /\b(first\s*(?:half|five|5|inning|i))\b/i,
+  /\b(second\s*(?:half|h))\b/i,
+];
+
+function periodsMatch(a: Period, b: Period): boolean {
+  return a.PeriodTypeCode === b.PeriodTypeCode && a.PeriodNumber === b.PeriodNumber;
+}
+
+function extractFirstPeriod(text: string, rawInput: string): Period | undefined {
+  const normalized = normalizePeriodWordPhrases(text);
+  for (const pattern of PERIOD_TEXT_PATTERNS) {
+    const match = normalized.match(pattern);
+    if (match) {
+      return parsePeriod(match[1], rawInput);
+    }
+  }
+  return undefined;
+}
+
+function parseStandalonePeriod(text: string, rawInput: string): Period | undefined {
+  try {
+    return parsePeriod(normalizePeriodWordPhrases(text.trim()), rawInput);
+  } catch {
+    return undefined;
+  }
+}
+
+function isStandaloneGameNumber(text: string, rawInput: string): boolean {
+  if (!/^(?:(?:game|gm|g|dh)\s*\d+|#\s*\d+)$/i.test(text.trim())) {
+    return false;
+  }
+  parseGameNumber(text, rawInput);
+  return true;
+}
+
+function applyPostPriceTail(
+  contractText: string,
+  tailParts: string[],
+  rawInput: string
+): { contractText: string; consumed: boolean } {
+  const tailText = tailParts.join(' ').trim();
+  if (!tailText) {
+    return { contractText, consumed: true };
+  }
+
+  const tailPeriod = parseStandalonePeriod(tailText, rawInput);
+  if (tailPeriod) {
+    const contractPeriod = extractFirstPeriod(contractText, rawInput);
+    if (contractPeriod && !periodsMatch(contractPeriod, tailPeriod)) {
+      throw new InvalidPeriodFormatError(rawInput, tailText);
+    }
+    if (contractPeriod) {
+      return { contractText, consumed: true };
+    }
+    return {
+      contractText: `${contractText} ${normalizePeriodWordPhrases(tailText)}`.trim(),
+      consumed: true,
+    };
+  }
+
+  if (isStandaloneGameNumber(tailText, rawInput)) {
+    return { contractText: `${contractText} ${tailText}`.trim(), consumed: true };
+  }
+
+  return { contractText, consumed: false };
 }
 
 /**
@@ -361,6 +449,12 @@ function tokenizeChat(
     processedMessage = 'YG writein ' + processedMessage.substring(4);
   }
 
+  // Half-point fractions are contract lines, not positional dates: live
+  // 2026-09-04 "Jays u8 1/2 -110" consumed "1/2" as Jan. 2 before type
+  // detection. Only the book-used half forms with a preceding sign, o/u, or
+  // integer are normalized; bare leading "1/2" remains a date.
+  processedMessage = normalizeHalfPointFractions(processedMessage);
+
   // Add spaces around @ if they're missing
   processedMessage = processedMessage.replace(/([^@\s])@([^@\s])/g, '$1 @ $2'); // no space before or after
   processedMessage = processedMessage.replace(/([^@\s])@(\s)/g, '$1 @ $2'); // no space before
@@ -582,6 +676,7 @@ function tokenizeChat(
     }
   }
   const markerContractEndIndex = contractEndIndex;
+  let postPriceTailParts: string[] = [];
 
   // Handle special case where price is embedded in contract text (e.g., "Mariners -1.5 +135")
   // Look for USA odds patterns in the contract text
@@ -603,7 +698,7 @@ function tokenizeChat(
         contractEndIndex = i;
         price = parsePrice(parts[i], rawInput);
         setPriceSource(diagnostics, 'standaloneToken');
-        setUnconsumedDiagnostics(diagnostics, parts.slice(i + 1, markerContractEndIndex));
+        postPriceTailParts = parts.slice(i + 1, markerContractEndIndex);
         break;
       }
       // Otherwise, it's likely a spread line, keep it in the contract text
@@ -619,7 +714,9 @@ function tokenizeChat(
 
   // Check for game number at the beginning of contract text (after rotation number)
   // Patterns: G2, GM1, #2, G 2, GM 1, # 2
-  const gameNumberAtBeginningMatch = contractText.match(/^(g(?:m)?\s*\d+|#\s*\d+)\s+(.+)$/i);
+  const gameNumberAtBeginningMatch = contractText.match(
+    /^((?:game|gm|g|dh)\s*\d+|#\s*\d+)\s+(.+)$/i
+  );
   if (gameNumberAtBeginningMatch) {
     const gameNumberStr = gameNumberAtBeginningMatch[1];
     const remainingContractText = gameNumberAtBeginningMatch[2];
@@ -633,6 +730,21 @@ function tokenizeChat(
     }
   }
 
+  // Reuse the game-number parser for mid-contract markers before contract
+  // type detection: live 2026-09-04 "Tigers G1 o0.5 1st inning" failed
+  // because G1 was only accepted at the beginning of contract text.
+  if (gameNumber === undefined) {
+    const gameNumberInTextMatch = contractText.match(/\s+((?:game|gm|g|dh)\s*\d+|#\s*\d+)(?=\s)/i);
+    if (gameNumberInTextMatch) {
+      try {
+        gameNumber = parseGameNumber(gameNumberInTextMatch[1], rawInput);
+        contractText = contractText.replace(gameNumberInTextMatch[0], ' ').trim();
+      } catch {
+        // Non-game text that happens to look close remains part of the team.
+      }
+    }
+  }
+
   // Normalize period word-phrases to the compact codes every later stage
   // (attached-price extraction, contract-type detection, period-at-start
   // reordering) already recognizes. parsePeriod accepts both spellings, so
@@ -640,10 +752,13 @@ function tokenizeChat(
   // contestant-ML with the whole tail swallowed as a contestant name
   // (live 🙈, 2026-08-28). The optional "innings" suffix mirrors the
   // side-first pattern's vocabulary.
-  contractText = contractText
-    .replace(/\b(?:first|1st)\s+(?:five|5)(?:\s+innings?)?\b/gi, 'F5')
-    .replace(/\b(?:first|1st)\s+(?:half|h)\b/gi, 'H1')
-    .replace(/\b(?:second|2nd)\s+(?:half|h)\b/gi, 'H2');
+  contractText = normalizePeriodWordPhrases(contractText);
+
+  if (postPriceTailParts.length > 0) {
+    const tailResult = applyPostPriceTail(contractText, postPriceTailParts, rawInput);
+    contractText = tailResult.contractText;
+    setUnconsumedDiagnostics(diagnostics, tailResult.consumed ? [] : postPriceTailParts);
+  }
 
   // Check for attached prices in over/under patterns (e.g., "u2.5-125",
   // "o2.5+125", "under 4-105"). The [ou] shorthand pattern runs first so its
@@ -664,6 +779,24 @@ function tokenizeChat(
       contractText = contractText.replace(
         attachedPriceMatch[0],
         attachedPriceMatch[0].slice(0, -attachedPriceMatch[3].length)
+      );
+    }
+  }
+
+  // Check for a price glued to a spread line (e.g., "+0.5-119"). Totals
+  // already had this extraction for "o8.5-110"; the spread variant is the
+  // same live 2026-09-04 counterparty shape, with the 3+ digit second sign
+  // reserved for the American price.
+  if (price === undefined) {
+    const attachedSpreadPriceMatch = contractText.match(
+      /(^|\s)([+-](?:(?:\d+(?:\.\d+)?)|(?:\.\d+)))([+-]\d{3,}(?:\.\d+)?)(?=\s|$)/
+    );
+    if (attachedSpreadPriceMatch) {
+      price = parsePrice(attachedSpreadPriceMatch[3], rawInput);
+      setPriceSource(diagnostics, 'standaloneToken');
+      contractText = contractText.replace(
+        attachedSpreadPriceMatch[0],
+        `${attachedSpreadPriceMatch[1]}${attachedSpreadPriceMatch[2]}`
       );
     }
   }
@@ -691,7 +824,10 @@ function tokenizeChat(
     // marker, so the window runs up to the size token itself.
     const unconsumedEndIndex =
       sizeIndex > 0 ? (parts[sizeIndex - 1] === '=' ? sizeIndex - 1 : sizeIndex) : parts.length;
-    setUnconsumedDiagnostics(diagnostics, parts.slice(priceIndex + 1, unconsumedEndIndex));
+    postPriceTailParts = parts.slice(priceIndex + 1, unconsumedEndIndex);
+    const tailResult = applyPostPriceTail(contractText, postPriceTailParts, rawInput);
+    contractText = tailResult.contractText;
+    setUnconsumedDiagnostics(diagnostics, tailResult.consumed ? [] : postPriceTailParts);
   }
 
   // Check for a price glued to a team name (e.g., "gurdians-128", "Yankees+105"):
@@ -1193,13 +1329,24 @@ function parseSpread(
 ): ContractSportCompetitionMatchHandicapContestantLine {
   // Extract spread line and price (if embedded) - handle periods like F5 between team and line
   // Handle both +1.5 and +.5 formats
-  const spreadMatch = contractText.match(/^(.*?)\s*([+-](?:\d+)?\.?\d+)$/);
+  const spreadMatch = contractText.match(/^(.*?)\s*([+-](?:\d+)?\.?\d+)(?:\s+(.+))?$/);
   if (!spreadMatch) {
     throw new InvalidContractTypeError(rawInput, contractText);
   }
 
-  const teamPart = spreadMatch[1].trim();
+  let teamPart = spreadMatch[1].trim();
   const lineStr = spreadMatch[2];
+  const trailingInfo = spreadMatch[3]?.trim();
+  if (trailingInfo) {
+    if (
+      parseStandalonePeriod(trailingInfo, rawInput) ||
+      isStandaloneGameNumber(trailingInfo, rawInput)
+    ) {
+      teamPart = `${teamPart} ${normalizePeriodWordPhrases(trailingInfo)}`.trim();
+    } else {
+      throw new InvalidContractTypeError(rawInput, contractText);
+    }
+  }
   const sign = lineStr.startsWith('+') ? '+' : '-';
   const lineValue = parseFloat(lineStr.substring(1));
   const line = sign === '+' ? lineValue : -lineValue;
@@ -1562,29 +1709,23 @@ function parseMatchInfo(
   // Use game number from tokens if available, otherwise try to extract from text
   let daySequence: number | undefined = gameNumberFromTokens;
 
-  // Only try to extract game number from text if we don't already have one from tokens
-  if (daySequence === undefined) {
-    // Look for valid game number patterns: g2, gm2, game2, g 2, gm 1, game 3, #2, # 2
-    const gameMatch = workingText.match(/\s+((?:game|gm|g)\s*\d+|#\s*\d+)\s*/i);
-    if (gameMatch) {
+  // Look for valid game number patterns: g2, gm2, game2, dh2,
+  // g 2, gm 1, game 3, dh 1, #2, # 2. Remove the marker even when
+  // an earlier token already supplied DaySequence, so duplicate matching
+  // markers do not leak into the team name.
+  const gameMatch = workingText.match(/\s+((?:game|gm|g|dh)\s*\d+|#\s*\d+)\s*/i);
+  if (gameMatch) {
+    if (daySequence === undefined) {
       daySequence = parseGameNumber(gameMatch[1], rawInput);
-      workingText = workingText.replace(gameMatch[0], ' ').trim();
     }
+    workingText = workingText.replace(gameMatch[0], ' ').trim();
     // If no valid game number found, just continue - don't throw errors for things like "Bowling green"
   }
 
   // Extract period if present
   let period: Period = { PeriodTypeCode: 'M', PeriodNumber: 0 }; // Default
-  const periodPatterns = [
-    /\b(\d+(?:(?:st|nd|rd|th)\.?)?\s*(?:inning|i))\b/i,
-    /\b(f5|f3|f7|h1|1h|h2|2h|q1|q2|q3|q4|p1|p2|p3)\b/i,
-    /\b(\d+(?:st|nd|rd|th)?\s*(?:quarter|q))\b/i,
-    /\b(\d+(?:st|nd|rd|th)?\s*(?:period|p))\b/i,
-    /\b(first\s*(?:half|five|5|inning|i))\b/i,
-    /\b(second\s*(?:half|h))\b/i,
-  ];
 
-  for (const pattern of periodPatterns) {
+  for (const pattern of PERIOD_TEXT_PATTERNS) {
     const match = workingText.match(pattern);
     if (match) {
       period = parsePeriod(match[1], rawInput);
@@ -2966,7 +3107,8 @@ function parseWithImpliedPrefix(
   options?: ParseOptions,
   diagnostics?: ParseDiagnostics
 ): ParseResult {
-  if (!IMPLIED_BET_SIGNAL.test(trimmed)) {
+  const signalText = normalizeHalfPointFractions(trimmed);
+  if (!IMPLIED_BET_SIGNAL.test(signalText)) {
     throw new UnrecognizedChatPrefixError(trimmed, trimmed.split(/\s+/)[0] || '');
   }
   if (LEADING_PARLAY.test(trimmed)) {
