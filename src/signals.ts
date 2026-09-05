@@ -47,7 +47,7 @@ export const EXPLICIT_PREFIX_SIGNAL = new RegExp(
 
 /**
  * Candidate heuristic for "this text plausibly carries a bet": a signed
- * number at a token boundary (`-105`, `+1.5`), glued to a word
+ * number at a token boundary (`-105`, `+1.5`, `+½`), glued to a word
  * (`gurdians-128`, `Angels+1.5`), or glued to a total's number in an
  * over/under context (`under 4-105`, `over 4.5+105`, `u4.5-105`, and the
  * punctuated/decimal forms `4-105.`, `4-105.5`). The digit-glued branch is
@@ -68,4 +68,4 @@ export const EXPLICIT_PREFIX_SIGNAL = new RegExp(
  * own implied-prefix gate is built on it too.
  */
 export const BET_CANDIDATE_SIGNAL =
-  /(^|\s|[A-Za-z])[+-]\d|\b(?:over|under|[ou])\s*\d+(?:\.\d+)?[+-]\d{3,5}(?!\d)|^\s*parlay\b/i;
+  /(^|\s|[A-Za-z])[+-](?:\d|½)|\b(?:over|under|[ou])\s*(?:\d+(?:\.\d+|½)?|½)[+-]\d{3,5}(?!\d)|^\s*parlay\b/i;

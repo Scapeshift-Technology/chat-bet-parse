@@ -131,6 +131,57 @@ describe('parseChatDetailed', () => {
     expect(fill.orderShape.kind).toBe('bareMoneyline');
   });
 
+  it('applies trailing period phrases after a standalone price', () => {
+    const detailed = parseChatDetailed('Jays +0.5 -119 first five', { impliedPrefix: 'IW' });
+
+    expect(detailed.result.contractType).toBe('HandicapContestantLine');
+    expect(detailed.result.contract).toMatchObject({
+      Period: { PeriodTypeCode: 'H', PeriodNumber: 1 },
+      Line: 0.5,
+    });
+    expectDiagnostics(detailed.diagnostics, {
+      contractText: 'Jays +0.5 F5',
+      unconsumedText: '',
+      unconsumedTokens: [],
+      priceSource: 'standaloneToken',
+    });
+  });
+
+  it('applies trailing game markers after a standalone price', () => {
+    const detailed = parseChatDetailed('YG 913 Tigers o0.5 1st inning +112 Game 1 = 5.36');
+
+    expect(detailed.result.contractType).toBe('TotalPoints');
+    expect(detailed.result.contract).toMatchObject({
+      Match: { Team1: 'Tigers', DaySequence: 1 },
+      Period: { PeriodTypeCode: 'I', PeriodNumber: 1 },
+      Line: 0.5,
+    });
+    expectDiagnostics(detailed.diagnostics, {
+      contractText: 'Tigers o0.5 1st inning Game 1',
+      unconsumedText: '',
+      unconsumedTokens: [],
+      priceSource: 'standaloneToken',
+    });
+  });
+
+  it('leaves unrelated chatter after a standalone price unconsumed', () => {
+    const detailed = parseChatDetailed('Rockies +1.5 -105 thanks', { impliedPrefix: 'IW' });
+
+    expect(detailed.result.contractType).toBe('HandicapContestantLine');
+    expectDiagnostics(detailed.diagnostics, {
+      contractText: 'Rockies +1.5',
+      unconsumedText: 'thanks',
+      unconsumedTokens: ['thanks'],
+      priceSource: 'standaloneToken',
+    });
+  });
+
+  it('throws when a trailing period conflicts with the contract period', () => {
+    expect(() => parseChat('Jays F5 +0.5 -119 2H', { impliedPrefix: 'IW' })).toThrow(
+      'Invalid period format'
+    );
+  });
+
   it('classifies parlay and round robin orders as strong', () => {
     const parlay = parseChatDetailed('IWP Lakers @ +120 & Warriors @ -110');
     const roundRobin = parseChatDetailed(

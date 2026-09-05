@@ -18,7 +18,7 @@ export const gameTotalsTestCases: TestCase[] = [
     expectedTeam2: 'SF',
     expectedLine: 4.5,
     expectedIsOver: true,
-    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 }
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 },
   },
 
   // Fills (YG)
@@ -33,7 +33,7 @@ export const gameTotalsTestCases: TestCase[] = [
     expectedTeam2: 'Pirates',
     expectedLine: 0.5,
     expectedIsOver: false,
-    expectedPeriod: { PeriodTypeCode: 'I', PeriodNumber: 1 }
+    expectedPeriod: { PeriodTypeCode: 'I', PeriodNumber: 1 },
   },
   {
     description: 'YG Game total 1st inning over with decimal thousands',
@@ -46,7 +46,7 @@ export const gameTotalsTestCases: TestCase[] = [
     expectedTeam2: 'Phillies',
     expectedLine: 0.5,
     expectedIsOver: true,
-    expectedPeriod: { PeriodTypeCode: 'I', PeriodNumber: 1 }
+    expectedPeriod: { PeriodTypeCode: 'I', PeriodNumber: 1 },
   },
   {
     description: 'YG Game total F5 with decimal thousands',
@@ -59,7 +59,7 @@ export const gameTotalsTestCases: TestCase[] = [
     expectedTeam2: 'SF',
     expectedLine: 4.5,
     expectedIsOver: true,
-    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 }
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 },
   },
   {
     description: 'YG Team F5 total under with k-notation',
@@ -71,7 +71,7 @@ export const gameTotalsTestCases: TestCase[] = [
     expectedTeam1: 'Pirates',
     expectedLine: 4.5,
     expectedIsOver: false,
-    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 }
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 },
   },
   {
     description: 'YG NBA total with k-notation',
@@ -84,7 +84,7 @@ export const gameTotalsTestCases: TestCase[] = [
     expectedTeam1: 'Thunder',
     expectedTeam2: 'Nuggets',
     expectedLine: 213.5,
-    expectedIsOver: true
+    expectedIsOver: true,
   },
   {
     description: 'YG Game total with game number and dollar size',
@@ -99,7 +99,7 @@ export const gameTotalsTestCases: TestCase[] = [
     expectedLine: 0.5,
     expectedIsOver: false,
     expectedPeriod: { PeriodTypeCode: 'I', PeriodNumber: 1 },
-    expectedSport: 'Baseball'
+    expectedSport: 'Baseball',
   },
   {
     description: 'YG Game total with GM1 and runs suffix',
@@ -114,7 +114,7 @@ export const gameTotalsTestCases: TestCase[] = [
     expectedLine: 0.5,
     expectedIsOver: true,
     expectedPeriod: { PeriodTypeCode: 'I', PeriodNumber: 1 },
-    expectedSport: 'Baseball'
+    expectedSport: 'Baseball',
   },
   {
     description: 'YG Game total with runs suffix and decimal price/size',
@@ -128,7 +128,7 @@ export const gameTotalsTestCases: TestCase[] = [
     expectedLine: 0.5,
     expectedIsOver: true,
     expectedPeriod: { PeriodTypeCode: 'I', PeriodNumber: 1 },
-    expectedSport: 'Baseball'
+    expectedSport: 'Baseball',
   },
   // New CFB test case for TDD
   {
@@ -144,7 +144,7 @@ export const gameTotalsTestCases: TestCase[] = [
     expectedIsOver: false,
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
     expectedSport: 'Football',
-    expectedLeague: 'CFB'
+    expectedLeague: 'CFB',
   },
   // MLB 1st inning test with .5 format (no leading zero)
   {
@@ -159,7 +159,40 @@ export const gameTotalsTestCases: TestCase[] = [
     expectedLine: 0.5,
     expectedIsOver: true,
     expectedPeriod: { PeriodTypeCode: 'I', PeriodNumber: 1 },
-    expectedSport: 'Baseball'
+    expectedSport: 'Baseball',
+  },
+  // Trailing/mid-text game markers: live 2026-09-04 "YG 913 Tigers
+  // o0.5 1st inning +112 Game 1 = 5.36" dropped the game marker after
+  // the price, and "Tigers G1 o0.5 ..." failed when G1 sat mid-contract.
+  {
+    description: 'YG single-team 1st inning total with trailing Game 1 after price',
+    input: 'YG 913 Tigers o0.5 1st inning +112 Game 1 = 5.36',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: 112,
+    expectedSize: 5360,
+    expectedRotationNumber: 913,
+    expectedTeam1: 'Tigers',
+    expectedDaySequence: 1,
+    expectedLine: 0.5,
+    expectedIsOver: true,
+    expectedPeriod: { PeriodTypeCode: 'I', PeriodNumber: 1 },
+    expectedSport: 'Baseball',
+  },
+  {
+    description: 'YG single-team 1st inning total with mid-text G1 marker',
+    input: 'YG 913 Tigers G1 o0.5 1st inning +112 = 5.36',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: 112,
+    expectedSize: 5360,
+    expectedRotationNumber: 913,
+    expectedTeam1: 'Tigers',
+    expectedDaySequence: 1,
+    expectedLine: 0.5,
+    expectedIsOver: true,
+    expectedPeriod: { PeriodTypeCode: 'I', PeriodNumber: 1 },
+    expectedSport: 'Baseball',
   },
   // NBA game total with full date (10/26/2025) without referenceDate
   {
@@ -175,7 +208,7 @@ export const gameTotalsTestCases: TestCase[] = [
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
     expectedSport: 'Basketball',
     expectedLeague: 'NBA',
-    expectedEventDate: new Date('2025-10-26T00:00:00.000Z')
+    expectedEventDate: new Date('2025-10-26T00:00:00.000Z'),
   },
   // NBA game total with full date (10/26/2025) with referenceDate
   {
@@ -192,7 +225,7 @@ export const gameTotalsTestCases: TestCase[] = [
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
     expectedSport: 'Basketball',
     expectedLeague: 'NBA',
-    expectedEventDate: new Date('2025-10-26T00:00:00.000Z')
+    expectedEventDate: new Date('2025-10-26T00:00:00.000Z'),
   },
   // NBA game total with partial date (10/26) with referenceDate
   {
@@ -209,7 +242,7 @@ export const gameTotalsTestCases: TestCase[] = [
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
     expectedSport: 'Basketball',
     expectedLeague: 'NBA',
-    expectedEventDate: new Date('2025-10-26T00:00:00.000Z')
+    expectedEventDate: new Date('2025-10-26T00:00:00.000Z'),
   },
   // NBA game total with full date (11/28/2025) and 76ers
   {
@@ -225,6 +258,6 @@ export const gameTotalsTestCases: TestCase[] = [
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
     expectedSport: 'Basketball',
     expectedLeague: 'NBA',
-    expectedEventDate: new Date('2025-11-28T00:00:00.000Z')
-  }
+    expectedEventDate: new Date('2025-11-28T00:00:00.000Z'),
+  },
 ];

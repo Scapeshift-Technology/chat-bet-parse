@@ -104,6 +104,11 @@ describe('signals entry', () => {
     it.each([
       'First 5 gurdians-128 ml',
       'Angels+1.5',
+      'Jays +1/2-119 first five',
+      'Jays +½-119 first five',
+      'Jays +½ -119',
+      'Jays u8½ -110',
+      'Jays u8½-110',
       'yankees -105',
       '+120 lakers',
       // Digit-glued prices in a totals context — the ONLY context the
@@ -165,7 +170,7 @@ describe('signals entry', () => {
     /**
      * Alignment property, on the path the signal actually feeds: consumers
      * gate UNPREFIXED text with this signal before an implied-prefix parse.
-     * Every digit-glued form the signal admits must parse via
+     * Every candidate form added here must parse via
      * `impliedPrefix` — an admitted-but-unparseable live class means the
      * signal has drifted ahead of the grammar.
      */
@@ -174,8 +179,12 @@ describe('signals entry', () => {
       'First 5 giants over 4.5+105',
       'yanks over 8-110',
       'astros u4.5-105',
+      'Jays +½-119 first five',
+      'Jays +½ -119',
+      'Jays u8½ -110',
+      'Jays u8½-110',
       'Astros first 5 under 4-105.5',
-    ])('admitted glued-total forms parse implied: %s', text => {
+    ])('admitted implied candidate forms parse implied: %s', text => {
       expect(BET_CANDIDATE_SIGNAL.test(text)).toBe(true);
       expect(() => parseChat(text, { impliedPrefix: 'IW' })).not.toThrow();
     });
