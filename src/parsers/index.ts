@@ -30,7 +30,7 @@ import type {
 } from '../types/index';
 
 import { knownLeagues, knownSports, leagueSportMap } from '../types/index';
-import { BET_CANDIDATE_SIGNAL } from '../signals';
+import { BET_CANDIDATE_SIGNAL, FUSED_BARE_PREFIX } from '../signals';
 
 import {
   InvalidChatFormatError,
@@ -465,6 +465,11 @@ function tokenizeChat(
   processedMessage = processedMessage.replace(/([^=\s])=([^=\s])/g, '$1 = $2'); // no space before or after
   processedMessage = processedMessage.replace(/([^=\s])=(\s)/g, '$1 = $2'); // no space before
   processedMessage = processedMessage.replace(/(\s)=([^=\s])/g, '$1 = $2'); // no space after
+
+  // A bare prefix typed without the space before an all-caps team
+  // abbreviation ("YGNY Mets", live fill 2026-09-13) is the prefix plus the
+  // abbreviation: split it so the first token is the prefix.
+  processedMessage = processedMessage.replace(FUSED_BARE_PREFIX, '$1 $2');
 
   const parts = processedMessage.split(/\s+/);
 

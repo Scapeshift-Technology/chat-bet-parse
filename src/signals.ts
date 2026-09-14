@@ -37,12 +37,32 @@ export const RECOGNIZED_PREFIXES = [
  * fails the parser's message-too-short check. Built from RECOGNIZED_PREFIXES
  * so the list and the regex cannot drift; an alignment test pins it to
  * actual parseChat behavior.
+ *
+ * A bare prefix typed without the space before an all-caps team
+ * abbreviation ("YGNY Mets", live fill 2026-09-13) is a FUSED prefix: 2-3
+ * uppercase letters glued to IW/YG. The tokenizer splits it ("YG NY") on
+ * FUSED_BARE_PREFIX before dispatch, so the signal recognizes it too. The
+ * shape is deliberately narrow — lowercase, one letter, or four-plus
+ * letters glued to IW/YG ("IWant", "iwill", "YGX", "IWANTED") stay chatter
+ * — which is why the prefixes are spelled as per-letter case classes
+ * instead of the `i` flag the glued abbreviation must not inherit.
  */
 const LONG_PREFIXES = RECOGNIZED_PREFIXES.filter(p => p.length > 2);
 const BARE_PREFIXES = RECOGNIZED_PREFIXES.filter(p => p.length === 2);
+const anyCase = (prefix: string): string =>
+  prefix
+    .split('')
+    .map(c => `[${c}${c.toLowerCase()}]`)
+    .join('');
+const LONG_ALTERNATION = [...LONG_PREFIXES]
+  .sort((a, b) => b.length - a.length)
+  .map(anyCase)
+  .join('|');
+const BARE_ALTERNATION = BARE_PREFIXES.map(anyCase).join('|');
+const FUSED_BARE_PREFIX_SOURCE = `(${BARE_ALTERNATION})([A-Z]{2,3})(?=[\\s@=]|$)`;
+export const FUSED_BARE_PREFIX = new RegExp(`^${FUSED_BARE_PREFIX_SOURCE}`);
 export const EXPLICIT_PREFIX_SIGNAL = new RegExp(
-  `^\\s*(?:(?:${[...LONG_PREFIXES].sort((a, b) => b.length - a.length).join('|')})(?=\\s|$)|(?:${BARE_PREFIXES.join('|')})(?=[\\s@=]|$))`,
-  'i'
+  `^\\s*(?:(?:${LONG_ALTERNATION})(?=\\s|$)|(?:${BARE_ALTERNATION})(?=[\\s@=]|$)|${FUSED_BARE_PREFIX_SOURCE})`
 );
 
 /**

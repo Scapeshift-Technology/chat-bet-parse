@@ -30,10 +30,25 @@ describe('signals entry', () => {
       expect(EXPLICIT_PREFIX_SIGNAL.test(`${prefix.toLowerCase()} something`)).toBe(true);
     });
 
+    /**
+     * A bare prefix typed without the space before an all-caps 2-3 letter
+     * team abbreviation is a fused prefix ("YGNY Mets", live 2026-09-13);
+     * the tokenizer de-fuses it. Only that narrow shape — lowercase, one
+     * letter, or four-plus letters glued to IW/YG stay chatter.
+     */
+    it.each(['YGNY Mets vs Miami Marlins O0.5 1st inning +108 = 5.0', 'IWLAD Dodgers/Padres o8.5', 'ygNY Mets @ -110', 'YGNY@-110 Mets'])(
+      'matches a fused bare prefix: %s',
+      text => {
+        expect(EXPLICIT_PREFIX_SIGNAL.test(text)).toBe(true);
+      }
+    );
+
     it.each([
-      'IWANT to go',
+      'IWant to go',
+      'IWANTED to go',
       'iwill be there',
       'YGX thing',
+      'YGny mets',
       'IW-2 glued punctuation is not a prefix token',
       'YG.ok',
       'they won 8-5 yesterday',
@@ -65,10 +80,19 @@ describe('signals entry', () => {
       'IWW 12/25 NBA Lakers score 120+ points @ +200',
       'YGW 12/25 NBA Lakers score 120+ points @ +200 = $100',
       'IWANT to go',
+      'IWant to go',
+      'IWANTED to go',
       'iwill be there',
       'YGX thing',
+      'YGny mets @ -110',
       'IW-2 glued',
       'random chatter with no bet',
+      // Fused bare prefixes (all-caps 2-3 letter abbreviation glued to IW/YG).
+      'YGNY Mets vs Miami Marlins O0.5 1st inning +108 = 5.0',
+      'IWLAD Dodgers/Padres o8.5 @ -110',
+      'ygNY Mets @ -110 = 1.0',
+      'YGNY@-110 Mets = 1.0',
+      'YGWSH Nationals @ -110 = 1.0',
       // Delimiter matrix: leading whitespace (parser trims), tab/newline/CRLF
       // after every prefix class, and @/= glue (the tokenizer inserts spaces
       // around @ and = before splitting, so bare IW/YG tolerate glue while

@@ -371,4 +371,62 @@ export const specialFormatsTestCases: TestCase[] = [
     expectedTeam1: 'Yankees',
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
   }
+  ,
+  // A bare prefix typed without the space before an all-caps team
+  // abbreviation ("YGNY Mets", live 2026-09-13) de-fuses to "YG NY Mets" and
+  // parses identically to the spaced message.
+  {
+    description: 'YGNY fused prefix de-fuses to "YG NY" (live 2026-09-13)',
+    input: 'YGNY Mets vs Miami Marlins O0.5 1st inning +108 = 5.0',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: 108,
+    expectedSize: 5000,
+    expectedTeam1: 'NY Mets',
+    expectedTeam2: 'Miami Marlins',
+    expectedLine: 0.5,
+    expectedIsOver: true,
+    expectedPeriod: { PeriodTypeCode: 'I', PeriodNumber: 1 },
+    expectedSport: 'Baseball'
+  },
+  {
+    description: 'YG NY spaced twin of the fused-prefix message parses the same',
+    input: 'YG NY Mets vs Miami Marlins O0.5 1st inning +108 = 5.0',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: 108,
+    expectedSize: 5000,
+    expectedTeam1: 'NY Mets',
+    expectedTeam2: 'Miami Marlins',
+    expectedLine: 0.5,
+    expectedIsOver: true,
+    expectedPeriod: { PeriodTypeCode: 'I', PeriodNumber: 1 },
+    expectedSport: 'Baseball'
+  },
+  {
+    description: 'IWLAD fused order prefix with a three-letter abbreviation de-fuses to "IW LAD"',
+    input: 'IWLAD Dodgers/Padres o8.5 @ -110',
+    expectedChatType: 'order',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: -110,
+    expectedTeam1: 'LAD Dodgers',
+    expectedTeam2: 'Padres',
+    expectedLine: 8.5,
+    expectedIsOver: true,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
+  },
+  {
+    description: 'lowercase prefix letters still de-fuse when the glued abbreviation is all caps ("ygNY")',
+    input: 'ygNY Mets vs Miami Marlins O0.5 1st inning +108 = 5.0',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: 108,
+    expectedSize: 5000,
+    expectedTeam1: 'NY Mets',
+    expectedTeam2: 'Miami Marlins',
+    expectedLine: 0.5,
+    expectedIsOver: true,
+    expectedPeriod: { PeriodTypeCode: 'I', PeriodNumber: 1 },
+    expectedSport: 'Baseball'
+  }
 ];

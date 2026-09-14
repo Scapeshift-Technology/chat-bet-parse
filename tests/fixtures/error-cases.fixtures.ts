@@ -265,4 +265,25 @@ export const writeinErrorTestCases: ErrorTestCase[] = [
     expectedErrorType: 'InvalidContractTypeError',
     expectedErrorMessage: 'Unable to determine contract type from: "Yankees vs Red Sox"'
   }
+  ,
+  // De-fusion is narrow: 2-3 UPPERCASE letters glued to IW/YG. Anything else
+  // in the first token is still an unknown prefix, not a bet.
+  {
+    description: 'genuinely unknown prefix still throws (one glued letter is not a team abbreviation)',
+    input: 'YGX Mets vs Miami Marlins O0.5 1st inning +108 = 5.0',
+    expectedErrorType: 'UnrecognizedChatPrefixError',
+    expectedErrorMessage: 'Unrecognized chat prefix: "YGX"'
+  },
+  {
+    description: 'lowercase letters glued to a prefix are a word, not a fused abbreviation',
+    input: 'YGny Mets vs Miami Marlins O0.5 1st inning +108 = 5.0',
+    expectedErrorType: 'UnrecognizedChatPrefixError',
+    expectedErrorMessage: 'Unrecognized chat prefix: "YGNY"'
+  },
+  {
+    description: 'four or more letters glued to a prefix are a word, not a fused abbreviation',
+    input: 'IWANTED to go @ -110',
+    expectedErrorType: 'UnrecognizedChatPrefixError',
+    expectedErrorMessage: 'Unrecognized chat prefix: "IWANTED"'
+  }
 ];
