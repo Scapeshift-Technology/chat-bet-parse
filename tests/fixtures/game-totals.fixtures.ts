@@ -329,14 +329,34 @@ export const gameTotalsTestCases: TestCase[] = [
     expectedIsOver: false,
     expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 },
   },
+  // A trailing price word after a period-first total is the price, +100
+  // (live fills 2026-09-08: "even" was dropped by the period-first reorder
+  // and the fill booked at -110 — risk 4,400 on a 4,000 to-win instead of
+  // 4,000 / 4,000).
   {
-    description: 'YG spelled-out under with a period-first half total stays as before',
+    description: 'YG period-first half total priced "even" is +100: risk 4,000 / to-win 4,000 (live 2026-09-08)',
     input: 'yg h1 phillies under 4.5 even = 4k',
     expectedChatType: 'fill',
     expectedContractType: 'TotalPoints',
-    expectedPrice: -110,
+    expectedPrice: 100,
     expectedSize: 4000,
+    expectedRisk: 4000,
+    expectedToWin: 4000,
     expectedTeam1: 'phillies',
+    expectedLine: 4.5,
+    expectedIsOver: false,
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 },
+  },
+  {
+    description: 'YG period-first half total priced "even" — second live 2026-09-08 fill',
+    input: 'yg h1 atlanta under 4.5 even = 4k',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: 100,
+    expectedSize: 4000,
+    expectedRisk: 4000,
+    expectedToWin: 4000,
+    expectedTeam1: 'atlanta',
     expectedLine: 4.5,
     expectedIsOver: false,
     expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 },

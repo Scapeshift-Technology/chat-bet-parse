@@ -35,7 +35,7 @@ export class InvalidContractTypeError extends ChatBetParseError {
 export class InvalidPriceFormatError extends ChatBetParseError {
   constructor(rawInput: string, priceStr: string) {
     super(
-      `Invalid USA price format: "${priceStr}". Expected format: +150, -110, -115.5, ev, or even. Input: "${rawInput}"`,
+      `Invalid USA price format: "${priceStr}". Expected format: +150, -110, -115.5, or a price word (even, ev, pk, pick, pick'em). Input: "${rawInput}"`,
       rawInput
     );
     this.name = 'InvalidPriceFormatError';

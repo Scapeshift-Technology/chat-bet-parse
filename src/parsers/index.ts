@@ -37,6 +37,7 @@ import {
   UnrecognizedChatPrefixError,
   MissingSizeForFillError,
   InvalidContractTypeError,
+  InvalidPriceFormatError,
   InvalidRotationNumberError,
   InvalidTeamFormatError,
   InvalidPeriodFormatError,
@@ -56,6 +57,8 @@ import { parseNcrNotation } from './ncr';
 
 import {
   parsePrice,
+  PRICE_WORD,
+  PRICE_WORD_SOURCE,
   parseOrderSize,
   parseFillSize,
   parseStraightSize,
@@ -122,6 +125,12 @@ const SINGLE_TEAM_TOTAL = new RegExp(
 // A standalone moneyline marker: "ML" or the +0/-0 spelling.
 const MONEYLINE_MARKER = /(?:^|\s)(?:ml|[+-]0)(?=\s|$)/i;
 
+// A price word glued to a total line: "u4.5ev", "o8.5pk".
+const TOTAL_GLUED_PRICE_WORD = new RegExp(
+  `([ou])(\\d+(?:\\.\\d+)?)(${PRICE_WORD_SOURCE})(?=\\s|$)`,
+  'i'
+);
+
 const PERIOD_AT_START = /^(f5|f3|f7|h1|1h|h2|2h|q1|q2|q3|q4|1q|2q|3q|4q|p1|p2|p3)\s+(.+)$/i;
 
 /**
@@ -140,26 +149,36 @@ function reorderPeriodFirst(contractText: string, rawInput: string): string {
   const period = periodAtStartMatch[1];
   const restOfContract = periodAtStartMatch[2];
 
-  const rejectMoneylineMarkerIn = (tail: string): void => {
+  // Text after the matched line/total is never dropped silently: a moneyline
+  // marker contradicts the total (InvalidContractTypeError); the "runs"
+  // suffix stays; anything else sits where a price goes and is not one
+  // (live 2026-09-08: "h1 phillies under 4.5 even" lost "even" and booked at
+  // -110 — a price word is now claimed before this reorder, so what reaches
+  // here is an unknown word and fails loud).
+  const checkedTail = (tail: string): string => {
     if (MONEYLINE_MARKER.test(tail)) {
       throw new InvalidContractTypeError(rawInput, contractText);
     }
+    const trimmed = tail.trim();
+    if (trimmed === '') return '';
+    if (/^runs$/i.test(trimmed)) return ` ${trimmed}`;
+    throw new InvalidPriceFormatError(rawInput, trimmed);
   };
 
   const spreadMatch = restOfContract.match(PERIOD_FIRST_SPREAD);
   if (spreadMatch) {
-    rejectMoneylineMarkerIn(restOfContract.slice(spreadMatch[0].length));
-    return `${spreadMatch[1].trim()} ${period} ${spreadMatch[2]}`;
+    const tail = checkedTail(restOfContract.slice(spreadMatch[0].length));
+    return `${spreadMatch[1].trim()} ${period} ${spreadMatch[2]}${tail}`;
   }
   const teamTotalMatch = restOfContract.match(PERIOD_FIRST_TEAM_TOTAL);
   if (teamTotalMatch) {
-    rejectMoneylineMarkerIn(restOfContract.slice(teamTotalMatch[0].length));
-    return `${teamTotalMatch[1].trim()} ${period} TT ${teamTotalMatch[2]}${teamTotalMatch[3]}`;
+    const tail = checkedTail(restOfContract.slice(teamTotalMatch[0].length));
+    return `${teamTotalMatch[1].trim()} ${period} TT ${teamTotalMatch[2]}${teamTotalMatch[3]}${tail}`;
   }
   const totalMatch = restOfContract.match(PERIOD_FIRST_TOTAL);
   if (totalMatch) {
-    rejectMoneylineMarkerIn(restOfContract.slice(totalMatch[0].length));
-    return `${totalMatch[1].trim()} ${period} ${totalMatch[2]}${totalMatch[3]}`;
+    const tail = checkedTail(restOfContract.slice(totalMatch[0].length));
+    return `${totalMatch[1].trim()} ${period} ${totalMatch[2]}${totalMatch[3]}${tail}`;
   }
   return `${restOfContract} ${period}`;
 }
@@ -475,7 +494,11 @@ function tokenizeWritein(
   if (priceIndex > 0 && priceIndex < parts.length) {
     const priceStr = parts[priceIndex];
     // Handle k-notation where price might be missing (default to -110)
-    if (priceStr.toLowerCase().endsWith('k') || priceStr.startsWith('$')) {
+    // "pick" ends in k but is a price word, not k-notation.
+    if (
+      !PRICE_WORD.test(priceStr) &&
+      (priceStr.toLowerCase().endsWith('k') || priceStr.startsWith('$'))
+    ) {
       price = -110; // Default price for k-notation
       // Adjust sizeIndex since this is actually the size
       if (sizeIndex === -1) {
@@ -780,8 +803,16 @@ function tokenizeChat(
   let postPriceTailParts: string[] = [];
 
   // Handle special case where price is embedded in contract text (e.g., "Mariners -1.5 +135")
-  // Look for USA odds patterns in the contract text
+  // Look for USA odds patterns in the contract text; a standalone price word
+  // ("under 4.5 even", "-1.5 pk") is the price the same way a signed number is.
   for (let i = currentIndex; i < contractEndIndex; i++) {
+    if (PRICE_WORD.test(parts[i])) {
+      contractEndIndex = i;
+      price = parsePrice(parts[i], rawInput);
+      setPriceSource(diagnostics, 'standaloneToken');
+      postPriceTailParts = parts.slice(i + 1, markerContractEndIndex);
+      break;
+    }
     if (/^[+-]\d+(?:\.\d+)?$/.test(parts[i])) {
       // Check if this is a spread line (small number <= 50 or fractional) or a price (> 100)
       const value = parseFloat(parts[i].substring(1)); // Remove +/- sign
@@ -870,7 +901,8 @@ function tokenizeChat(
   if (price === undefined) {
     const attachedPriceMatch =
       contractText.match(/([ou])(\d+(?:\.\d+)?)([+-]\d+(?:\.\d+)?)/i) ??
-      contractText.match(/\b(over|under)\s*(\d+(?:\.\d+)?)([+-]\d+(?:\.\d+)?)/i);
+      contractText.match(/\b(over|under)\s*(\d+(?:\.\d+)?)([+-]\d+(?:\.\d+)?)/i) ??
+      contractText.match(TOTAL_GLUED_PRICE_WORD);
     if (attachedPriceMatch) {
       // Extract the attached price and clean the contract text
       const attachedPriceStr = attachedPriceMatch[3];
@@ -907,7 +939,11 @@ function tokenizeChat(
   let priceSlotWasSize = false;
   if (price === undefined && priceIndex > 0 && priceIndex < parts.length) {
     const priceStr = parts[priceIndex];
-    if (priceStr.toLowerCase().endsWith('k') || priceStr.startsWith('$')) {
+    // "pick" ends in k but is a price word, not k-notation.
+    if (
+      !PRICE_WORD.test(priceStr) &&
+      (priceStr.toLowerCase().endsWith('k') || priceStr.startsWith('$'))
+    ) {
       // k-notation/$ after @ is a SIZE, not a price — record it and leave
       // price unset so a team-glued price below can still claim the slot
       // (the -110 default applies after, preserving prior behavior).

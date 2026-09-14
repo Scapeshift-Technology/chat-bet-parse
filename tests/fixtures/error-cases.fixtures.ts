@@ -336,4 +336,19 @@ export const writeinErrorTestCases: ErrorTestCase[] = [
     expectedErrorType: 'InvalidContractTypeError',
     expectedErrorMessage: 'Unable to determine contract type from: "h1 mil u4 +0"'
   }
+  ,
+  // A trailing token after a period-first total is a price or nothing: an
+  // unknown word fails loud instead of vanishing into a -110 default.
+  {
+    description: 'unknown trailing word after a period-first total is not silently dropped',
+    input: 'yg h1 phillies under 4.5 evens2 = 4k',
+    expectedErrorType: 'InvalidPriceFormatError',
+    expectedErrorMessage: 'Invalid USA price format: "evens2"'
+  },
+  {
+    description: 'unknown word after @ is still an invalid price',
+    input: 'IW Phillies u4.5 @ evens',
+    expectedErrorType: 'InvalidPriceFormatError',
+    expectedErrorMessage: 'Invalid USA price format: "evens"'
+  }
 ];

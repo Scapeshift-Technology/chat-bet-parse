@@ -276,8 +276,8 @@ game_number      = (("g" ["m"] [" "]) | "#" [" "]) digit+
 over_under       = ("o" | "u" | "over" | "under" | "ov" | "ovr" | "un" | "und") [" "] line
 line             = digit+ ["." "5"]
 
-(* USA odds format: +150, -110, -115.5 *)
-usa_price        = ("+" | "-") digit+ ["." digit+]
+(* USA odds format: +150, -110, -115.5 — or a price word for +100 (even, ev, pk, pick, pick'em; any case, after "@", standalone, or glued to a total line) *)
+usa_price        = ("+" | "-") digit+ ["." digit+] | "even" | "ev" | "pk" | "pick" | "pick'em"
 
 (* Size formats with different interpretations *)
 unit_size              = digit+ "." digit+                    (* Literal value for orders *)
