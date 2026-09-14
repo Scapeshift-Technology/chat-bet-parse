@@ -37,12 +37,32 @@ export const RECOGNIZED_PREFIXES = [
  * fails the parser's message-too-short check. Built from RECOGNIZED_PREFIXES
  * so the list and the regex cannot drift; an alignment test pins it to
  * actual parseChat behavior.
+ *
+ * A bare prefix typed without the space before an all-caps team
+ * abbreviation ("YGNY Mets", live fill 2026-09-13) is a FUSED prefix: 2-3
+ * uppercase letters glued to IW/YG. The tokenizer splits it ("YG NY") on
+ * FUSED_BARE_PREFIX before dispatch, so the signal recognizes it too. The
+ * shape is deliberately narrow — lowercase, one letter, or four-plus
+ * letters glued to IW/YG ("IWant", "iwill", "YGX", "IWANTED") stay chatter
+ * — which is why the prefixes are spelled as per-letter case classes
+ * instead of the `i` flag the glued abbreviation must not inherit.
  */
 const LONG_PREFIXES = RECOGNIZED_PREFIXES.filter(p => p.length > 2);
 const BARE_PREFIXES = RECOGNIZED_PREFIXES.filter(p => p.length === 2);
+const anyCase = (prefix: string): string =>
+  prefix
+    .split('')
+    .map(c => `[${c}${c.toLowerCase()}]`)
+    .join('');
+const LONG_ALTERNATION = [...LONG_PREFIXES]
+  .sort((a, b) => b.length - a.length)
+  .map(anyCase)
+  .join('|');
+const BARE_ALTERNATION = BARE_PREFIXES.map(anyCase).join('|');
+const FUSED_BARE_PREFIX_SOURCE = `(${BARE_ALTERNATION})([A-Z]{2,3})(?=[\\s@=]|$)`;
+export const FUSED_BARE_PREFIX = new RegExp(`^${FUSED_BARE_PREFIX_SOURCE}`);
 export const EXPLICIT_PREFIX_SIGNAL = new RegExp(
-  `^\\s*(?:(?:${[...LONG_PREFIXES].sort((a, b) => b.length - a.length).join('|')})(?=\\s|$)|(?:${BARE_PREFIXES.join('|')})(?=[\\s@=]|$))`,
-  'i'
+  `^\\s*(?:(?:${LONG_ALTERNATION})(?=\\s|$)|(?:${BARE_ALTERNATION})(?=[\\s@=]|$)|${FUSED_BARE_PREFIX_SOURCE})`
 );
 
 /**
@@ -67,5 +87,16 @@ export const EXPLICIT_PREFIX_SIGNAL = new RegExp(
  * ONE definition instead of maintaining a drift-prone copy; the parser's
  * own implied-prefix gate is built on it too.
  */
-export const BET_CANDIDATE_SIGNAL =
-  /(^|\s|[A-Za-z])[+-](?:\d|½)|\b(?:over|under|[ou])\s*(?:\d+(?:\.\d+|½)?|½)[+-]\d{3,5}(?!\d)|^\s*parlay\b/i;
+/**
+ * Chat clippings of the over/under side words. The parser rewrites them to
+ * the full words before any grammar rule reads the contract text (live fill
+ * 2026-09-13: "h1 mil un 4 -120" minted a moneyline on the contestant "mil
+ * un 4"), so this ONE list is the vocabulary; the over/under branch of
+ * BET_CANDIDATE_SIGNAL is built from it too.
+ */
+export const OVER_UNDER_CLIPPINGS = { over: ['ov', 'ovr'], under: ['un', 'und'] } as const;
+const OVER_UNDER_WORD = `(?:over|under|${[...OVER_UNDER_CLIPPINGS.over, ...OVER_UNDER_CLIPPINGS.under].join('|')}|[ou])`;
+export const BET_CANDIDATE_SIGNAL = new RegExp(
+  `(^|\\s|[A-Za-z])[+-](?:\\d|½)|\\b${OVER_UNDER_WORD}\\s*(?:\\d+(?:\\.\\d+|½)?|½)[+-]\\d{3,5}(?!\\d)|^\\s*parlay\\b`,
+  'i'
+);

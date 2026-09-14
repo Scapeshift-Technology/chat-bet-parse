@@ -351,16 +351,8 @@ export const specialFormatsTestCases: TestCase[] = [
     expectedLine: 1.5,
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
   },
-  {
-    description: 'explicit @ price wins over a team-glued number — glued token stays in the team name',
-    input: 'YG Guardians-128 @ -115 = 2k',
-    expectedChatType: 'fill',
-    expectedContractType: 'HandicapContestantML',
-    expectedPrice: -115,
-    expectedSize: 2000,
-    expectedTeam1: 'Guardians-128',
-    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
-  },
+  // 'YG Guardians-128 @ -115 = 2k' (explicit @ price beats the glued number)
+  // now fails the moneyline contestant rule — see error-cases.fixtures.ts.
   {
     description: 'k-notation after @ is a size, not a price — the team-glued price still splits',
     input: 'YG Yankees+105 @ 4k',
@@ -370,5 +362,88 @@ export const specialFormatsTestCases: TestCase[] = [
     expectedSize: 4000,
     expectedTeam1: 'Yankees',
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
+  }
+  ,
+  // A bare prefix typed without the space before an all-caps team
+  // abbreviation ("YGNY Mets", live 2026-09-13) de-fuses to "YG NY Mets" and
+  // parses identically to the spaced message.
+  {
+    description: 'YGNY fused prefix de-fuses to "YG NY" (live 2026-09-13)',
+    input: 'YGNY Mets vs Miami Marlins O0.5 1st inning +108 = 5.0',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: 108,
+    expectedSize: 5000,
+    expectedTeam1: 'NY Mets',
+    expectedTeam2: 'Miami Marlins',
+    expectedLine: 0.5,
+    expectedIsOver: true,
+    expectedPeriod: { PeriodTypeCode: 'I', PeriodNumber: 1 },
+    expectedSport: 'Baseball'
+  },
+  {
+    description: 'YG NY spaced twin of the fused-prefix message parses the same',
+    input: 'YG NY Mets vs Miami Marlins O0.5 1st inning +108 = 5.0',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: 108,
+    expectedSize: 5000,
+    expectedTeam1: 'NY Mets',
+    expectedTeam2: 'Miami Marlins',
+    expectedLine: 0.5,
+    expectedIsOver: true,
+    expectedPeriod: { PeriodTypeCode: 'I', PeriodNumber: 1 },
+    expectedSport: 'Baseball'
+  },
+  {
+    description: 'IWLAD fused order prefix with a three-letter abbreviation de-fuses to "IW LAD"',
+    input: 'IWLAD Dodgers/Padres o8.5 @ -110',
+    expectedChatType: 'order',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: -110,
+    expectedTeam1: 'LAD Dodgers',
+    expectedTeam2: 'Padres',
+    expectedLine: 8.5,
+    expectedIsOver: true,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
+  },
+  {
+    description: 'lowercase prefix letters still de-fuse when the glued abbreviation is all caps ("ygNY")',
+    input: 'ygNY Mets vs Miami Marlins O0.5 1st inning +108 = 5.0',
+    expectedChatType: 'fill',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: 108,
+    expectedSize: 5000,
+    expectedTeam1: 'NY Mets',
+    expectedTeam2: 'Miami Marlins',
+    expectedLine: 0.5,
+    expectedIsOver: true,
+    expectedPeriod: { PeriodTypeCode: 'I', PeriodNumber: 1 },
+    expectedSport: 'Baseball'
+  }
+  ,
+  // The clippings canonicalize to the o/u shorthand, the one spelling every
+  // rule — team totals included — already reads.
+  {
+    description: 'IW team total with the "un" clipping (TT un 4 reads as TT u4)',
+    input: 'IW Padres TT un 4 @ -110',
+    expectedChatType: 'order',
+    expectedContractType: 'TotalPointsContestant',
+    expectedPrice: -110,
+    expectedTeam1: 'Padres',
+    expectedLine: 4,
+    expectedIsOver: false,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
+  },
+  {
+    description: 'IW period-first team total with the "ov" clipping',
+    input: 'IW h1 Padres TT ov 2.5 @ -110',
+    expectedChatType: 'order',
+    expectedContractType: 'TotalPointsContestant',
+    expectedPrice: -110,
+    expectedTeam1: 'Padres',
+    expectedLine: 2.5,
+    expectedIsOver: true,
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 }
   }
 ];

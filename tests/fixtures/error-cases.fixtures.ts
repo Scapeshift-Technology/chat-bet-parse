@@ -250,4 +250,90 @@ export const writeinErrorTestCases: ErrorTestCase[] = [
     expectedErrorType: 'InvalidTeamFormatError',
     expectedErrorMessage: 'Invalid team format: "Yankees+105"'
   }
+  ,
+  // "A vs B" with no side and no line is as undecidable as "A/B": same error,
+  // no guessed contestant.
+  {
+    description: 'slash matchup with no side or line is not a contract (baseline for the vs form)',
+    input: 'YG Yankees/Red Sox @ -110 = 1.0',
+    expectedErrorType: 'InvalidContractTypeError',
+    expectedErrorMessage: 'Unable to determine contract type from: "Yankees/Red Sox"'
+  },
+  {
+    description: '"A vs B" matchup with no side or line fails like the slash form instead of minting a moneyline on "A vs B"',
+    input: 'YG Yankees vs Red Sox @ -110 = 1.0',
+    expectedErrorType: 'InvalidContractTypeError',
+    expectedErrorMessage: 'Unable to determine contract type from: "Yankees vs Red Sox"'
+  }
+  ,
+  // De-fusion is narrow: 2-3 UPPERCASE letters glued to IW/YG. Anything else
+  // in the first token is still an unknown prefix, not a bet.
+  {
+    description: 'genuinely unknown prefix still throws (one glued letter is not a team abbreviation)',
+    input: 'YGX Mets vs Miami Marlins O0.5 1st inning +108 = 5.0',
+    expectedErrorType: 'UnrecognizedChatPrefixError',
+    expectedErrorMessage: 'Unrecognized chat prefix: "YGX"'
+  },
+  {
+    description: 'lowercase letters glued to a prefix are a word, not a fused abbreviation',
+    input: 'YGny Mets vs Miami Marlins O0.5 1st inning +108 = 5.0',
+    expectedErrorType: 'UnrecognizedChatPrefixError',
+    expectedErrorMessage: 'Unrecognized chat prefix: "YGNY"'
+  },
+  {
+    description: 'four or more letters glued to a prefix are a word, not a fused abbreviation',
+    input: 'IWANTED to go @ -110',
+    expectedErrorType: 'UnrecognizedChatPrefixError',
+    expectedErrorMessage: 'Unrecognized chat prefix: "IWANTED"'
+  }
+  ,
+  // Fail-closed moneylines: a contestant name is letters (plus the digit-led
+  // names on the allowlist — 49ers, 76ers). Text that reaches the moneyline
+  // paths with any other digits is not a bet the grammar knows; it throws
+  // instead of minting a moneyline on a name like "mil un 4".
+  {
+    description: 'moneyline marker after a numbered side is not a contract (no moneyline on "mil under 4")',
+    input: 'IW mil un 4 ML @ -120',
+    expectedErrorType: 'InvalidContractTypeError',
+    expectedErrorMessage: 'Unable to determine contract type from: "mil u4 ML"'
+  },
+  {
+    description: '+0 moneyline marker after a numbered side is not a contract',
+    input: 'IW mil un 4 +0 @ -120',
+    expectedErrorType: 'InvalidContractTypeError',
+    expectedErrorMessage: 'Unable to determine contract type from: "mil u4 +0"'
+  },
+  {
+    description: '+0 after a matchup total is not a contract (the second team is not "Pirates u8.5")',
+    input: 'IW Padres/Pirates u8.5 +0',
+    expectedErrorType: 'InvalidContractTypeError',
+    expectedErrorMessage: 'Unable to determine contract type from: "Padres/Pirates u8.5 +0"'
+  },
+  {
+    description: 'explicit @ price wins over a team-glued number — the glued digits then fail the moneyline contestant rule',
+    input: 'YG Guardians-128 @ -115 = 2k',
+    expectedErrorType: 'InvalidContractTypeError',
+    expectedErrorMessage: 'Unable to determine contract type from: "Guardians-128"'
+  },
+  {
+    description: 'a bare number after a team is not a moneyline contestant',
+    input: 'IW Yankees 7 @ -120',
+    expectedErrorType: 'InvalidContractTypeError',
+    expectedErrorMessage: 'Unable to determine contract type from: "Yankees 7"'
+  }
+  ,
+  // Period-first spelling of the same contradiction: the reordering used to
+  // drop everything after the total, hiding the marker.
+  {
+    description: 'period-first total with a trailing ML marker is not a contract',
+    input: 'IW h1 mil un 4 ML @ -120',
+    expectedErrorType: 'InvalidContractTypeError',
+    expectedErrorMessage: 'Unable to determine contract type from: "h1 mil u4 ML"'
+  },
+  {
+    description: 'period-first total with a trailing +0 marker is not a contract',
+    input: 'IW h1 mil un 4 +0 @ -120',
+    expectedErrorType: 'InvalidContractTypeError',
+    expectedErrorMessage: 'Unable to determine contract type from: "h1 mil u4 +0"'
+  }
 ];

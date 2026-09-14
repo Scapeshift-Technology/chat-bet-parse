@@ -92,4 +92,59 @@ export const moneylinesTestCases: TestCase[] = [
     expectedTiesLose: false,
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
   }
+  ,
+  // Digit-led names on the allowlist stay moneyline contestants on every
+  // acceptance path: plain name, "ML", and "+0".
+  {
+    description: 'YG 76ers plain-name moneyline (allowlisted digit-led name)',
+    input: 'yg 76ers -110 = 1k',
+    expectedChatType: 'fill',
+    expectedContractType: 'HandicapContestantML',
+    expectedPrice: -110,
+    expectedSize: 1000,
+    expectedTeam1: '76ers',
+    expectedTiesLose: false,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
+  },
+  {
+    description: 'IW Philadelphia 76ers ML moneyline (allowlisted name inside a longer name)',
+    input: 'IW Philadelphia 76ers ML @ -110',
+    expectedChatType: 'order',
+    expectedContractType: 'HandicapContestantML',
+    expectedPrice: -110,
+    expectedTeam1: 'Philadelphia 76ers',
+    expectedTiesLose: false,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
+  },
+  {
+    description: 'IW 49ers +0 moneyline (allowlisted digit-led name)',
+    input: 'IW 49ers +0 @ -120',
+    expectedChatType: 'order',
+    expectedContractType: 'HandicapContestantML',
+    expectedPrice: -120,
+    expectedTeam1: '49ers',
+    expectedTiesLose: false,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
+  }
+  ,
+  {
+    description: 'a clipping-shaped name before a period token is a name, not a side ("UND 1h")',
+    input: 'IW UND 1h ML @ -110',
+    expectedChatType: 'order',
+    expectedContractType: 'HandicapContestantML',
+    expectedPrice: -110,
+    expectedTeam1: 'UND',
+    expectedTiesLose: false,
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 }
+  },
+  {
+    description: 'allowlisted digit-led name with trailing punctuation stays a moneyline contestant',
+    input: 'IW 49ers. ML @ -110',
+    expectedChatType: 'order',
+    expectedContractType: 'HandicapContestantML',
+    expectedPrice: -110,
+    expectedTeam1: '49ers.',
+    expectedTiesLose: false,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
+  }
 ];

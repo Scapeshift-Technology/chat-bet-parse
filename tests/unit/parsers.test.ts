@@ -56,7 +56,7 @@ import { roundRobinErrorTestCases } from '../fixtures/round-robin-errors.fixture
 
 // Import nCr parser for unit tests
 import { parseNcrNotation } from '../../src/parsers/ncr';
-import { parsePeriod } from '../../src/parsers/utils';
+import { parsePeriod, parseTeams } from '../../src/parsers/utils';
 
 /**
  * HELPER FUNCTIONS FOR DRY TEST ASSERTIONS
@@ -965,6 +965,20 @@ describe('Chat Bet Parsing', () => {
       expect(() => parseChatFill('IW Padres/Pirates u0.5 @ +100')).toThrow(
         'Expected fill (YG) message'
       );
+    });
+
+    test('parseTeams splits "A vs B" like "A/B" and leaves "vs" inside a word alone', () => {
+      expect(parseTeams('Cavs vs Celtics', 'x')).toEqual({ team1: 'Cavs', team2: 'Celtics' });
+      expect(parseTeams('Cavs Vs. Celtics', 'x')).toEqual({ team1: 'Cavs', team2: 'Celtics' });
+      expect(parseTeams('Cavs/Celtics', 'x')).toEqual({ team1: 'Cavs', team2: 'Celtics' });
+      expect(parseTeams('Cavs', 'x')).toEqual({ team1: 'Cavs' });
+    });
+
+    test('parseTeams stays linear over a long whitespace run (no separator backtracking)', () => {
+      const input = `A${' '.repeat(100000)}B`;
+      const start = Date.now();
+      expect(() => parseTeams(input, input)).toThrow('Team name too long');
+      expect(Date.now() - start).toBeLessThan(1000);
     });
   });
 });
