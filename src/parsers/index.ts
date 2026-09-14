@@ -119,6 +119,51 @@ const SINGLE_TEAM_TOTAL = new RegExp(
   'i'
 );
 
+// A standalone moneyline marker: "ML" or the +0/-0 spelling.
+const MONEYLINE_MARKER = /(?:^|\s)(?:ml|[+-]0)(?=\s|$)/i;
+
+const PERIOD_AT_START = /^(f5|f3|f7|h1|1h|h2|2h|q1|q2|q3|q4|1q|2q|3q|4q|p1|p2|p3)\s+(.+)$/i;
+
+/**
+ * A period written first ("2h Vanderbilt +2.5", "h1 mil u4") moves to where
+ * parseMatchInfo expects it: between the team and the line/total, or at the
+ * end for a moneyline. Text after a matched spread line or total is dropped
+ * (the tail of "h1 phillies under 4.5 even" is chatter, not a team) — unless
+ * it carries a moneyline marker, which contradicts the total and throws
+ * instead of vanishing.
+ */
+function reorderPeriodFirst(contractText: string, rawInput: string): string {
+  const periodAtStartMatch = contractText.match(PERIOD_AT_START);
+  if (!periodAtStartMatch) {
+    return contractText;
+  }
+  const period = periodAtStartMatch[1];
+  const restOfContract = periodAtStartMatch[2];
+
+  const rejectMoneylineMarkerIn = (tail: string): void => {
+    if (MONEYLINE_MARKER.test(tail)) {
+      throw new InvalidContractTypeError(rawInput, contractText);
+    }
+  };
+
+  const spreadMatch = restOfContract.match(PERIOD_FIRST_SPREAD);
+  if (spreadMatch) {
+    rejectMoneylineMarkerIn(restOfContract.slice(spreadMatch[0].length));
+    return `${spreadMatch[1].trim()} ${period} ${spreadMatch[2]}`;
+  }
+  const teamTotalMatch = restOfContract.match(PERIOD_FIRST_TEAM_TOTAL);
+  if (teamTotalMatch) {
+    rejectMoneylineMarkerIn(restOfContract.slice(teamTotalMatch[0].length));
+    return `${teamTotalMatch[1].trim()} ${period} TT ${teamTotalMatch[2]}${teamTotalMatch[3]}`;
+  }
+  const totalMatch = restOfContract.match(PERIOD_FIRST_TOTAL);
+  if (totalMatch) {
+    rejectMoneylineMarkerIn(restOfContract.slice(totalMatch[0].length));
+    return `${totalMatch[1].trim()} ${period} ${totalMatch[2]}${totalMatch[3]}`;
+  }
+  return `${restOfContract} ${period}`;
+}
+
 // ==============================================================================
 // TOKENIZER
 // ==============================================================================
@@ -179,22 +224,21 @@ function normalizeHalfPointFractions(text: string): string {
     .replace(/(^|[\s@=])([+-]|[ou])½(?=$|[\s@=]|[+-])/gi, '$1$20.5');
 }
 
-// A clipping directly before a line ("un 4", "ovr8.5", "und .5") becomes the
-// full word every over/under rule already reads; a clipping before anything
-// else is a word ("Un Real", "Underwood" never even matches: the lookahead
-// wants a digit right after it).
+// A clipping directly before a whole line token ("un 4", "ovr8.5-115",
+// "und .5") becomes the glued o/u shorthand — the one spelling every rule,
+// team totals included, already reads. The lookahead wants the entire line
+// token (digits, optional decimal, optional glued price) up to a boundary, so
+// a clipping before anything else is a word: "UND 1h" is the contestant UND
+// in the first half, "Underwood" never matches at all.
 const OVER_UNDER_CLIPPING_BEFORE_LINE = new RegExp(
-  `\\b(${[...OVER_UNDER_CLIPPINGS.over, ...OVER_UNDER_CLIPPINGS.under].join('|')})(\\s*)(?=\\d|\\.\\d|½)`,
+  `\\b(${[...OVER_UNDER_CLIPPINGS.over, ...OVER_UNDER_CLIPPINGS.under].join('|')})\\s*(?=(?:\\d+(?:\\.\\d+)?|\\.\\d+)(?:[+-]\\d+(?:\\.\\d+)?)?(?:\\s|$))`,
   'gi'
 );
 
 function normalizeOverUnderClippings(text: string): string {
-  return text.replace(OVER_UNDER_CLIPPING_BEFORE_LINE, (_, clipping: string, gap: string) => {
-    const word = (OVER_UNDER_CLIPPINGS.over as readonly string[]).includes(clipping.toLowerCase())
-      ? 'over'
-      : 'under';
-    return `${word}${gap || ' '}`;
-  });
+  return text.replace(OVER_UNDER_CLIPPING_BEFORE_LINE, (_, clipping: string) =>
+    (OVER_UNDER_CLIPPINGS.over as readonly string[]).includes(clipping.toLowerCase()) ? 'o' : 'u'
+  );
 }
 
 function normalizePeriodWordPhrases(text: string): string {
@@ -947,43 +991,7 @@ function tokenizeChat(
   }
 
   // Extract period if at beginning (e.g., "2h Vanderbilt +2.5")
-  // Check for common period patterns at the start
-  const periodAtStartMatch = contractText.match(
-    /^(f5|f3|f7|h1|1h|h2|2h|q1|q2|q3|q4|1q|2q|3q|4q|p1|p2|p3)\s+(.+)$/i
-  );
-  if (periodAtStartMatch) {
-    // Keep the period in the contract text but in a normalized position
-    // Move it after the team name so parseMatchInfo can find it properly
-    const period = periodAtStartMatch[1];
-    const restOfContract = periodAtStartMatch[2];
-    // Check if this looks like a spread bet (team name followed by +/- line)
-    // Handle both formats: +1.5 and +.5
-    // Use non-greedy match for team name to avoid including the spread
-    const spreadMatch = restOfContract.match(PERIOD_FIRST_SPREAD);
-    if (spreadMatch) {
-      // Insert period between team and line: "Vanderbilt 2h +2.5"
-      const teamName = spreadMatch[1].trim();
-      contractText = `${teamName} ${period} ${spreadMatch[2]}`;
-    } else {
-      // Check if this looks like a total (team name followed by o/u or Over/Under)
-      // Use non-greedy match for team name to avoid including the total indicator
-      // Also handle team totals (TT) - stop before TT marker
-      const teamTotalMatch = restOfContract.match(PERIOD_FIRST_TEAM_TOTAL);
-      const totalMatch = restOfContract.match(PERIOD_FIRST_TOTAL);
-      if (teamTotalMatch) {
-        // Team total: insert period before TT: "Dolphins 2h TT u10.5"
-        const teamName = teamTotalMatch[1].trim();
-        contractText = `${teamName} ${period} TT ${teamTotalMatch[2]}${teamTotalMatch[3]}`;
-      } else if (totalMatch) {
-        // Insert period between team and total: "Utah State 1Q u10.5"
-        const teamName = totalMatch[1].trim();
-        contractText = `${teamName} ${period} ${totalMatch[2]}${totalMatch[3]}`;
-      } else {
-        // For other patterns (like moneylines), just append period at the end
-        contractText = `${restOfContract} ${period}`;
-      }
-    }
-  }
+  contractText = reorderPeriodFirst(contractText, rawInput);
 
   // Extract explicit league if at beginning (after period processing)
   // Prefer keyword league over positional league
@@ -1010,42 +1018,7 @@ function tokenizeChat(
 
   // Extract period if at beginning AGAIN (after league/sport extraction)
   // This handles cases like "CFB 1Q Utah State u10.5" where league extraction reveals the period
-  const periodAtStartMatch2 = contractText.match(
-    /^(f5|f3|f7|h1|1h|h2|2h|q1|q2|q3|q4|1q|2q|3q|4q|p1|p2|p3)\s+(.+)$/i
-  );
-  if (periodAtStartMatch2) {
-    // Keep the period in the contract text but in a normalized position
-    // Move it after the team name so parseMatchInfo can find it properly
-    const period = periodAtStartMatch2[1];
-    const restOfContract = periodAtStartMatch2[2];
-    // Check if this looks like a spread bet (team name followed by +/- line)
-    // Handle both formats: +1.5 and +.5
-    // Use non-greedy match for team name to avoid including the spread
-    const spreadMatch = restOfContract.match(PERIOD_FIRST_SPREAD);
-    if (spreadMatch) {
-      // Insert period between team and line: "Vanderbilt 2h +2.5"
-      const teamName = spreadMatch[1].trim();
-      contractText = `${teamName} ${period} ${spreadMatch[2]}`;
-    } else {
-      // Check if this looks like a total (team name followed by o/u or Over/Under)
-      // Use non-greedy match for team name to avoid including the total indicator
-      // Also handle team totals (TT) - stop before TT marker
-      const teamTotalMatch = restOfContract.match(PERIOD_FIRST_TEAM_TOTAL);
-      const totalMatch = restOfContract.match(PERIOD_FIRST_TOTAL);
-      if (teamTotalMatch) {
-        // Team total: insert period before TT: "Dolphins 2h TT u10.5"
-        const teamName = teamTotalMatch[1].trim();
-        contractText = `${teamName} ${period} TT ${teamTotalMatch[2]}${teamTotalMatch[3]}`;
-      } else if (totalMatch) {
-        // Insert period between team and total: "Utah State 1Q u10.5"
-        const teamName = totalMatch[1].trim();
-        contractText = `${teamName} ${period} ${totalMatch[2]}${totalMatch[3]}`;
-      } else {
-        // For other patterns (like moneylines), just append period at the end
-        contractText = `${restOfContract} ${period}`;
-      }
-    }
-  }
+  contractText = reorderPeriodFirst(contractText, rawInput);
 
   if (diagnostics) {
     diagnostics.contractText = contractText;
@@ -1233,7 +1206,7 @@ function parseGameTotal(
 
   // A moneyline marker left beside a total ("mil under 4 ML", "Padres/Pirates
   // u8.5 +0") is a contradiction, not part of a team name.
-  if (/(?:^|\s)(?:ml|[+-]0)(?=\s|$)/i.test(withoutOU)) {
+  if (MONEYLINE_MARKER.test(withoutOU)) {
     throw new InvalidContractTypeError(rawInput, contractText);
   }
 

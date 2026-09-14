@@ -533,12 +533,10 @@ export const NUMERIC_TEAM_NAME_PREFIX = `(?:${NUMERIC_TEAM_NAMES.map(name =>
  * closed instead of minting a moneyline on it.
  */
 export function isMoneylineContestant(name: string): boolean {
-  return name
-    .split(/\s+/)
-    .every(
-      token =>
-        !/\d/.test(token) || (NUMERIC_TEAM_NAMES as readonly string[]).includes(token.toLowerCase())
-    );
+  return name.split(/\s+/).every(token => {
+    const word = token.replace(/[^a-z0-9]/gi, '').toLowerCase();
+    return !/\d/.test(word) || (NUMERIC_TEAM_NAMES as readonly string[]).includes(word);
+  });
 }
 
 /**
@@ -563,8 +561,10 @@ export function detectContestantType(
  * landed as one participant. Contract-type detection and the split below
  * share this one definition. Not separators: "@" (the price grammar owns
  * it) and a bare "v"/"v." (it is an individual-contestant initial, "V. Smith").
+ * The whitespace around "vs" is asserted, not consumed, so a scan over a long
+ * whitespace run stays linear; parseTeam trims what the split leaves.
  */
-export const MATCHUP_SEPARATOR = /\s*\/\s*|\s+vs\.?\s+/i;
+export const MATCHUP_SEPARATOR = /\/|(?<=\s)vs\.?(?=\s)/i;
 
 /**
  * Parse teams string: "Team1/Team2", "Team1 vs Team2", or just "Team1"

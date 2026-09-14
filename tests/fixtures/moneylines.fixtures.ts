@@ -126,4 +126,25 @@ export const moneylinesTestCases: TestCase[] = [
     expectedTiesLose: false,
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
   }
+  ,
+  {
+    description: 'a clipping-shaped name before a period token is a name, not a side ("UND 1h")',
+    input: 'IW UND 1h ML @ -110',
+    expectedChatType: 'order',
+    expectedContractType: 'HandicapContestantML',
+    expectedPrice: -110,
+    expectedTeam1: 'UND',
+    expectedTiesLose: false,
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 }
+  },
+  {
+    description: 'allowlisted digit-led name with trailing punctuation stays a moneyline contestant',
+    input: 'IW 49ers. ML @ -110',
+    expectedChatType: 'order',
+    expectedContractType: 'HandicapContestantML',
+    expectedPrice: -110,
+    expectedTeam1: '49ers.',
+    expectedTiesLose: false,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
+  }
 ];

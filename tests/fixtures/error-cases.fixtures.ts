@@ -295,13 +295,13 @@ export const writeinErrorTestCases: ErrorTestCase[] = [
     description: 'moneyline marker after a numbered side is not a contract (no moneyline on "mil under 4")',
     input: 'IW mil un 4 ML @ -120',
     expectedErrorType: 'InvalidContractTypeError',
-    expectedErrorMessage: 'Unable to determine contract type from: "mil under 4 ML"'
+    expectedErrorMessage: 'Unable to determine contract type from: "mil u4 ML"'
   },
   {
     description: '+0 moneyline marker after a numbered side is not a contract',
     input: 'IW mil un 4 +0 @ -120',
     expectedErrorType: 'InvalidContractTypeError',
-    expectedErrorMessage: 'Unable to determine contract type from: "mil under 4 +0"'
+    expectedErrorMessage: 'Unable to determine contract type from: "mil u4 +0"'
   },
   {
     description: '+0 after a matchup total is not a contract (the second team is not "Pirates u8.5")',
@@ -320,5 +320,20 @@ export const writeinErrorTestCases: ErrorTestCase[] = [
     input: 'IW Yankees 7 @ -120',
     expectedErrorType: 'InvalidContractTypeError',
     expectedErrorMessage: 'Unable to determine contract type from: "Yankees 7"'
+  }
+  ,
+  // Period-first spelling of the same contradiction: the reordering used to
+  // drop everything after the total, hiding the marker.
+  {
+    description: 'period-first total with a trailing ML marker is not a contract',
+    input: 'IW h1 mil un 4 ML @ -120',
+    expectedErrorType: 'InvalidContractTypeError',
+    expectedErrorMessage: 'Unable to determine contract type from: "h1 mil u4 ML"'
+  },
+  {
+    description: 'period-first total with a trailing +0 marker is not a contract',
+    input: 'IW h1 mil un 4 +0 @ -120',
+    expectedErrorType: 'InvalidContractTypeError',
+    expectedErrorMessage: 'Unable to determine contract type from: "h1 mil u4 +0"'
   }
 ];

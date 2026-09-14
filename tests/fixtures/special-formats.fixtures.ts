@@ -421,4 +421,29 @@ export const specialFormatsTestCases: TestCase[] = [
     expectedPeriod: { PeriodTypeCode: 'I', PeriodNumber: 1 },
     expectedSport: 'Baseball'
   }
+  ,
+  // The clippings canonicalize to the o/u shorthand, the one spelling every
+  // rule — team totals included — already reads.
+  {
+    description: 'IW team total with the "un" clipping (TT un 4 reads as TT u4)',
+    input: 'IW Padres TT un 4 @ -110',
+    expectedChatType: 'order',
+    expectedContractType: 'TotalPointsContestant',
+    expectedPrice: -110,
+    expectedTeam1: 'Padres',
+    expectedLine: 4,
+    expectedIsOver: false,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
+  },
+  {
+    description: 'IW period-first team total with the "ov" clipping',
+    input: 'IW h1 Padres TT ov 2.5 @ -110',
+    expectedChatType: 'order',
+    expectedContractType: 'TotalPointsContestant',
+    expectedPrice: -110,
+    expectedTeam1: 'Padres',
+    expectedLine: 2.5,
+    expectedIsOver: true,
+    expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 }
+  }
 ];
