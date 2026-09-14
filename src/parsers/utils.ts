@@ -36,13 +36,22 @@ import {
 // ==============================================================================
 
 /**
- * Parses USA odds format: +150, -110, -115.5, ev, even
+ * The words a chat uses for an even-money price: even / ev / pk / pick /
+ * pick'em, any case. Accepted wherever a numeric price is — after "@", as
+ * a standalone token, or glued to a total line — and always +100 (live
+ * fills 2026-09-08: "h1 phillies under 4.5 even" lost the word and booked
+ * at -110).
+ */
+export const PRICE_WORD_SOURCE = "(?:even|ev|pk|pick(?:'?em)?)";
+export const PRICE_WORD = new RegExp(`^${PRICE_WORD_SOURCE}$`, 'i');
+
+/**
+ * Parses USA odds format: +150, -110, -115.5, or a price word (even, pk)
  */
 export function parsePrice(priceStr: string, rawInput: string): number {
   const cleaned = priceStr.trim();
 
-  // Handle special cases
-  if (cleaned.toLowerCase() === 'ev' || cleaned.toLowerCase() === 'even') {
+  if (PRICE_WORD.test(cleaned)) {
     return 100;
   }
 
