@@ -103,4 +103,30 @@ export const spreadsTestCases: TestCase[] = [
     expectedLine: -7.5,
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
   },
+  // "A vs B" spreads behave exactly like the slash form: the matchup splits
+  // and, with no explicit side, the contestant is Team1 (no new guessing).
+  {
+    description: 'YG slash matchup spread — contestant is Team1 (baseline for the vs form)',
+    input: 'YG Cavs/Celtics +2.5 -110 = 1.0',
+    expectedChatType: 'fill',
+    expectedContractType: 'HandicapContestantLine',
+    expectedPrice: -110,
+    expectedSize: 1000,
+    expectedTeam1: 'Cavs',
+    expectedTeam2: 'Celtics',
+    expectedLine: 2.5,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+  },
+  {
+    description: 'YG "A vs B" matchup spread splits and keeps the slash-form contestant (Team1)',
+    input: 'YG Cavs vs Celtics +2.5 -110 = 1.0',
+    expectedChatType: 'fill',
+    expectedContractType: 'HandicapContestantLine',
+    expectedPrice: -110,
+    expectedSize: 1000,
+    expectedTeam1: 'Cavs',
+    expectedTeam2: 'Celtics',
+    expectedLine: 2.5,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+  },
 ];

@@ -531,10 +531,21 @@ export function detectContestantType(
 }
 
 /**
- * Parse teams string: "Team1/Team2" or just "Team1"
+ * The two ways a chat spells a two-team matchup: "Team1/Team2" and
+ * "Team1 vs Team2" ("vs." and any case, whitespace on both sides so a name
+ * ending in "vs" — Cavs — never splits). Live fills 2026-09-13 wrote
+ * "Cincinnati Reds vs LA Dodgers U0.5 1st inning" and the whole matchup
+ * landed as one participant. Contract-type detection and the split below
+ * share this one definition. Not separators: "@" (the price grammar owns
+ * it) and a bare "v"/"v." (it is an individual-contestant initial, "V. Smith").
+ */
+export const MATCHUP_SEPARATOR = /\s*\/\s*|\s+vs\.?\s+/i;
+
+/**
+ * Parse teams string: "Team1/Team2", "Team1 vs Team2", or just "Team1"
  */
 export function parseTeams(teamsStr: string, rawInput: string): { team1: string; team2?: string } {
-  const parts = teamsStr.split('/');
+  const parts = teamsStr.split(MATCHUP_SEPARATOR);
 
   if (parts.length === 1) {
     return { team1: parseTeam(parts[0], rawInput) };
@@ -556,7 +567,7 @@ export function parseTeams(teamsStr: string, rawInput: string): { team1: string;
       team2,
     };
   } else {
-    throw new InvalidTeamFormatError(rawInput, teamsStr, 'Too many "/" separators');
+    throw new InvalidTeamFormatError(rawInput, teamsStr, 'Too many matchup separators');
   }
 }
 

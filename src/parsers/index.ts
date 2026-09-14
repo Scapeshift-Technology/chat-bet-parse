@@ -66,6 +66,7 @@ import {
   parseGameNumber,
   parseRotationNumber,
   parseTeams,
+  MATCHUP_SEPARATOR,
   parseOverUnder,
   inferSportAndLeague,
   detectPropType,
@@ -1099,7 +1100,7 @@ function detectContractType(contractText: string, rawInput: string): ContractTyp
   // Allow optional leading digit (e.g., "u.5" or "u0.5")
   // Support both short form (o/u) and full words (Over/Under)
   if (
-    /\//.test(contractText) &&
+    MATCHUP_SEPARATOR.test(contractText) &&
     (/(over|under|[ou])\s*\d*\.?\d+(?:[+-]\d+(?:\.\d+)?)?(\s+runs)?/i.test(contractText) ||
       /(over|under|[ou])\s*\d*\.?\d+(?:[+-]\d+(?:\.\d+)?)?\s+(f5|f3|f7|h1|1h|h2|2h|q1|q2|q3|q4|p1|p2|p3)/i.test(
         contractText
@@ -1133,7 +1134,7 @@ function detectContractType(contractText: string, rawInput: string): ContractTyp
   // Also handles cases where only team and period remain (e.g., "COL F5" after price extraction)
   // Or just team name alone (e.g., "COL" after price extraction)
   if (
-    (!contractText.includes('/') &&
+    (!MATCHUP_SEPARATOR.test(contractText) &&
       !/\s[ou]\d/i.test(contractText) &&
       !/^[ou]\d/i.test(contractText)) ||
     /[a-zA-Z]+\s*[+-]0(?:\s|$)/i.test(contractText) ||

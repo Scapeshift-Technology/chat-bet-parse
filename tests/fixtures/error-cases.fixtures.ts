@@ -250,4 +250,19 @@ export const writeinErrorTestCases: ErrorTestCase[] = [
     expectedErrorType: 'InvalidTeamFormatError',
     expectedErrorMessage: 'Invalid team format: "Yankees+105"'
   }
+  ,
+  // "A vs B" with no side and no line is as undecidable as "A/B": same error,
+  // no guessed contestant.
+  {
+    description: 'slash matchup with no side or line is not a contract (baseline for the vs form)',
+    input: 'YG Yankees/Red Sox @ -110 = 1.0',
+    expectedErrorType: 'InvalidContractTypeError',
+    expectedErrorMessage: 'Unable to determine contract type from: "Yankees/Red Sox"'
+  },
+  {
+    description: '"A vs B" matchup with no side or line fails like the slash form instead of minting a moneyline on "A vs B"',
+    input: 'YG Yankees vs Red Sox @ -110 = 1.0',
+    expectedErrorType: 'InvalidContractTypeError',
+    expectedErrorMessage: 'Unable to determine contract type from: "Yankees vs Red Sox"'
+  }
 ];
