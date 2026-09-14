@@ -150,6 +150,11 @@ describe('signals entry', () => {
       'ASTROS FIRST 5 UNDER 4-105',
       'Astros first 5 under 4-105.',
       'Astros first 5 under 4-105.5',
+      // The chat clippings of the side words carry the same totals context.
+      'Astros first 5 un 4-105',
+      'Astros first 5 und 4-105',
+      'yanks ov 8-110',
+      'ovr4.5+105 giants',
       // A leading Parlay keyword is itself bet evidence (free-form parlay
       // grammar) — even priceless, so a price-in-next-message order reaches
       // the parser and fails LOUD instead of staying silent.
@@ -208,6 +213,8 @@ describe('signals entry', () => {
       'Jays u8½ -110',
       'Jays u8½-110',
       'Astros first 5 under 4-105.5',
+      'Astros first 5 un 4-105',
+      'yanks ov 8-110',
     ])('admitted implied candidate forms parse implied: %s', text => {
       expect(BET_CANDIDATE_SIGNAL.test(text)).toBe(true);
       expect(() => parseChat(text, { impliedPrefix: 'IW' })).not.toThrow();

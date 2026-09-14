@@ -30,7 +30,7 @@ import type {
 } from '../types/index';
 
 import { knownLeagues, knownSports, leagueSportMap } from '../types/index';
-import { BET_CANDIDATE_SIGNAL, FUSED_BARE_PREFIX } from '../signals';
+import { BET_CANDIDATE_SIGNAL, FUSED_BARE_PREFIX, OVER_UNDER_CLIPPINGS } from '../signals';
 
 import {
   InvalidChatFormatError,
@@ -144,6 +144,24 @@ function normalizeHalfPointFractions(text: string): string {
     .replace(/(^|[\s@=])([+-]|[ou])1\/2(?=$|[\s@=]|[+-])/gi, '$1$20.5')
     .replace(/(^|[\s@=])([+-]?(?:[ou])?\d+)½(?=$|[\s@=]|[+-])/gi, '$1$2.5')
     .replace(/(^|[\s@=])([+-]|[ou])½(?=$|[\s@=]|[+-])/gi, '$1$20.5');
+}
+
+// A clipping directly before a line ("un 4", "ovr8.5", "und .5") becomes the
+// full word every over/under rule already reads; a clipping before anything
+// else is a word ("Un Real", "Underwood" never even matches: the lookahead
+// wants a digit right after it).
+const OVER_UNDER_CLIPPING_BEFORE_LINE = new RegExp(
+  `\\b(${[...OVER_UNDER_CLIPPINGS.over, ...OVER_UNDER_CLIPPINGS.under].join('|')})(\\s*)(?=\\d|\\.\\d|½)`,
+  'gi'
+);
+
+function normalizeOverUnderClippings(text: string): string {
+  return text.replace(OVER_UNDER_CLIPPING_BEFORE_LINE, (_, clipping: string, gap: string) => {
+    const word = (OVER_UNDER_CLIPPINGS.over as readonly string[]).includes(clipping.toLowerCase())
+      ? 'over'
+      : 'under';
+    return `${word}${gap || ' '}`;
+  });
 }
 
 function normalizePeriodWordPhrases(text: string): string {
@@ -759,6 +777,7 @@ function tokenizeChat(
   // (live 🙈, 2026-08-28). The optional "innings" suffix mirrors the
   // side-first pattern's vocabulary.
   contractText = normalizePeriodWordPhrases(contractText);
+  contractText = normalizeOverUnderClippings(contractText);
 
   if (postPriceTailParts.length > 0) {
     const tailResult = applyPostPriceTail(contractText, postPriceTailParts, rawInput);
