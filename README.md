@@ -229,6 +229,8 @@ straight_bet     = iw_details | yg_details
 iw_details       = "IW" [event_date] [rotation_number] [game_number] chat_order    (* Orders *)
 yg_details       = "YG" [event_date] [rotation_number] [game_number] chat_fill     (* Fills *)
                    (* "IWW" and "YGW" are shorthands for "IW writein" and "YG writein" *)
+                   (* A bare prefix glued to a 2-3 letter UPPERCASE team abbreviation *)
+                   (* ("YGNY Mets …") is read as the prefix plus the abbreviation *)
 
 chat_order       = contract [bet_price] ["=" unit_size]          (* Orders: price and size optional *)
 chat_fill        = contract [bet_price] "=" fill_size            (* Fills: price optional, size required *)
@@ -270,8 +272,8 @@ rotation_number  = digit+
 (* Game number patterns: g2, gm1, #2, g 2, gm 2, # 2 *)
 game_number      = (("g" ["m"] [" "]) | "#" [" "]) digit+
 
-(* Over/under pattern: o4.5, u0.5 *)
-over_under       = ("o" | "u") line
+(* Over/under pattern: o4.5, u0.5, over 4.5, under 0.5 — the chat clippings ov/ovr and un/und read as over/under *)
+over_under       = ("o" | "u" | "over" | "under" | "ov" | "ovr" | "un" | "und") [" "] line
 line             = digit+ ["." "5"]
 
 (* USA odds format: +150, -110, -115.5 *)
@@ -297,8 +299,8 @@ quarter          = "quarter" | "q"
 hockey_period    = "period" | "p"
 
 (* Team and period patterns *)
-team             = [("49" | "76")] (letter | "&" | " ")+
-teams            = team "/" team                              (* Both teams must be different *)
+team             = [("49" | "76")] (letter | "&" | " ")+       (* A moneyline contestant carries no other digits *)
+teams            = team ("/" | " vs " | " vs. ") team           (* Both teams must be different; "vs" any case *)
 match            = (teams | team) [game_number]              (* Game number can also appear before match in message structure *)
 
 (* Period patterns - flexible combinations *)
