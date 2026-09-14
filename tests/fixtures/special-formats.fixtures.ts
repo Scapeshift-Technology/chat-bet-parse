@@ -351,16 +351,8 @@ export const specialFormatsTestCases: TestCase[] = [
     expectedLine: 1.5,
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
   },
-  {
-    description: 'explicit @ price wins over a team-glued number — glued token stays in the team name',
-    input: 'YG Guardians-128 @ -115 = 2k',
-    expectedChatType: 'fill',
-    expectedContractType: 'HandicapContestantML',
-    expectedPrice: -115,
-    expectedSize: 2000,
-    expectedTeam1: 'Guardians-128',
-    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
-  },
+  // 'YG Guardians-128 @ -115 = 2k' (explicit @ price beats the glued number)
+  // now fails the moneyline contestant rule — see error-cases.fixtures.ts.
   {
     description: 'k-notation after @ is a size, not a price — the team-glued price still splits',
     input: 'YG Yankees+105 @ 4k',

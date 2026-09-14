@@ -517,6 +517,31 @@ export function parseTeam(teamStr: string, rawInput: string): string {
 }
 
 /**
+ * Team names that begin with digits: the ONLY digits a moneyline contestant
+ * may carry, and the digit prefix the team-name patterns admit.
+ */
+export const NUMERIC_TEAM_NAMES = ['49ers', '76ers'] as const;
+export const NUMERIC_TEAM_NAME_PREFIX = `(?:${NUMERIC_TEAM_NAMES.map(name =>
+  name.replace(/[a-z]+$/i, '')
+).join('|')})?`;
+
+/**
+ * A moneyline contestant is a name, not a fragment: every token is digit-free
+ * or an allowlisted digit-led name. Text that reaches the moneyline paths
+ * with any other digit — "mil un 4", "Guardians-128", "Pirates u8.5" — is a
+ * side, line or price the grammar did not consume, and the caller fails
+ * closed instead of minting a moneyline on it.
+ */
+export function isMoneylineContestant(name: string): boolean {
+  return name
+    .split(/\s+/)
+    .every(
+      token =>
+        !/\d/.test(token) || (NUMERIC_TEAM_NAMES as readonly string[]).includes(token.toLowerCase())
+    );
+}
+
+/**
  * Detect if a contestant name is an individual (follows pattern like "B. Falter")
  */
 export function detectContestantType(

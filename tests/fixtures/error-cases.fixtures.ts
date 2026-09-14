@@ -286,4 +286,39 @@ export const writeinErrorTestCases: ErrorTestCase[] = [
     expectedErrorType: 'UnrecognizedChatPrefixError',
     expectedErrorMessage: 'Unrecognized chat prefix: "IWANTED"'
   }
+  ,
+  // Fail-closed moneylines: a contestant name is letters (plus the digit-led
+  // names on the allowlist — 49ers, 76ers). Text that reaches the moneyline
+  // paths with any other digits is not a bet the grammar knows; it throws
+  // instead of minting a moneyline on a name like "mil un 4".
+  {
+    description: 'moneyline marker after a numbered side is not a contract (no moneyline on "mil under 4")',
+    input: 'IW mil un 4 ML @ -120',
+    expectedErrorType: 'InvalidContractTypeError',
+    expectedErrorMessage: 'Unable to determine contract type from: "mil under 4 ML"'
+  },
+  {
+    description: '+0 moneyline marker after a numbered side is not a contract',
+    input: 'IW mil un 4 +0 @ -120',
+    expectedErrorType: 'InvalidContractTypeError',
+    expectedErrorMessage: 'Unable to determine contract type from: "mil under 4 +0"'
+  },
+  {
+    description: '+0 after a matchup total is not a contract (the second team is not "Pirates u8.5")',
+    input: 'IW Padres/Pirates u8.5 +0',
+    expectedErrorType: 'InvalidContractTypeError',
+    expectedErrorMessage: 'Unable to determine contract type from: "Padres/Pirates u8.5 +0"'
+  },
+  {
+    description: 'explicit @ price wins over a team-glued number — the glued digits then fail the moneyline contestant rule',
+    input: 'YG Guardians-128 @ -115 = 2k',
+    expectedErrorType: 'InvalidContractTypeError',
+    expectedErrorMessage: 'Unable to determine contract type from: "Guardians-128"'
+  },
+  {
+    description: 'a bare number after a team is not a moneyline contestant',
+    input: 'IW Yankees 7 @ -120',
+    expectedErrorType: 'InvalidContractTypeError',
+    expectedErrorMessage: 'Unable to determine contract type from: "Yankees 7"'
+  }
 ];

@@ -13,7 +13,7 @@ import {
 } from '../../src/signals';
 import * as root from '../../src/index';
 import { parseChat } from '../../src/index';
-import { UnrecognizedChatPrefixError } from '../../src/errors';
+import { InvalidContractTypeError, UnrecognizedChatPrefixError } from '../../src/errors';
 
 describe('signals entry', () => {
   describe('RECOGNIZED_PREFIXES', () => {
@@ -222,18 +222,18 @@ describe('signals entry', () => {
 
     /**
      * Anti-phantom property: the totals-context restriction exists because
-     * an admitted digit-glued sign the grammar does NOT consume would fall
-     * through to the implied default-price path and silently mint a
-     * moneyline order on nonsense contestant text. Pin that the excluded
-     * forms would indeed mis-parse if force-fed, so nobody "simplifies" the
-     * branch back to context-free without hitting this test.
+     * an admitted digit-glued sign the grammar does NOT consume falls
+     * through to the implied default-price path. That path used to silently
+     * mint a moneyline order on the nonsense contestant text; the moneyline
+     * parser now fails closed on digits in a contestant name, so force-feeding
+     * the chatter throws instead. The signal still keeps it out — a loud
+     * error on every "they lost 110-105" is alert-lane noise — so nobody
+     * "simplifies" the branch back to context-free without hitting this test.
      */
-    it('excluded digit-glued chatter would default-price mis-parse if admitted', () => {
+    it('excluded digit-glued chatter fails closed (no phantom moneyline) if admitted', () => {
       const text = 'they lost 110-105 last night';
       expect(BET_CANDIDATE_SIGNAL.test(text)).toBe(false);
-      const result = parseChat(`IW ${text}`);
-      expect(result.contract).toMatchObject({ Contestant: text });
-      expect(result.bet).toMatchObject({ Price: -110 });
+      expect(() => parseChat(`IW ${text}`)).toThrow(InvalidContractTypeError);
     });
   });
 
