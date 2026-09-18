@@ -12,6 +12,8 @@ import {
   isParlay,
   isRoundRobin,
   ChatBetParseError,
+  InvalidContractTypeError,
+  InvalidLineValueError,
   BET_CANDIDATE_SIGNAL,
 } from '../../src/index';
 
@@ -609,6 +611,68 @@ describe('Chat Bet Parsing', () => {
       expect(() => parseChat('back around 3-4pm i think', { impliedPrefix: 'IW' })).toThrow(
         ChatBetParseError
       );
+    });
+
+    // Side-first full-game total, price before team (live 2026-09-17T00:02Z
+    // counterparty order "Under 8 -110 Red Sox"). The rewrite is narrow:
+    // side → unsigned line → signed American price (|price| >= 100) → a
+    // validated team name, and nothing else.
+    describe('side-first full-game total, price before team', () => {
+      const opts = { impliedPrefix: 'IW' as const, referenceDate: new Date('2026-09-17T00:02Z') };
+
+      test.each([
+        ['Under 8 -110 Red Sox', 'Red Sox', 8, false, -110],
+        ['Over 8 -110 Red Sox', 'Red Sox', 8, true, -110],
+        ['u8.5 +105 Red Sox', 'Red Sox', 8.5, false, 105],
+        ['O 8.5 -115 Red Sox', 'Red Sox', 8.5, true, -115],
+        ['Under 220.5 -110 76ers', '76ers', 220.5, false, -110],
+      ])('%s parses as a full-game single-team total with nothing left over', (input, team, line, isOver, price) => {
+        const detailed = parseChatDetailed(input, opts);
+        expect(detailed.result.chatType).toBe('order');
+        expect(detailed.result.betType).toBe('straight');
+        expect(detailed.result.contractType).toBe('TotalPoints');
+        expect(detailed.result.bet.Price).toBe(price);
+        expect(detailed.result.contract).toMatchObject({
+          HasContestant: false,
+          HasLine: true,
+          Line: line,
+          IsOver: isOver,
+          Period: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+          Match: { Team1: team },
+        });
+        expect(isWritein(detailed.result.contract)).toBe(false);
+        if (!isWritein(detailed.result.contract)) {
+          expect(detailed.result.contract.Match.Team2).toBeUndefined();
+        }
+        expect(detailed.diagnostics.unconsumedText).toBe('');
+      });
+
+      test('a bare numeric tail is not a team', () => {
+        expect(() => parseChat('Under 8 -110 76', opts)).toThrow(InvalidContractTypeError);
+      });
+
+      test('a rotation-prefixed tail is not a team', () => {
+        expect(() => parseChat('Under 8 -110 872 Red Sox', opts)).toThrow(InvalidContractTypeError);
+      });
+
+      test('a signed number under 100 is not a price', () => {
+        expect(() => parseChat('Under 8 -1.5 Red Sox', opts)).toThrow(InvalidContractTypeError);
+      });
+
+      test('an extra market marker after the team is rejected, never swallowed', () => {
+        expect(() => parseChat('Under 8 -110 Red Sox ML', opts)).toThrow(InvalidContractTypeError);
+      });
+
+      test('half-point validation still applies to the rewritten line', () => {
+        expect(() => parseChat('Under 8.3 -110 Red Sox', opts)).toThrow(InvalidLineValueError);
+      });
+
+      test('side-first forms stay implied-IW only', () => {
+        expect(() => parseChat('Under 8 -110 Red Sox')).toThrow(ChatBetParseError);
+        expect(() => parseChat('Under 8 -110 Red Sox', { impliedPrefix: 'YG' })).toThrow(
+          ChatBetParseError
+        );
+      });
     });
 
     test('implied YG without size throws MissingSizeForFillError semantics', () => {

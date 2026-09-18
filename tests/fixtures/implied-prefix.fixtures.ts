@@ -3,10 +3,11 @@
  *
  * Chats can designate a sender's unprefixed messages as orders (IW) or fills
  * (YG); the full existing grammar applies as if the prefix were present.
- * Additionally, implied-IW mode accepts one side-first order pattern observed
+ * Additionally, implied-IW mode accepts two side-first order patterns observed
  * live: "Over 4 first five -105 Red Sox" (side word, line, first-five period
- * phrase, bare signed price, trailing team) — a single-team GAME total, the
- * team identifying the event, matching the existing single-team convention.
+ * phrase, bare signed price, trailing team) and "Under 8 -110 Red Sox" (the
+ * same with no period phrase — a full-game total) — single-team GAME totals,
+ * the team identifying the event, matching the existing single-team convention.
  */
 
 import { TestCase } from './types';
@@ -48,6 +49,96 @@ export const impliedPrefixTestCases: TestCase[] = [
     expectedLine: 3,
     expectedIsOver: true,
     expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 },
+  },
+
+  // --- Side-first full-game total, price before team (implied IW only) ---
+  // Live counterparty order 2026-09-17T00:02Z: "Under 8 -110 Red Sox" — side
+  // word, line, bare signed price, trailing team, NO period phrase. A
+  // full-game single-team total (PeriodTypeCode M / 0), same event-identifying
+  // team convention as the F5 form above.
+  {
+    description: 'implied IW side-first full-game total, under, bare minus price, trailing team',
+    input: 'Under 8 -110 Red Sox',
+    impliedPrefix: 'IW',
+    expectedChatType: 'order',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: -110,
+    expectedTeam1: 'Red Sox',
+    expectedLine: 8,
+    expectedIsOver: false,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+  },
+  {
+    description: 'implied IW side-first full-game total, over',
+    input: 'Over 8 -110 Red Sox',
+    impliedPrefix: 'IW',
+    expectedChatType: 'order',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: -110,
+    expectedTeam1: 'Red Sox',
+    expectedLine: 8,
+    expectedIsOver: true,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+  },
+  {
+    description: 'implied IW side-first full-game total, glued u shorthand, half-point line, plus price',
+    input: 'u8.5 +105 Red Sox',
+    impliedPrefix: 'IW',
+    expectedChatType: 'order',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: 105,
+    expectedTeam1: 'Red Sox',
+    expectedLine: 8.5,
+    expectedIsOver: false,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+  },
+  {
+    description: 'implied IW side-first full-game total, spaced O shorthand, half-point line',
+    input: 'O 8.5 -115 Red Sox',
+    impliedPrefix: 'IW',
+    expectedChatType: 'order',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: -115,
+    expectedTeam1: 'Red Sox',
+    expectedLine: 8.5,
+    expectedIsOver: true,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+  },
+  {
+    description: 'implied IW side-first full-game total, allowlisted numeric team name',
+    input: 'Under 220.5 -110 76ers',
+    impliedPrefix: 'IW',
+    expectedChatType: 'order',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: -110,
+    expectedTeam1: '76ers',
+    expectedLine: 220.5,
+    expectedIsOver: false,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+  },
+  {
+    description: 'implied IW team-first full-game total (existing form, unchanged)',
+    input: 'Red Sox under 8 -110',
+    impliedPrefix: 'IW',
+    expectedChatType: 'order',
+    expectedContractType: 'TotalPoints',
+    expectedPrice: -110,
+    expectedTeam1: 'Red Sox',
+    expectedLine: 8,
+    expectedIsOver: false,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+  },
+  {
+    description: 'implied IW rotation-prefixed spread with trailing price still a spread (not a total)',
+    input: '870 Mariners -1.5 +135',
+    impliedPrefix: 'IW',
+    expectedChatType: 'order',
+    expectedContractType: 'HandicapContestantLine',
+    expectedPrice: 135,
+    expectedTeam1: 'Mariners',
+    expectedLine: -1.5,
+    expectedRotationNumber: 870,
+    expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
   },
 
   // --- Implied IW over the full existing grammar (no new formats) ---
