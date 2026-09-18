@@ -3145,11 +3145,24 @@ export function parseChatDetailed(
  * "Over 4 first five -105 Red Sox" — side word, line, first-five period
  * phrase, bare signed American price, trailing team. Rewritten to the
  * canonical single-team game-total form before the standard grammar runs.
- * Deliberately the ONLY nonstandard word order supported — new patterns are
- * added when a real sample forces them, never speculatively.
+ * Side-first forms are added when a real sample forces them, never
+ * speculatively; the two below are the only nonstandard word orders supported.
  */
 const SIDE_FIRST_F5_TOTAL =
   /^(over|under)\s+(\d+(?:\.\d+)?)\s+(?:first\s*(?:5|five)|1st\s*(?:5|five))(?:\s*innings?)?\s+([+-]\d+(?:\.\d+)?)\s+(\S.*)$/i;
+
+/**
+ * Full-game variant observed live (2026-09-17): "Under 8 -110 Red Sox" — side
+ * word or o/u shorthand (glued or spaced), line, bare signed American price,
+ * trailing team, no period phrase. The rewrite fires only when the signed
+ * number is price-sized (|price| >= 100, so "under 8 -1.5 …" is not a price)
+ * and the tail is a contestant name by the moneyline rule (so a bare number
+ * or a rotation-prefixed tail falls through to the ordinary grammar and
+ * fails closed there). Everything else — half-point line validation, a
+ * moneyline marker contradicting the total — is the canonical form's job.
+ */
+const SIDE_FIRST_TOTAL =
+  /^(over\s+|under\s+|[ou]\s*)(\d+(?:\.\d+)?)\s+([+-]\d+(?:\.\d+)?)\s+(\S.*)$/i;
 
 /**
  * Bet-signal gate for implied-prefix parsing: an explicit price/size marker
@@ -3192,6 +3205,14 @@ function parseWithImpliedPrefix(
       const [, side, line, price, team] = sideFirst;
       const canonical = `IW ${team.trim()} F5 ${side[0].toLowerCase()}${line} @ ${price}`;
       return parseChatOrderInternal(canonical, options, diagnostics);
+    }
+    const sideFirstTotal = trimmed.match(SIDE_FIRST_TOTAL);
+    if (sideFirstTotal) {
+      const [, side, line, price, team] = sideFirstTotal;
+      if (Math.abs(Number(price)) >= 100 && isMoneylineContestant(team)) {
+        const canonical = `IW ${team.trim()} ${side[0].toLowerCase()}${line} @ ${price}`;
+        return parseChatOrderInternal(canonical, options, diagnostics);
+      }
     }
     return parseChatOrderInternal(`IW ${trimmed}`, options, diagnostics);
   }
