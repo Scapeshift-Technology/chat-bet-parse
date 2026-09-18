@@ -24,6 +24,24 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
+      # The TODOS/ item directory (decision note 0132): every item filename is
+      # unique across domains and kebab-case, every gate line parses; README.md
+      # is domain context, exempt from the first two. No ss-agents tooling in CI.
+      - name: TODOS/ item directory (decision note 0132)
+        run: |
+          set -euo pipefail
+          test -d TODOS || { echo "TODOS/ item directory missing (decision note 0132)"; exit 1; }
+          links="$(find TODOS -type l)"
+          [ -z "$links" ] || { echo "symlinks are not items (decision note 0132):"; echo "$links"; exit 1; }
+          names="$(find TODOS ! -type d ! -name README.md -exec basename {} \;)"
+          dups="$(printf '%s\n' "$names" | { grep . || [ $? -eq 1 ]; } | sort | uniq -d)"
+          [ -z "$dups" ] || { echo "duplicate item basenames across domains:"; echo "$dups"; exit 1; }
+          bad="$(printf '%s\n' "$names" | { grep . || [ $? -eq 1 ]; } | { grep -vE '^[a-z0-9]+(-[a-z0-9]+)*\.md$' || [ $? -eq 1 ]; })"
+          [ -z "$bad" ] || { echo "item filenames must be kebab-case .md:"; echo "$bad"; exit 1; }
+          gates="$(grep -rhiE --exclude=README.md '^[[:space:]]*([-*][[:space:]]+)?gate:' TODOS || [ $? -eq 1 ])"
+          malformed="$(printf '%s\n' "$gates" | { grep . || [ $? -eq 1 ]; } | { grep -viE '^[[:space:]]*([-*][[:space:]]+)?gate:[[:space:]]*(~?[0-9]{4}-[0-9]{2}-[0-9]{2}|event[[:space:]]*(—|–|-)+[[:space:]]*[^[:space:]].*)[[:space:]]*$' || [ $? -eq 1 ]; })"
+          [ -z "$malformed" ] || { echo "malformed gate lines (scanner grammar):"; echo "$malformed"; exit 1; }
+
       - name: Set up Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
