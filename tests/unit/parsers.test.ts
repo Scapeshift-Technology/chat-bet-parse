@@ -600,6 +600,8 @@ describe('Chat Bet Parsing', () => {
       ['YG 913 Rays 1st Inning o0.5 +127 = 15.0', 'Baseball', 'grammar'],
       ['IW LAA TT o3.5 runs', 'Baseball', 'grammar'],
       ['IW 872 Athletics @ +145', 'Baseball', 'rotation'],
+      ['IW 872 Baseball Athletics @ +145', 'Baseball', 'explicit'],
+      ['IW 507 Basketball Lakers @ +120', 'Basketball', 'explicit'],
       ['YGW league:MLB 2025-05-14 Cardinals win @ +150 = 1.0', 'Baseball', 'league'],
     ])('%s -> %s from %s', (input, sport, source) => {
       const contract = straightContract(input);
