@@ -572,7 +572,7 @@ Heat @ -105
 ### Special Rules
 
 - **Case Insensitivity**: All text patterns are matched case insensitively
-- **Rotation Numbers**: Must appear immediately after "YG" when present
+- **Rotation Numbers**: Must appear immediately after "YG" when present. The number is carried verbatim (`rotationNumber`, `contract.RotationNumber`, `ContractLegSpec.RotationNumber`, per leg for parlays) and never interpreted: it does not imply a sport, and a rotation still needs a team (`YG 913 ml +100 = 1` throws)
 - **Game Numbers**: Can appear before or after teams/team with patterns `g1`, `gm2`, `#2`, `g 1`, `gm 2`, `# 2` (case insensitive, optional spaces)
 - **Default Price**: `-110` when price omitted in k-notation bets
 - **Line Validation**: Must be divisible by 0.5

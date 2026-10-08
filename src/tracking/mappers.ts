@@ -80,6 +80,10 @@ export function mapParseResultToContractLegSpec(
     Price: null, // Always null for straight bets per SQL procedure documentation
   };
 
+  if (result.rotationNumber !== undefined) {
+    baseSpec.RotationNumber = result.rotationNumber;
+  }
+
   // Add match info for non-Writein contracts
   if (!isWritein(contract) && matchInfo) {
     baseSpec = {

@@ -29,7 +29,7 @@ import type {
   OrderShapeAssessment,
 } from '../types/index';
 
-import { knownLeagues, knownSports, leagueSportMap } from '../types/index';
+import { isWritein, knownLeagues, knownSports, leagueSportMap } from '../types/index';
 import { BET_CANDIDATE_SIGNAL, FUSED_BARE_PREFIX, OVER_UNDER_CLIPPINGS } from '../signals';
 
 import {
@@ -1970,17 +1970,12 @@ function parseChatOrderInternal(
 
   // Handle regular contracts
   const contractType = detectContractType(tokens.contractText, tokens.rawInput);
-  const { sport, league } = inferSportAndLeague(
-    tokens.rotationNumber,
-    tokens.explicitLeague,
-    tokens.explicitSport
-  );
+  const { sport, league } = inferSportAndLeague(tokens.explicitLeague, tokens.explicitSport);
 
   // Parse contract using factory
   const contract = parseContractByType(contractType, tokens, sport, league);
 
-  // Add rotation number to contract if present
-  if (tokens.rotationNumber && 'RotationNumber' in contract) {
+  if (tokens.rotationNumber !== undefined && !isWritein(contract)) {
     contract.RotationNumber = tokens.rotationNumber;
   }
 
@@ -2056,17 +2051,12 @@ function parseChatFillInternal(
 
   // Handle regular contracts
   const contractType = detectContractType(tokens.contractText, tokens.rawInput);
-  const { sport, league } = inferSportAndLeague(
-    tokens.rotationNumber,
-    tokens.explicitLeague,
-    tokens.explicitSport
-  );
+  const { sport, league } = inferSportAndLeague(tokens.explicitLeague, tokens.explicitSport);
 
   // Parse contract using factory
   const contract = parseContractByType(contractType, tokens, sport, league);
 
-  // Add rotation number to contract if present
-  if (tokens.rotationNumber && 'RotationNumber' in contract) {
+  if (tokens.rotationNumber !== undefined && !isWritein(contract)) {
     contract.RotationNumber = tokens.rotationNumber;
   }
 

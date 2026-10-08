@@ -220,6 +220,37 @@ describe('ContractLegSpec Mapping', () => {
     });
   });
 
+  describe('Rotation Numbers', () => {
+    test('a straight carries its rotation number', () => {
+      const spec = mapParseResultToContractLegSpec(
+        parseChat('YG 913 Rays 1st Inning o0.5 +127 = 15.0')
+      ) as ContractLegSpec;
+      expect(spec.RotationNumber).toBe(913);
+    });
+
+    test('a straight without a rotation number has none', () => {
+      const spec = mapParseResultToContractLegSpec(
+        parseChat('YG Rays 1st Inning o0.5 +127 = 15.0')
+      ) as ContractLegSpec;
+      expect(spec).not.toHaveProperty('RotationNumber');
+    });
+
+    test('each parlay leg carries its own rotation number', () => {
+      const specs = mapParseResultToContractLegSpec(
+        parseChat('YGP 872 Cardinals/Cubs o8.5 @ -110 & 701 Lakers @ +120 & Yankees @ -150 = $100')
+      ) as ContractLegSpec[];
+      expect(specs.map(s => s.RotationNumber)).toEqual([872, 701, undefined]);
+      expect(specs[2]).not.toHaveProperty('RotationNumber');
+    });
+
+    test('each round-robin leg carries its own rotation number', () => {
+      const specs = mapParseResultToContractLegSpec(
+        parseChat('YGRR 3c2 701 Lakers @ +120 & Warriors @ -110 & 705 Celtics @ +105 = $100 per')
+      ) as ContractLegSpec[];
+      expect(specs.map(s => s.RotationNumber)).toEqual([701, undefined, 705]);
+    });
+  });
+
   describe('Date Handling', () => {
     test('should use provided eventDate option', () => {
       const parseResult = parseChat('IW Athletics @ +145');

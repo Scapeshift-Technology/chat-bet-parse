@@ -31,6 +31,9 @@ export interface ContractLegSpec {
   /** Day sequence for multiple games */
   DaySequence?: number;
 
+  /** Rotation number as written in the message (the leg's own, for parlays); unset when none was given */
+  RotationNumber?: number;
+
   /** Contestant type */
   ContestantType?: string;
 

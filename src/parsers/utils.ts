@@ -539,9 +539,11 @@ export const NUMERIC_TEAM_NAME_PREFIX = `(?:${NUMERIC_TEAM_NAMES.map(name =>
  * or an allowlisted digit-led name. Text that reaches the moneyline paths
  * with any other digit — "mil un 4", "Guardians-128", "Pirates u8.5" — is a
  * side, line or price the grammar did not consume, and the caller fails
- * closed instead of minting a moneyline on it.
+ * closed instead of minting a moneyline on it. A bare "ML" is the moneyline
+ * marker with no team ("YG 913 ml +100"), never a name.
  */
 export function isMoneylineContestant(name: string): boolean {
+  if (/^ml$/i.test(name.trim())) return false;
   return name.split(/\s+/).every(token => {
     const word = token.replace(/[^a-z0-9]/gi, '').toLowerCase();
     return !/\d/.test(word) || (NUMERIC_TEAM_NAMES as readonly string[]).includes(word);
@@ -610,11 +612,11 @@ export function parseTeams(teamsStr: string, rawInput: string): { team1: string;
 // ==============================================================================
 
 /**
- * Infer sport and league from context (rotation number, teams, etc.)
- * This is a simplified version - in practice, you might use rotation number ranges
+ * Resolve sport and league from what the message states explicitly (a league
+ * code implies its sport). Rotation numbers are never consulted: books
+ * renumber by season and reuse numbers, so a rotation range is not a sport.
  */
 export function inferSportAndLeague(
-  rotationNumber?: number,
   explicitLeague?: KnownLeague,
   explicitSport?: Sport
 ): { sport?: Sport; league?: League } {
@@ -636,32 +638,6 @@ export function inferSportAndLeague(
     league = 'CBK';
   }
 
-  // Infer from rotation if needed
-  if ((!sport || !league) && rotationNumber) {
-    // Existing inference logic
-    // use rotation number ranges and other heuristics to determine sport/league
-    if (rotationNumber >= 100 && rotationNumber < 499) {
-      const inferredSport = 'Football';
-      // TODO: Enhance to infer specific league based on range
-      if (!sport) sport = inferredSport;
-      return { sport: 'Football' }; // observed 169,215 -> CFB, 709 -> CFL, 103,277,455 -> NFL
-    }
-    if (rotationNumber >= 500 && rotationNumber < 800) {
-      const inferredSport = 'Basketball';
-      if (!sport) sport = inferredSport;
-      return { sport: 'Basketball' }; // observed 611-628 -> wnba, 500-600 -> nba
-    }
-    if (
-      (rotationNumber >= 800 && rotationNumber < 900) ||
-      (rotationNumber >= 9900 && rotationNumber < 10000)
-    ) {
-      const inferredSport = 'Baseball';
-      if (!sport) sport = inferredSport;
-      return { sport: 'Baseball' }; // observed 872, 901-926 -> mlb.. todo observer college baseball
-    }
-  }
-
-  // Default
   return { sport, league };
 }
 

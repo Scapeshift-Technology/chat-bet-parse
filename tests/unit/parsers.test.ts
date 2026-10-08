@@ -45,7 +45,6 @@ import { propsYNTestCases, propsOUTestCases } from '../fixtures/props.fixtures';
 import { seriesTestCases } from '../fixtures/series.fixtures';
 import { orderSizeTestCases, fillSizeTestCases } from '../fixtures/size-parsing.fixtures';
 import { specialFormatsTestCases } from '../fixtures/special-formats.fixtures';
-import { sportLeagueInferenceTestCases } from '../fixtures/sport-league-inference.fixtures';
 import { spreadsTestCases } from '../fixtures/spreads.fixtures';
 import { teamTotalsTestCases } from '../fixtures/team-totals.fixtures';
 import { impliedPrefixTestCases } from '../fixtures/implied-prefix.fixtures';
@@ -197,9 +196,9 @@ function validateTestCase(testCase: TestCase) {
   // Rotation number
   if (testCase.expectedRotationNumber !== undefined) {
     expect(result.rotationNumber).toBe(testCase.expectedRotationNumber);
-    if ('RotationNumber' in result.contract) {
-      expect(result.contract.RotationNumber).toBe(testCase.expectedRotationNumber);
-    }
+    expect(result.contract).toHaveProperty('RotationNumber', testCase.expectedRotationNumber);
+  } else {
+    expect(result.contract).not.toHaveProperty('RotationNumber');
   }
 
   // Period info
@@ -574,9 +573,57 @@ describe('Chat Bet Parsing', () => {
     test.each(specialFormatsTestCases)('$description', validateTestCase);
   });
 
-  // Sport/League Inference
-  describe('Sport/League Inference', () => {
-    test.each(sportLeagueInferenceTestCases)('$description', validateTestCase);
+  // A rotation number is a catalogue id, not a sport: books renumber by
+  // season and reuse numbers, so the parser never derives Sport from one.
+  describe('Rotation numbers never imply a sport', () => {
+    test.each([
+      ['IW 507 Thunder/Nuggets o213.5', 507],
+      ['IW 872 Athletics @ +145', 872],
+      ['IW 457 Dolphins @ +145', 457],
+      ['YG 195 Illinois/Washington o54 @ -105 = 3.0', 195],
+      ['IW 705 Celtics/Heat u215.5 @ -110', 705],
+      ['IW 9905 Yankees @ -120', 9905],
+      ['YG 9921 SEA F5 +0 @ -250 = 12.0', 9921],
+      ['IW 7/1/25 872 Cardinals/Cubs o8.5 @ -110', 872],
+    ])('%s', (input, rotation) => {
+      const result = parseChat(input);
+      if (result.betType !== 'straight') throw new Error('expected a straight');
+      expect(result.rotationNumber).toBe(rotation);
+      expect(result.contract.Sport).toBeUndefined();
+    });
+
+    test('an explicit league still sets the sport beside a rotation', () => {
+      const result = parseChat('IW 457 league:NFL Dolphins @ +145');
+      if (result.betType !== 'straight') throw new Error('expected a straight');
+      expect(result.rotationNumber).toBe(457);
+      expect(result.contract.Sport).toBe('Football');
+      expect(result.contract.League).toBe('NFL');
+    });
+  });
+
+  // A bare moneyline marker is not a contestant: "YG 913 ml +100 = 1" used to
+  // book a moneyline on a team named "ml".
+  describe('A moneyline marker with no team throws', () => {
+    test.each([
+      'YG 913 ml +100 = 1',
+      'YG 913 ML = 1',
+      'YG ml +100 = 1',
+      'IW ml',
+      'YG 913 F5 ml +100 = 1',
+      'YG 913 G1 ml = 1',
+    ])('%s', input => {
+      expect(() => parseChat(input)).toThrow(InvalidContractTypeError);
+    });
+
+    test('a named team with a trailing ML still parses', () => {
+      const result = parseChat('YG 913 Rays ml +100 = 1');
+      if (result.betType !== 'straight' || isWritein(result.contract)) {
+        throw new Error('expected a straight match contract');
+      }
+      expect(result.contractType).toBe('HandicapContestantML');
+      expect(result.contract.Match.Team1).toBe('Rays');
+      expect(result.contract.RotationNumber).toBe(913);
+    });
   });
 
   // Spreads
