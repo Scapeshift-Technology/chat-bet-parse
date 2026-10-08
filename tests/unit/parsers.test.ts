@@ -45,6 +45,7 @@ import { propsYNTestCases, propsOUTestCases } from '../fixtures/props.fixtures';
 import { seriesTestCases } from '../fixtures/series.fixtures';
 import { orderSizeTestCases, fillSizeTestCases } from '../fixtures/size-parsing.fixtures';
 import { specialFormatsTestCases } from '../fixtures/special-formats.fixtures';
+import { sportLeagueInferenceTestCases } from '../fixtures/sport-league-inference.fixtures';
 import { spreadsTestCases } from '../fixtures/spreads.fixtures';
 import { teamTotalsTestCases } from '../fixtures/team-totals.fixtures';
 import { impliedPrefixTestCases } from '../fixtures/implied-prefix.fixtures';
@@ -221,6 +222,9 @@ function validateTestCase(testCase: TestCase) {
 
   // Sport and League fields (same for both writein and regular contracts)
   expectIfDefined(result.contract.Sport, testCase.expectedSport);
+  if (testCase.expectedSportSource !== undefined) {
+    expect(result.contract).toHaveProperty('SportSource', testCase.expectedSportSource);
+  }
   expectIfDefined(result.contract.League, testCase.expectedLeague);
 
   // Event date for regular contracts (in addition to writeins)
@@ -573,32 +577,44 @@ describe('Chat Bet Parsing', () => {
     test.each(specialFormatsTestCases)('$description', validateTestCase);
   });
 
-  // A rotation number is a catalogue id, not a sport: books renumber by
-  // season and reuse numbers, so the parser never derives Sport from one.
-  describe('Rotation numbers never imply a sport', () => {
-    test.each([
-      ['IW 507 Thunder/Nuggets o213.5', 507],
-      ['IW 872 Athletics @ +145', 872],
-      ['IW 457 Dolphins @ +145', 457],
-      ['YG 195 Illinois/Washington o54 @ -105 = 3.0', 195],
-      ['IW 705 Celtics/Heat u215.5 @ -110', 705],
-      ['IW 9905 Yankees @ -120', 9905],
-      ['YG 9921 SEA F5 +0 @ -250 = 12.0', 9921],
-      ['IW 7/1/25 872 Cardinals/Cubs o8.5 @ -110', 872],
-    ])('%s', (input, rotation) => {
+  // Sport/League Inference
+  describe('Sport/League Inference', () => {
+    test.each(sportLeagueInferenceTestCases)('$description', validateTestCase);
+  });
+
+  // Where contract.Sport came from: consumers rank an explicit sport above
+  // their own defaults and a rotation-range guess below them.
+  describe('Sport provenance (SportSource)', () => {
+    const straightContract = (input: string) => {
       const result = parseChat(input);
       if (result.betType !== 'straight') throw new Error('expected a straight');
-      expect(result.rotationNumber).toBe(rotation);
-      expect(result.contract.Sport).toBeUndefined();
+      return result.contract;
+    };
+
+    test.each([
+      ['IW Baseball Yankees @ -120', 'Baseball', 'explicit'],
+      ['IW league:NFL Dolphins @ +145', 'Football', 'league'],
+      ['IW 457 league:NFL Dolphins @ +145', 'Football', 'league'],
+      ['IW NBA Lakers @ +120', 'Basketball', 'league'],
+      ['YG Rays 1st Inning o0.5 +127 = 15.0', 'Baseball', 'grammar'],
+      ['YG 913 Rays 1st Inning o0.5 +127 = 15.0', 'Baseball', 'grammar'],
+      ['IW LAA TT o3.5 runs', 'Baseball', 'grammar'],
+      ['IW 872 Athletics @ +145', 'Baseball', 'rotation'],
+      ['YGW league:MLB 2025-05-14 Cardinals win @ +150 = 1.0', 'Baseball', 'league'],
+    ])('%s -> %s from %s', (input, sport, source) => {
+      const contract = straightContract(input);
+      expect(contract.Sport).toBe(sport);
+      expect(contract).toHaveProperty('SportSource', source);
     });
 
-    test('an explicit league still sets the sport beside a rotation', () => {
-      const result = parseChat('IW 457 league:NFL Dolphins @ +145');
-      if (result.betType !== 'straight') throw new Error('expected a straight');
-      expect(result.rotationNumber).toBe(457);
-      expect(result.contract.Sport).toBe('Football');
-      expect(result.contract.League).toBe('NFL');
-    });
+    test.each(['IW Athletics @ +145', 'YG 913 Rays ml +100 = 1'])(
+      '%s has no sport and no SportSource',
+      input => {
+        const contract = straightContract(input);
+        expect(contract.Sport).toBeUndefined();
+        expect(contract).not.toHaveProperty('SportSource');
+      }
+    );
   });
 
   // A bare moneyline marker is not a contestant: "YG 913 ml +100 = 1" used to

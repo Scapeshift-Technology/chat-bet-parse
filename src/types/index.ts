@@ -102,12 +102,22 @@ export type ContractSportCompetitionMatchType = 'Handicap' | 'TotalPoints' | 'Pr
 
 export type ContestantType = 'Individual' | 'TeamAdHoc' | 'TeamLeague';
 
+/**
+ * Where a contract's Sport came from, strongest first: named in the message
+ * ('explicit'), implied by a league named in the message ('league'), implied
+ * by sport-specific grammar such as innings or "runs" ('grammar'), or guessed
+ * from the rotation-number range ('rotation' — books renumber by season and
+ * reuse numbers, so this is the weakest). Unset when Sport is unset.
+ */
+export type SportSource = 'explicit' | 'league' | 'grammar' | 'rotation';
+
 // ==============================================================================
 // BASE CONTRACT INTERFACE
 // ==============================================================================
 
 export interface ContractSportCompetitionMatchBase {
   Sport?: Sport;
+  SportSource?: SportSource;
   League?: League;
   Match: Match;
   Period: Period;
@@ -192,6 +202,7 @@ export interface ContractSportCompetitionMatchPropYN extends ContractSportCompet
 
 export interface ContractSportCompetitionSeries {
   Sport?: Sport;
+  SportSource?: SportSource;
   League?: League;
   Match: Match;
   RotationNumber?: number;
@@ -207,6 +218,7 @@ export interface ContractWritein {
   EventDate: Date;
   Description: string;
   Sport?: Sport;
+  SportSource?: SportSource;
   League?: League;
 }
 

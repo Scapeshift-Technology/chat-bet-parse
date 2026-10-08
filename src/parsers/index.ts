@@ -13,6 +13,7 @@ import type {
   Match,
   Period,
   Sport,
+  SportSource,
   League,
   ContractSportCompetitionMatchTotalPoints,
   ContractSportCompetitionMatchTotalPointsContestant,
@@ -1748,6 +1749,8 @@ function parseWritein(
     EventDate: eventDate,
     Description: validatedDescription,
     Sport: sport,
+    // A writein's sport is only ever implied by its league (tokenizeWritein).
+    ...(sport !== undefined && { SportSource: 'league' as const }),
     League: league,
   };
 }
@@ -1879,6 +1882,37 @@ function parseContractByType(
   );
 }
 
+/**
+ * Build a non-writein contract and stamp what the type parsers do not know:
+ * the message's rotation number and where Sport came from. Sport-specific
+ * grammar (innings, "runs") fills Sport only when inference left it unset.
+ */
+function parseRegularContract(tokens: ParsedTokens): {
+  contractType: ContractType;
+  contract: Contract;
+} {
+  const contractType = detectContractType(tokens.contractText, tokens.rawInput);
+  const { sport, league, sportSource } = inferSportAndLeague(
+    tokens.rotationNumber,
+    tokens.explicitLeague,
+    tokens.explicitSport
+  );
+  const contract = parseContractByType(contractType, tokens, sport, league);
+
+  if (!isWritein(contract)) {
+    if (tokens.rotationNumber !== undefined) {
+      contract.RotationNumber = tokens.rotationNumber;
+    }
+    const source: SportSource | undefined =
+      sport !== undefined ? sportSource : contract.Sport !== undefined ? 'grammar' : undefined;
+    if (source !== undefined) {
+      contract.SportSource = source;
+    }
+  }
+
+  return { contractType, contract };
+}
+
 // ==============================================================================
 // MAIN PARSING FUNCTIONS
 // ==============================================================================
@@ -1968,16 +2002,7 @@ function parseChatOrderInternal(
     };
   }
 
-  // Handle regular contracts
-  const contractType = detectContractType(tokens.contractText, tokens.rawInput);
-  const { sport, league } = inferSportAndLeague(tokens.explicitLeague, tokens.explicitSport);
-
-  // Parse contract using factory
-  const contract = parseContractByType(contractType, tokens, sport, league);
-
-  if (tokens.rotationNumber !== undefined && !isWritein(contract)) {
-    contract.RotationNumber = tokens.rotationNumber;
-  }
+  const { contractType, contract } = parseRegularContract(tokens);
 
   return {
     chatType: 'order',
@@ -2049,16 +2074,7 @@ function parseChatFillInternal(
     };
   }
 
-  // Handle regular contracts
-  const contractType = detectContractType(tokens.contractText, tokens.rawInput);
-  const { sport, league } = inferSportAndLeague(tokens.explicitLeague, tokens.explicitSport);
-
-  // Parse contract using factory
-  const contract = parseContractByType(contractType, tokens, sport, league);
-
-  if (tokens.rotationNumber !== undefined && !isWritein(contract)) {
-    contract.RotationNumber = tokens.rotationNumber;
-  }
+  const { contractType, contract } = parseRegularContract(tokens);
 
   return {
     chatType: 'fill',

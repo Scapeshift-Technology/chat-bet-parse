@@ -251,6 +251,43 @@ describe('ContractLegSpec Mapping', () => {
     });
   });
 
+  describe('Sport provenance', () => {
+    test('a straight carries where its sport came from', () => {
+      const spec = mapParseResultToContractLegSpec(
+        parseChat('IW 872 Athletics @ +145')
+      ) as ContractLegSpec;
+      expect(spec.Sport).toBe('Baseball');
+      expect(spec.SportSource).toBe('rotation');
+    });
+
+    test('a straight with no sport has no SportSource', () => {
+      const spec = mapParseResultToContractLegSpec(
+        parseChat('IW Athletics @ +145')
+      ) as ContractLegSpec;
+      expect(spec).not.toHaveProperty('Sport');
+      expect(spec).not.toHaveProperty('SportSource');
+    });
+
+    test('each parlay leg carries its own SportSource', () => {
+      const specs = mapParseResultToContractLegSpec(
+        parseChat('YGP 872 Cardinals/Cubs o8.5 @ -110 & NFL Dolphins @ +120 & Yankees @ -150 = $100')
+      ) as ContractLegSpec[];
+      expect(specs.map(s => [s.Sport, s.SportSource])).toEqual([
+        ['Baseball', 'rotation'],
+        ['Football', 'league'],
+        [undefined, undefined],
+      ]);
+    });
+
+    test('a writein sport comes from its league', () => {
+      const spec = mapParseResultToContractLegSpec(
+        parseChat('YGW league:MLB 2025-05-14 Cardinals win @ +150 = 1.0')
+      ) as ContractLegSpec;
+      expect(spec.Sport).toBe('Baseball');
+      expect(spec.SportSource).toBe('league');
+    });
+  });
+
   describe('Date Handling', () => {
     test('should use provided eventDate option', () => {
       const parseResult = parseChat('IW Athletics @ +145');

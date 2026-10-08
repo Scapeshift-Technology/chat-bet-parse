@@ -4,6 +4,7 @@
  */
 
 import { ChatBetParseError } from '../errors/index';
+import type { SportSource } from '../types/index';
 
 /**
  * Contract leg specification matching the SQL Server ContractLegSpecTableType
@@ -39,6 +40,9 @@ export interface ContractLegSpec {
 
   /** Sport */
   Sport?: string;
+
+  /** Where Sport came from (see SportSource); unset when Sport is unset */
+  SportSource?: SportSource;
 
   /** Period type code */
   PeriodTypeCode?: string;

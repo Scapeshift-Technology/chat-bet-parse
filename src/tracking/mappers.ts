@@ -112,6 +112,10 @@ export function mapParseResultToContractLegSpec(
     }
   }
 
+  if (contract.SportSource !== undefined) {
+    baseSpec.SportSource = contract.SportSource;
+  }
+
   // Add period info for contracts that need it
   if (contractType !== 'Series' && !isWritein(contract)) {
     const periodInfo = extractPeriodInfo(contract);
