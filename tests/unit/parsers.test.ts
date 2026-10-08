@@ -604,6 +604,9 @@ describe('Chat Bet Parsing', () => {
       ['IW 872 Athletics @ +145', 'Baseball', 'rotation'],
       ['IW 872 Baseball Athletics @ +145', 'Baseball', 'explicit'],
       ['IW 507 Basketball Lakers @ +120', 'Basketball', 'explicit'],
+      // A named sport outranks a conflicting rotation-range guess
+      ['IW 872 Football Dolphins @ +145', 'Football', 'explicit'],
+      ['IW 457 Baseball Yankees @ -120', 'Baseball', 'explicit'],
       ['YGW league:MLB 2025-05-14 Cardinals win @ +150 = 1.0', 'Baseball', 'league'],
     ])('%s -> %s from %s', (input, sport, source) => {
       const contract = straightContract(input);

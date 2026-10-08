@@ -638,8 +638,9 @@ export function inferSportAndLeague(
     league = 'CBK';
   }
 
-  // Infer from rotation if needed
-  if ((!sport || !league) && rotationNumber) {
+  // Infer from rotation only when the message names no sport (a named league
+  // implies one): the range is a guess and never replaces the message's word.
+  if (!sport && rotationNumber) {
     // Existing inference logic
     // use rotation number ranges and other heuristics to determine sport/league
     if (rotationNumber >= 100 && rotationNumber < 499) {
