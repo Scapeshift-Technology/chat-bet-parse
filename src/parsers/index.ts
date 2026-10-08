@@ -1837,18 +1837,18 @@ function parseContractByType(
 
 /**
  * Build a non-writein contract and stamp what the type parsers do not know:
- * the message's rotation number, the message-level sport, and where Sport
- * came from. Grammar sport (a "runs" suffix from the type parsers, an
- * inning period here for every type) yields to a sport from the message or
- * the rotation range, as it always has.
+ * the message's rotation number, the sport, and where the sport came from.
+ * Evidence ranks: a sport or league named in the message, then grammar (a
+ * "runs" suffix from the type parsers, an inning period here for every type),
+ * then the rotation-range guess, which only fills a sport nothing else gives.
  */
 function parseRegularContract(tokens: ParsedTokens): {
   contractType: ContractType;
   contract: Contract;
 } {
   const contractType = detectContractType(tokens.contractText, tokens.rawInput);
-  const { sport: messageSport, league } = inferSportAndLeague(
-    tokens.rotationNumber,
+  const { sport: statedSport, league } = inferSportAndLeague(
+    undefined,
     tokens.explicitLeague,
     tokens.explicitSport
   );
@@ -1858,12 +1858,10 @@ function parseRegularContract(tokens: ParsedTokens): {
     if (tokens.rotationNumber !== undefined) {
       contract.RotationNumber = tokens.rotationNumber;
     }
-    // An inning period is baseball grammar on every contract type; a "runs"
-    // suffix is visible only to the type parsers, which report it as Sport.
     const inningPeriod = 'Period' in contract && contract.Period.PeriodTypeCode === 'I';
     const grammarSport: Sport | undefined =
       contract.Sport ?? (inningPeriod ? 'Baseball' : undefined);
-    const sport = messageSport ?? grammarSport;
+    const sport = statedSport ?? grammarSport ?? inferSportAndLeague(tokens.rotationNumber).sport;
     if (sport !== undefined) {
       contract.Sport = sport;
       contract.SportSource = strongestSportSource(sport, tokens, grammarSport);

@@ -600,6 +600,9 @@ describe('Chat Bet Parsing', () => {
       ['YG 913 Rays 1st Inning o0.5 +127 = 15.0', 'Baseball', 'grammar'],
       ['YG 872 Rays 1st Inning o0.5 +127 = 15.0', 'Baseball', 'grammar'],
       ['IW 872 LAA TT o3.5 runs', 'Baseball', 'grammar'],
+      // Grammar outranks a conflicting rotation-range guess
+      ['YG 457 Rays 1st Inning o0.5 +127 = 15.0', 'Baseball', 'grammar'],
+      ['IW 507 LAA TT o3.5 runs', 'Baseball', 'grammar'],
       // An inning period is baseball grammar on every contract type
       ['IW LAA 1st Inning TT o0.5', 'Baseball', 'grammar'],
       ['IW Rays 1st Inning +0', 'Baseball', 'grammar'],
