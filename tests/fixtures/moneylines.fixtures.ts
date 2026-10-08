@@ -42,6 +42,7 @@ export const moneylinesTestCases: TestCase[] = [
     expectedTeam1: 'SEA',
     expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 },
     expectedSport: 'Baseball',
+    expectedSportSource: 'rotation',
     expectedTiesLose: false
   },
   {
@@ -55,6 +56,7 @@ export const moneylinesTestCases: TestCase[] = [
     expectedTeam1: 'SD',
     expectedPeriod: { PeriodTypeCode: 'H', PeriodNumber: 1 },
     expectedSport: 'Baseball',
+    expectedSportSource: 'rotation',
     expectedTiesLose: false
   },
   {

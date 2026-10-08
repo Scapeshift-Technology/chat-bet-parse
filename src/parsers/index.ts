@@ -13,6 +13,7 @@ import type {
   Match,
   Period,
   Sport,
+  SportSource,
   League,
   ContractSportCompetitionMatchTotalPoints,
   ContractSportCompetitionMatchTotalPointsContestant,
@@ -29,7 +30,7 @@ import type {
   OrderShapeAssessment,
 } from '../types/index';
 
-import { knownLeagues, knownSports, leagueSportMap } from '../types/index';
+import { isWritein, knownLeagues, knownSports, leagueSportMap } from '../types/index';
 import { BET_CANDIDATE_SIGNAL, FUSED_BARE_PREFIX, OVER_UNDER_CLIPPINGS } from '../signals';
 
 import {
@@ -280,12 +281,17 @@ function periodsMatch(a: Period, b: Period): boolean {
   return a.PeriodTypeCode === b.PeriodTypeCode && a.PeriodNumber === b.PeriodNumber;
 }
 
-function extractFirstPeriod(text: string, rawInput: string): Period | undefined {
+/** The first period phrase in the text, and the text without it. */
+function extractFirstPeriod(
+  text: string,
+  rawInput: string
+): { period: Period; rest: string } | undefined {
   const normalized = normalizePeriodWordPhrases(text);
   for (const pattern of PERIOD_TEXT_PATTERNS) {
     const match = normalized.match(pattern);
     if (match) {
-      return parsePeriod(match[1], rawInput);
+      const rest = normalized.replace(match[0], ' ').replace(/\s+/g, ' ').trim();
+      return { period: parsePeriod(match[1], rawInput), rest };
     }
   }
   return undefined;
@@ -319,7 +325,7 @@ function applyPostPriceTail(
 
   const tailPeriod = parseStandalonePeriod(tailText, rawInput);
   if (tailPeriod) {
-    const contractPeriod = extractFirstPeriod(contractText, rawInput);
+    const contractPeriod = extractFirstPeriod(contractText, rawInput)?.period;
     if (contractPeriod && !periodsMatch(contractPeriod, tailPeriod)) {
       throw new InvalidPeriodFormatError(rawInput, tailText);
     }
@@ -1212,7 +1218,6 @@ function detectContractType(contractText: string, rawInput: string): ContractTyp
 function parseGameTotal(
   contractText: string,
   rawInput: string,
-  sport?: Sport,
   league?: League,
   gameNumber?: number,
   eventDate?: Date
@@ -1247,26 +1252,16 @@ function parseGameTotal(
   }
 
   // Parse teams and extract game info
-  const { period, match } = parseMatchInfo(
-    withoutOU,
-    rawInput,
-    sport,
-    league,
-    gameNumber,
-    eventDate
-  );
+  const { period, match } = parseMatchInfo(withoutOU, rawInput, league, gameNumber, eventDate);
 
-  // If "runs" suffix was detected OR inning period detected, set sport to Baseball
-  let finalSport = sport;
-  if ((hasRunsSuffix || period.PeriodTypeCode === 'I') && !sport) {
-    finalSport = 'Baseball';
-  }
+  // A "runs" suffix is baseball grammar
+  const grammarSport: Sport | undefined = hasRunsSuffix ? 'Baseball' : undefined;
 
   // For game totals, we can have either two teams (traditional game total) or one team (single team game total)
   // Single team game totals are still considered TotalPoints, not TotalPointsContestant
 
   return {
-    Sport: finalSport,
+    Sport: grammarSport,
     League: league,
     Match: match,
     Period: period,
@@ -1284,7 +1279,6 @@ function parseGameTotal(
 function parseTeamTotal(
   contractText: string,
   rawInput: string,
-  sport?: Sport,
   league?: League,
   gameNumber?: number,
   eventDate?: Date
@@ -1299,11 +1293,8 @@ function parseTeamTotal(
   const { isOver, line } = parseOverUnder(ouMatch[1] + ouMatch[2], rawInput);
   const hasRunsSuffix = !!ouMatch[3];
 
-  // If "runs" suffix was detected, set sport to Baseball
-  let finalSport = sport;
-  if (hasRunsSuffix && !sport) {
-    finalSport = 'Baseball';
-  }
+  // A "runs" suffix is baseball grammar
+  const grammarSport: Sport | undefined = hasRunsSuffix ? 'Baseball' : undefined;
 
   // Remove the o/u part (and optional "runs") and TT to get team and period
   const withoutOU = contractText
@@ -1315,14 +1306,13 @@ function parseTeamTotal(
   const { teams, period, match } = parseMatchInfo(
     withoutOU,
     rawInput,
-    finalSport,
     league,
     gameNumber,
     eventDate
   );
 
   return {
-    Sport: finalSport,
+    Sport: grammarSport,
     League: league,
     Match: match,
     Period: period,
@@ -1341,7 +1331,6 @@ function parseTeamTotal(
 function parseMoneyline(
   contractText: string,
   rawInput: string,
-  sport?: Sport,
   league?: League,
   gameNumber?: number,
   eventDate?: Date
@@ -1356,7 +1345,6 @@ function parseMoneyline(
   const { teams, period, match } = parseMatchInfo(
     cleanedContractText,
     rawInput,
-    sport,
     league,
     gameNumber,
     eventDate
@@ -1371,7 +1359,6 @@ function parseMoneyline(
   }
 
   return {
-    Sport: sport,
     League: league,
     Match: match,
     Period: period,
@@ -1389,7 +1376,6 @@ function parseMoneyline(
 function parseSpread(
   contractText: string,
   rawInput: string,
-  sport?: Sport,
   league?: League,
   gameNumber?: number,
   eventDate?: Date
@@ -1421,14 +1407,12 @@ function parseSpread(
   const { teams, period, match } = parseMatchInfo(
     teamPart,
     rawInput,
-    sport,
     league,
     gameNumber,
     eventDate
   );
 
   return {
-    Sport: sport,
     League: league,
     Match: match,
     Period: period,
@@ -1446,7 +1430,6 @@ function parseSpread(
 function parsePropOU(
   contractText: string,
   rawInput: string,
-  sport?: Sport,
   league?: League,
   gameNumber?: number,
   eventDate?: Date
@@ -1461,11 +1444,8 @@ function parsePropOU(
   const { isOver, line } = parseOverUnder(ouMatch[1] + ouMatch[2], rawInput);
   const hasRunsSuffix = !!ouMatch[3];
 
-  // If "runs" suffix was detected, set sport to Baseball
-  let finalSport = sport;
-  if (hasRunsSuffix && !sport) {
-    finalSport = 'Baseball';
-  }
+  // A "runs" suffix is baseball grammar
+  const grammarSport: Sport | undefined = hasRunsSuffix ? 'Baseball' : undefined;
 
   // Remove the o/u part (and optional "runs") to get player/team and prop type
   const withoutOU = contractText
@@ -1481,7 +1461,10 @@ function parsePropOU(
     );
   }
 
-  let contestant = extracted.contestant;
+  // A period phrase lands in the contestant text ("B. Falter 1st inning hits")
+  const contestantPeriod = extractFirstPeriod(extracted.contestant, rawInput);
+  let contestant = contestantPeriod?.rest ?? extracted.contestant;
+  const period: Period = contestantPeriod?.period ?? { PeriodTypeCode: 'M', PeriodNumber: 0 };
   const propText = extracted.propText;
 
   const propInfo = detectPropType(propText);
@@ -1518,10 +1501,10 @@ function parsePropOU(
   }
 
   return {
-    Sport: finalSport,
+    Sport: grammarSport,
     League: league,
     Match: match,
-    Period: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+    Period: period,
     HasContestant: true,
     HasLine: true,
     ContractSportCompetitionMatchType: 'Prop',
@@ -1539,7 +1522,6 @@ function parsePropOU(
 function parsePropYN(
   contractText: string,
   rawInput: string,
-  sport?: Sport,
   league?: League,
   gameNumber?: number,
   eventDate?: Date
@@ -1597,10 +1579,9 @@ function parsePropYN(
   }
 
   // Use parseMatchInfo to extract team and game number
-  const { teams, match } = parseMatchInfo(
+  const { teams, period, match } = parseMatchInfo(
     teamAndGameInfo,
     rawInput,
-    sport,
     league,
     gameNumber,
     eventDate
@@ -1640,10 +1621,9 @@ function parsePropYN(
   }
 
   return {
-    Sport: sport,
     League: league,
     Match: finalMatch,
-    Period: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+    Period: period,
     HasContestant: true,
     HasLine: false,
     ContractSportCompetitionMatchType: 'Prop',
@@ -1660,7 +1640,6 @@ function parsePropYN(
 function parseSeries(
   contractText: string,
   rawInput: string,
-  sport?: Sport,
   league?: League,
   gameNumber?: number,
   eventDate?: Date
@@ -1715,7 +1694,6 @@ function parseSeries(
   const team = teamMatch[1].trim();
 
   return {
-    Sport: sport,
     League: league,
     Match: {
       Date: eventDate,
@@ -1748,6 +1726,8 @@ function parseWritein(
     EventDate: eventDate,
     Description: validatedDescription,
     Sport: sport,
+    // A writein's sport is only ever implied by its league (tokenizeWritein).
+    ...(sport !== undefined && { SportSource: 'league' as const }),
     League: league,
   };
 }
@@ -1762,7 +1742,6 @@ function parseWritein(
 function parseMatchInfo(
   text: string,
   rawInput: string,
-  _sport?: Sport,
   _league?: League,
   gameNumberFromTokens?: number,
   eventDate?: Date
@@ -1825,7 +1804,6 @@ function parseMatchInfo(
 type ContractParserFn = (
   contractText: string,
   rawInput: string,
-  sport?: Sport,
   league?: League,
   gameNumber?: number,
   eventDate?: Date
@@ -1853,7 +1831,6 @@ const CONTRACT_PARSERS: Record<ContractType, ContractParserFn> = {
 function parseContractByType(
   contractType: ContractType,
   tokens: ParsedTokens,
-  sport?: Sport,
   league?: League
 ): Contract {
   const parser = CONTRACT_PARSERS[contractType];
@@ -1869,14 +1846,58 @@ function parseContractByType(
     );
   }
 
-  return parser(
-    tokens.contractText,
-    tokens.rawInput,
-    sport,
-    league,
-    tokens.gameNumber,
-    tokens.eventDate
+  return parser(tokens.contractText, tokens.rawInput, league, tokens.gameNumber, tokens.eventDate);
+}
+
+/**
+ * Build a non-writein contract and stamp what the type parsers do not know:
+ * the message's rotation number, the sport, and where the sport came from.
+ * Evidence ranks: a sport or league named in the message, then grammar (a
+ * "runs" suffix from the type parsers, an inning period here for every type),
+ * then the rotation-range guess, which only fills a sport nothing else gives.
+ */
+function parseRegularContract(tokens: ParsedTokens): {
+  contractType: ContractType;
+  contract: Contract;
+} {
+  const contractType = detectContractType(tokens.contractText, tokens.rawInput);
+  const { sport: statedSport, league } = inferSportAndLeague(
+    undefined,
+    tokens.explicitLeague,
+    tokens.explicitSport
   );
+  const contract = parseContractByType(contractType, tokens, league);
+
+  if (!isWritein(contract)) {
+    if (tokens.rotationNumber !== undefined) {
+      contract.RotationNumber = tokens.rotationNumber;
+    }
+    const inningPeriod = 'Period' in contract && contract.Period.PeriodTypeCode === 'I';
+    const grammarSport: Sport | undefined =
+      contract.Sport ?? (inningPeriod ? 'Baseball' : undefined);
+    const sport = statedSport ?? grammarSport ?? inferSportAndLeague(tokens.rotationNumber).sport;
+    if (sport !== undefined) {
+      contract.Sport = sport;
+      contract.SportSource = strongestSportSource(sport, tokens, grammarSport);
+    }
+  }
+
+  return { contractType, contract };
+}
+
+/**
+ * The strongest evidence that supports the contract's sport. Only the
+ * rotation-range inference can supply a sport nothing else supports.
+ */
+function strongestSportSource(
+  sport: Sport,
+  tokens: ParsedTokens,
+  grammarSport: Sport | undefined
+): SportSource {
+  if (tokens.explicitSport === sport) return 'explicit';
+  if (tokens.explicitLeague && leagueSportMap[tokens.explicitLeague] === sport) return 'league';
+  if (grammarSport === sport) return 'grammar';
+  return 'rotation';
 }
 
 // ==============================================================================
@@ -1968,21 +1989,7 @@ function parseChatOrderInternal(
     };
   }
 
-  // Handle regular contracts
-  const contractType = detectContractType(tokens.contractText, tokens.rawInput);
-  const { sport, league } = inferSportAndLeague(
-    tokens.rotationNumber,
-    tokens.explicitLeague,
-    tokens.explicitSport
-  );
-
-  // Parse contract using factory
-  const contract = parseContractByType(contractType, tokens, sport, league);
-
-  // Add rotation number to contract if present
-  if (tokens.rotationNumber && 'RotationNumber' in contract) {
-    contract.RotationNumber = tokens.rotationNumber;
-  }
+  const { contractType, contract } = parseRegularContract(tokens);
 
   return {
     chatType: 'order',
@@ -2054,21 +2061,7 @@ function parseChatFillInternal(
     };
   }
 
-  // Handle regular contracts
-  const contractType = detectContractType(tokens.contractText, tokens.rawInput);
-  const { sport, league } = inferSportAndLeague(
-    tokens.rotationNumber,
-    tokens.explicitLeague,
-    tokens.explicitSport
-  );
-
-  // Parse contract using factory
-  const contract = parseContractByType(contractType, tokens, sport, league);
-
-  // Add rotation number to contract if present
-  if (tokens.rotationNumber && 'RotationNumber' in contract) {
-    contract.RotationNumber = tokens.rotationNumber;
-  }
+  const { contractType, contract } = parseRegularContract(tokens);
 
   return {
     chatType: 'fill',

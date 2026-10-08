@@ -61,6 +61,7 @@ export const eventDateTestCases: TestCase[] = [
     expectedLine: 8.5,
     expectedIsOver: true,
     expectedSport: 'Baseball',
+    expectedSportSource: 'rotation',
     expectedEventDate: new Date(Date.UTC(2025, 6, 1)),
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 }
   },

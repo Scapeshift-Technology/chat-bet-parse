@@ -539,9 +539,11 @@ export const NUMERIC_TEAM_NAME_PREFIX = `(?:${NUMERIC_TEAM_NAMES.map(name =>
  * or an allowlisted digit-led name. Text that reaches the moneyline paths
  * with any other digit — "mil un 4", "Guardians-128", "Pirates u8.5" — is a
  * side, line or price the grammar did not consume, and the caller fails
- * closed instead of minting a moneyline on it.
+ * closed instead of minting a moneyline on it. A bare "ML" is the moneyline
+ * marker with no team ("YG 913 ml +100"), never a name.
  */
 export function isMoneylineContestant(name: string): boolean {
+  if (/^ml$/i.test(name.trim())) return false;
   return name.split(/\s+/).every(token => {
     const word = token.replace(/[^a-z0-9]/gi, '').toLowerCase();
     return !/\d/.test(word) || (NUMERIC_TEAM_NAMES as readonly string[]).includes(word);
@@ -636,8 +638,9 @@ export function inferSportAndLeague(
     league = 'CBK';
   }
 
-  // Infer from rotation if needed
-  if ((!sport || !league) && rotationNumber) {
+  // Infer from rotation only when the message names no sport (a named league
+  // implies one): the range is a guess and never replaces the message's word.
+  if (!sport && rotationNumber) {
     // Existing inference logic
     // use rotation number ranges and other heuristics to determine sport/league
     if (rotationNumber >= 100 && rotationNumber < 499) {

@@ -197,9 +197,9 @@ function validateTestCase(testCase: TestCase) {
   // Rotation number
   if (testCase.expectedRotationNumber !== undefined) {
     expect(result.rotationNumber).toBe(testCase.expectedRotationNumber);
-    if ('RotationNumber' in result.contract) {
-      expect(result.contract.RotationNumber).toBe(testCase.expectedRotationNumber);
-    }
+    expect(result.contract).toHaveProperty('RotationNumber', testCase.expectedRotationNumber);
+  } else {
+    expect(result.contract).not.toHaveProperty('RotationNumber');
   }
 
   // Period info
@@ -222,6 +222,9 @@ function validateTestCase(testCase: TestCase) {
 
   // Sport and League fields (same for both writein and regular contracts)
   expectIfDefined(result.contract.Sport, testCase.expectedSport);
+  if (testCase.expectedSportSource !== undefined) {
+    expect(result.contract).toHaveProperty('SportSource', testCase.expectedSportSource);
+  }
   expectIfDefined(result.contract.League, testCase.expectedLeague);
 
   // Event date for regular contracts (in addition to writeins)
@@ -577,6 +580,94 @@ describe('Chat Bet Parsing', () => {
   // Sport/League Inference
   describe('Sport/League Inference', () => {
     test.each(sportLeagueInferenceTestCases)('$description', validateTestCase);
+  });
+
+  // Where contract.Sport came from: consumers rank an explicit sport above
+  // their own defaults and a rotation-range guess below them.
+  describe('Sport provenance (SportSource)', () => {
+    const straightContract = (input: string) => {
+      const result = parseChat(input);
+      if (result.betType !== 'straight') throw new Error('expected a straight');
+      return result.contract;
+    };
+
+    test.each([
+      ['IW Baseball Yankees @ -120', 'Baseball', 'explicit'],
+      ['IW league:NFL Dolphins @ +145', 'Football', 'league'],
+      ['IW 457 league:NFL Dolphins @ +145', 'Football', 'league'],
+      ['IW NBA Lakers @ +120', 'Basketball', 'league'],
+      ['YG Rays 1st Inning o0.5 +127 = 15.0', 'Baseball', 'grammar'],
+      ['YG 913 Rays 1st Inning o0.5 +127 = 15.0', 'Baseball', 'grammar'],
+      ['YG 872 Rays 1st Inning o0.5 +127 = 15.0', 'Baseball', 'grammar'],
+      ['IW 872 LAA TT o3.5 runs', 'Baseball', 'grammar'],
+      // Grammar outranks a conflicting rotation-range guess
+      ['YG 457 Rays 1st Inning o0.5 +127 = 15.0', 'Baseball', 'grammar'],
+      ['IW 507 LAA TT o3.5 runs', 'Baseball', 'grammar'],
+      // An inning period is baseball grammar on every contract type
+      ['IW LAA 1st Inning TT o0.5', 'Baseball', 'grammar'],
+      ['IW Rays 1st Inning +0', 'Baseball', 'grammar'],
+      ['IW 457 CIN 1st inning first team to score', 'Baseball', 'grammar'],
+      ['IW 457 B. Falter 1st inning hits o0.5', 'Baseball', 'grammar'],
+      ['IW LAA TT o3.5 runs', 'Baseball', 'grammar'],
+      ['IW 872 Athletics @ +145', 'Baseball', 'rotation'],
+      ['IW 872 Baseball Athletics @ +145', 'Baseball', 'explicit'],
+      ['IW 507 Basketball Lakers @ +120', 'Basketball', 'explicit'],
+      // A named sport outranks a conflicting rotation-range guess
+      ['IW 872 Football Dolphins @ +145', 'Football', 'explicit'],
+      ['IW 457 Baseball Yankees @ -120', 'Baseball', 'explicit'],
+      ['YGW league:MLB 2025-05-14 Cardinals win @ +150 = 1.0', 'Baseball', 'league'],
+    ])('%s -> %s from %s', (input, sport, source) => {
+      const contract = straightContract(input);
+      expect(contract.Sport).toBe(sport);
+      expect(contract).toHaveProperty('SportSource', source);
+    });
+
+    test('a yes/no prop keeps its inning period', () => {
+      const contract = straightContract('IW CIN 1st inning first team to score');
+      if (!('Period' in contract)) throw new Error('expected a period');
+      expect(contract.Period).toEqual({ PeriodTypeCode: 'I', PeriodNumber: 1 });
+    });
+
+    test('an over/under prop takes its period out of the contestant', () => {
+      const contract = straightContract('IW B. Falter 1st inning hits o0.5');
+      if (!('Period' in contract)) throw new Error('expected a period');
+      expect(contract.Period).toEqual({ PeriodTypeCode: 'I', PeriodNumber: 1 });
+      expect(contract.Match.Player).toBe('B. Falter');
+    });
+
+    test.each(['IW Athletics @ +145', 'YG 913 Rays ml +100 = 1'])(
+      '%s has no sport and no SportSource',
+      input => {
+        const contract = straightContract(input);
+        expect(contract.Sport).toBeUndefined();
+        expect(contract).not.toHaveProperty('SportSource');
+      }
+    );
+  });
+
+  // A bare moneyline marker is not a contestant: "YG 913 ml +100 = 1" used to
+  // book a moneyline on a team named "ml".
+  describe('A moneyline marker with no team throws', () => {
+    test.each([
+      'YG 913 ml +100 = 1',
+      'YG 913 ML = 1',
+      'YG ml +100 = 1',
+      'IW ml',
+      'YG 913 F5 ml +100 = 1',
+      'YG 913 G1 ml = 1',
+    ])('%s', input => {
+      expect(() => parseChat(input)).toThrow(InvalidContractTypeError);
+    });
+
+    test('a named team with a trailing ML still parses', () => {
+      const result = parseChat('YG 913 Rays ml +100 = 1');
+      if (result.betType !== 'straight' || isWritein(result.contract)) {
+        throw new Error('expected a straight match contract');
+      }
+      expect(result.contractType).toBe('HandicapContestantML');
+      expect(result.contract.Match.Team1).toBe('Rays');
+      expect(result.contract.RotationNumber).toBe(913);
+    });
   });
 
   // Spreads

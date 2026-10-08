@@ -19,6 +19,7 @@ export const sportLeagueInferenceTestCases: TestCase[] = [
     expectedIsOver: true,
     expectedPeriod: {PeriodTypeCode:'M',PeriodNumber:0},
     expectedSport: 'Basketball',
+    expectedSportSource: 'rotation',
   },
   {
     description: 'Infer Baseball from rotation number range (800s-900s)',
@@ -29,6 +30,7 @@ export const sportLeagueInferenceTestCases: TestCase[] = [
     expectedRotationNumber: 872,
     expectedTeam1: 'Athletics',
     expectedSport: 'Baseball',
+    expectedSportSource: 'rotation',
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
     expectedTiesLose: false
   },
@@ -41,6 +43,7 @@ export const sportLeagueInferenceTestCases: TestCase[] = [
     expectedRotationNumber: 457,
     expectedTeam1: 'Dolphins',
     expectedSport: 'Football',
+    expectedSportSource: 'rotation',
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
     expectedTiesLose: false
   },
@@ -57,7 +60,8 @@ export const sportLeagueInferenceTestCases: TestCase[] = [
     expectedLine: 54,
     expectedIsOver: true,
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
-    expectedSport: 'Football'
+    expectedSport: 'Football',
+    expectedSportSource: 'rotation',
   },
   {
     description: 'Infer Basketball from rotation number range (700s)',
@@ -71,7 +75,8 @@ export const sportLeagueInferenceTestCases: TestCase[] = [
     expectedLine: 215.5,
     expectedIsOver: false,
     expectedPeriod: { PeriodTypeCode: 'M', PeriodNumber: 0 },
-    expectedSport: 'Basketball'
+    expectedSport: 'Basketball',
+    expectedSportSource: 'rotation',
   },
 
 ];

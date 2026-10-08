@@ -50,6 +50,7 @@ export interface TestCase {
   expectedPeriod?: { PeriodTypeCode: string; PeriodNumber: number };
   expectedContestantType?: 'Individual' | 'TeamAdHoc' | 'TeamLeague';
   expectedSport?: string;
+  expectedSportSource?: 'explicit' | 'league' | 'grammar' | 'rotation';
   expectedLeague?: string;
   // Event date (for both writeins and regular contracts with date specified)
   expectedEventDate?: Date;
