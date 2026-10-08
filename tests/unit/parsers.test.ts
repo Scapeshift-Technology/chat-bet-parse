@@ -607,6 +607,7 @@ describe('Chat Bet Parsing', () => {
       ['IW LAA 1st Inning TT o0.5', 'Baseball', 'grammar'],
       ['IW Rays 1st Inning +0', 'Baseball', 'grammar'],
       ['IW 457 CIN 1st inning first team to score', 'Baseball', 'grammar'],
+      ['IW 457 B. Falter 1st inning hits o0.5', 'Baseball', 'grammar'],
       ['IW LAA TT o3.5 runs', 'Baseball', 'grammar'],
       ['IW 872 Athletics @ +145', 'Baseball', 'rotation'],
       ['IW 872 Baseball Athletics @ +145', 'Baseball', 'explicit'],
@@ -625,6 +626,13 @@ describe('Chat Bet Parsing', () => {
       const contract = straightContract('IW CIN 1st inning first team to score');
       if (!('Period' in contract)) throw new Error('expected a period');
       expect(contract.Period).toEqual({ PeriodTypeCode: 'I', PeriodNumber: 1 });
+    });
+
+    test('an over/under prop takes its period out of the contestant', () => {
+      const contract = straightContract('IW B. Falter 1st inning hits o0.5');
+      if (!('Period' in contract)) throw new Error('expected a period');
+      expect(contract.Period).toEqual({ PeriodTypeCode: 'I', PeriodNumber: 1 });
+      expect(contract.Match.Player).toBe('B. Falter');
     });
 
     test.each(['IW Athletics @ +145', 'YG 913 Rays ml +100 = 1'])(

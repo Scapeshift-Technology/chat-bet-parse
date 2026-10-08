@@ -281,12 +281,17 @@ function periodsMatch(a: Period, b: Period): boolean {
   return a.PeriodTypeCode === b.PeriodTypeCode && a.PeriodNumber === b.PeriodNumber;
 }
 
-function extractFirstPeriod(text: string, rawInput: string): Period | undefined {
+/** The first period phrase in the text, and the text without it. */
+function extractFirstPeriod(
+  text: string,
+  rawInput: string
+): { period: Period; rest: string } | undefined {
   const normalized = normalizePeriodWordPhrases(text);
   for (const pattern of PERIOD_TEXT_PATTERNS) {
     const match = normalized.match(pattern);
     if (match) {
-      return parsePeriod(match[1], rawInput);
+      const rest = normalized.replace(match[0], ' ').replace(/\s+/g, ' ').trim();
+      return { period: parsePeriod(match[1], rawInput), rest };
     }
   }
   return undefined;
@@ -320,7 +325,7 @@ function applyPostPriceTail(
 
   const tailPeriod = parseStandalonePeriod(tailText, rawInput);
   if (tailPeriod) {
-    const contractPeriod = extractFirstPeriod(contractText, rawInput);
+    const contractPeriod = extractFirstPeriod(contractText, rawInput)?.period;
     if (contractPeriod && !periodsMatch(contractPeriod, tailPeriod)) {
       throw new InvalidPeriodFormatError(rawInput, tailText);
     }
@@ -1456,7 +1461,10 @@ function parsePropOU(
     );
   }
 
-  let contestant = extracted.contestant;
+  // A period phrase lands in the contestant text ("B. Falter 1st inning hits")
+  const contestantPeriod = extractFirstPeriod(extracted.contestant, rawInput);
+  let contestant = contestantPeriod?.rest ?? extracted.contestant;
+  const period: Period = contestantPeriod?.period ?? { PeriodTypeCode: 'M', PeriodNumber: 0 };
   const propText = extracted.propText;
 
   const propInfo = detectPropType(propText);
@@ -1496,7 +1504,7 @@ function parsePropOU(
     Sport: grammarSport,
     League: league,
     Match: match,
-    Period: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+    Period: period,
     HasContestant: true,
     HasLine: true,
     ContractSportCompetitionMatchType: 'Prop',
