@@ -1213,7 +1213,6 @@ function detectContractType(contractText: string, rawInput: string): ContractTyp
 function parseGameTotal(
   contractText: string,
   rawInput: string,
-  sport?: Sport,
   league?: League,
   gameNumber?: number,
   eventDate?: Date
@@ -1248,26 +1247,17 @@ function parseGameTotal(
   }
 
   // Parse teams and extract game info
-  const { period, match } = parseMatchInfo(
-    withoutOU,
-    rawInput,
-    sport,
-    league,
-    gameNumber,
-    eventDate
-  );
+  const { period, match } = parseMatchInfo(withoutOU, rawInput, league, gameNumber, eventDate);
 
-  // If "runs" suffix was detected OR inning period detected, set sport to Baseball
-  let finalSport = sport;
-  if ((hasRunsSuffix || period.PeriodTypeCode === 'I') && !sport) {
-    finalSport = 'Baseball';
-  }
+  // A "runs" suffix or an inning period is baseball grammar
+  const grammarSport: Sport | undefined =
+    hasRunsSuffix || period.PeriodTypeCode === 'I' ? 'Baseball' : undefined;
 
   // For game totals, we can have either two teams (traditional game total) or one team (single team game total)
   // Single team game totals are still considered TotalPoints, not TotalPointsContestant
 
   return {
-    Sport: finalSport,
+    Sport: grammarSport,
     League: league,
     Match: match,
     Period: period,
@@ -1285,7 +1275,6 @@ function parseGameTotal(
 function parseTeamTotal(
   contractText: string,
   rawInput: string,
-  sport?: Sport,
   league?: League,
   gameNumber?: number,
   eventDate?: Date
@@ -1300,11 +1289,8 @@ function parseTeamTotal(
   const { isOver, line } = parseOverUnder(ouMatch[1] + ouMatch[2], rawInput);
   const hasRunsSuffix = !!ouMatch[3];
 
-  // If "runs" suffix was detected, set sport to Baseball
-  let finalSport = sport;
-  if (hasRunsSuffix && !sport) {
-    finalSport = 'Baseball';
-  }
+  // A "runs" suffix is baseball grammar
+  const grammarSport: Sport | undefined = hasRunsSuffix ? 'Baseball' : undefined;
 
   // Remove the o/u part (and optional "runs") and TT to get team and period
   const withoutOU = contractText
@@ -1316,14 +1302,13 @@ function parseTeamTotal(
   const { teams, period, match } = parseMatchInfo(
     withoutOU,
     rawInput,
-    finalSport,
     league,
     gameNumber,
     eventDate
   );
 
   return {
-    Sport: finalSport,
+    Sport: grammarSport,
     League: league,
     Match: match,
     Period: period,
@@ -1342,7 +1327,6 @@ function parseTeamTotal(
 function parseMoneyline(
   contractText: string,
   rawInput: string,
-  sport?: Sport,
   league?: League,
   gameNumber?: number,
   eventDate?: Date
@@ -1357,7 +1341,6 @@ function parseMoneyline(
   const { teams, period, match } = parseMatchInfo(
     cleanedContractText,
     rawInput,
-    sport,
     league,
     gameNumber,
     eventDate
@@ -1372,7 +1355,6 @@ function parseMoneyline(
   }
 
   return {
-    Sport: sport,
     League: league,
     Match: match,
     Period: period,
@@ -1390,7 +1372,6 @@ function parseMoneyline(
 function parseSpread(
   contractText: string,
   rawInput: string,
-  sport?: Sport,
   league?: League,
   gameNumber?: number,
   eventDate?: Date
@@ -1422,14 +1403,12 @@ function parseSpread(
   const { teams, period, match } = parseMatchInfo(
     teamPart,
     rawInput,
-    sport,
     league,
     gameNumber,
     eventDate
   );
 
   return {
-    Sport: sport,
     League: league,
     Match: match,
     Period: period,
@@ -1447,7 +1426,6 @@ function parseSpread(
 function parsePropOU(
   contractText: string,
   rawInput: string,
-  sport?: Sport,
   league?: League,
   gameNumber?: number,
   eventDate?: Date
@@ -1462,11 +1440,8 @@ function parsePropOU(
   const { isOver, line } = parseOverUnder(ouMatch[1] + ouMatch[2], rawInput);
   const hasRunsSuffix = !!ouMatch[3];
 
-  // If "runs" suffix was detected, set sport to Baseball
-  let finalSport = sport;
-  if (hasRunsSuffix && !sport) {
-    finalSport = 'Baseball';
-  }
+  // A "runs" suffix is baseball grammar
+  const grammarSport: Sport | undefined = hasRunsSuffix ? 'Baseball' : undefined;
 
   // Remove the o/u part (and optional "runs") to get player/team and prop type
   const withoutOU = contractText
@@ -1519,7 +1494,7 @@ function parsePropOU(
   }
 
   return {
-    Sport: finalSport,
+    Sport: grammarSport,
     League: league,
     Match: match,
     Period: { PeriodTypeCode: 'M', PeriodNumber: 0 },
@@ -1540,7 +1515,6 @@ function parsePropOU(
 function parsePropYN(
   contractText: string,
   rawInput: string,
-  sport?: Sport,
   league?: League,
   gameNumber?: number,
   eventDate?: Date
@@ -1598,14 +1572,7 @@ function parsePropYN(
   }
 
   // Use parseMatchInfo to extract team and game number
-  const { teams, match } = parseMatchInfo(
-    teamAndGameInfo,
-    rawInput,
-    sport,
-    league,
-    gameNumber,
-    eventDate
-  );
+  const { teams, match } = parseMatchInfo(teamAndGameInfo, rawInput, league, gameNumber, eventDate);
 
   // Detect contestant type - use keyword-based type first, fallback to pattern detection
   const contestantType = propInfo.contestantType || detectContestantType(teams.team1);
@@ -1641,7 +1608,6 @@ function parsePropYN(
   }
 
   return {
-    Sport: sport,
     League: league,
     Match: finalMatch,
     Period: { PeriodTypeCode: 'M', PeriodNumber: 0 },
@@ -1661,7 +1627,6 @@ function parsePropYN(
 function parseSeries(
   contractText: string,
   rawInput: string,
-  sport?: Sport,
   league?: League,
   gameNumber?: number,
   eventDate?: Date
@@ -1716,7 +1681,6 @@ function parseSeries(
   const team = teamMatch[1].trim();
 
   return {
-    Sport: sport,
     League: league,
     Match: {
       Date: eventDate,
@@ -1765,7 +1729,6 @@ function parseWritein(
 function parseMatchInfo(
   text: string,
   rawInput: string,
-  _sport?: Sport,
   _league?: League,
   gameNumberFromTokens?: number,
   eventDate?: Date
@@ -1828,7 +1791,6 @@ function parseMatchInfo(
 type ContractParserFn = (
   contractText: string,
   rawInput: string,
-  sport?: Sport,
   league?: League,
   gameNumber?: number,
   eventDate?: Date
@@ -1856,7 +1818,6 @@ const CONTRACT_PARSERS: Record<ContractType, ContractParserFn> = {
 function parseContractByType(
   contractType: ContractType,
   tokens: ParsedTokens,
-  sport?: Sport,
   league?: League
 ): Contract {
   const parser = CONTRACT_PARSERS[contractType];
@@ -1872,45 +1833,56 @@ function parseContractByType(
     );
   }
 
-  return parser(
-    tokens.contractText,
-    tokens.rawInput,
-    sport,
-    league,
-    tokens.gameNumber,
-    tokens.eventDate
-  );
+  return parser(tokens.contractText, tokens.rawInput, league, tokens.gameNumber, tokens.eventDate);
 }
 
 /**
  * Build a non-writein contract and stamp what the type parsers do not know:
- * the message's rotation number and where Sport came from. Sport-specific
- * grammar (innings, "runs") fills Sport only when inference left it unset.
+ * the message's rotation number, the message-level sport, and where Sport
+ * came from. Type parsers report only the sport their grammar implies
+ * (innings, "runs"); a sport from the message or the rotation range
+ * outranks it, as it always has.
  */
 function parseRegularContract(tokens: ParsedTokens): {
   contractType: ContractType;
   contract: Contract;
 } {
   const contractType = detectContractType(tokens.contractText, tokens.rawInput);
-  const { sport, league, sportSource } = inferSportAndLeague(
+  const { sport: messageSport, league } = inferSportAndLeague(
     tokens.rotationNumber,
     tokens.explicitLeague,
     tokens.explicitSport
   );
-  const contract = parseContractByType(contractType, tokens, sport, league);
+  const contract = parseContractByType(contractType, tokens, league);
 
   if (!isWritein(contract)) {
     if (tokens.rotationNumber !== undefined) {
       contract.RotationNumber = tokens.rotationNumber;
     }
-    const source: SportSource | undefined =
-      sport !== undefined ? sportSource : contract.Sport !== undefined ? 'grammar' : undefined;
-    if (source !== undefined) {
-      contract.SportSource = source;
+    const grammarSport = contract.Sport;
+    const sport = messageSport ?? grammarSport;
+    if (sport !== undefined) {
+      contract.Sport = sport;
+      contract.SportSource = strongestSportSource(sport, tokens, grammarSport);
     }
   }
 
   return { contractType, contract };
+}
+
+/**
+ * The strongest evidence that supports the contract's sport. Only the
+ * rotation-range inference can supply a sport nothing else supports.
+ */
+function strongestSportSource(
+  sport: Sport,
+  tokens: ParsedTokens,
+  grammarSport: Sport | undefined
+): SportSource {
+  if (tokens.explicitSport === sport) return 'explicit';
+  if (tokens.explicitLeague && leagueSportMap[tokens.explicitLeague] === sport) return 'league';
+  if (grammarSport === sport) return 'grammar';
+  return 'rotation';
 }
 
 // ==============================================================================

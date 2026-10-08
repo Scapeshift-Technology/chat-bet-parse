@@ -6,7 +6,6 @@
 import {
   type Period,
   type Sport,
-  type SportSource,
   type League,
   leagueSportMap,
   type KnownLeague,
@@ -620,14 +619,9 @@ export function inferSportAndLeague(
   rotationNumber?: number,
   explicitLeague?: KnownLeague,
   explicitSport?: Sport
-): { sport?: Sport; league?: League; sportSource?: SportSource } {
+): { sport?: Sport; league?: League } {
   let sport = explicitSport;
   let league = explicitLeague;
-  const sportSource: SportSource | undefined = explicitSport
-    ? 'explicit'
-    : explicitLeague
-      ? 'league'
-      : undefined;
 
   if (explicitLeague && explicitSport && leagueSportMap[explicitLeague] !== explicitSport) {
     throw new Error('Conflicting explicit league and sport specifications');
@@ -644,10 +638,7 @@ export function inferSportAndLeague(
     league = 'CBK';
   }
 
-  // Infer from rotation if needed. A range sport that matches the sport the
-  // message named is still the message's word.
-  const rangeSource = (inferred: Sport): SportSource =>
-    inferred === explicitSport ? 'explicit' : 'rotation';
+  // Infer from rotation if needed
   if ((!sport || !league) && rotationNumber) {
     // Existing inference logic
     // use rotation number ranges and other heuristics to determine sport/league
@@ -655,12 +646,12 @@ export function inferSportAndLeague(
       const inferredSport = 'Football';
       // TODO: Enhance to infer specific league based on range
       if (!sport) sport = inferredSport;
-      return { sport: 'Football', sportSource: rangeSource('Football') }; // observed 169,215 -> CFB, 709 -> CFL, 103,277,455 -> NFL
+      return { sport: 'Football' }; // observed 169,215 -> CFB, 709 -> CFL, 103,277,455 -> NFL
     }
     if (rotationNumber >= 500 && rotationNumber < 800) {
       const inferredSport = 'Basketball';
       if (!sport) sport = inferredSport;
-      return { sport: 'Basketball', sportSource: rangeSource('Basketball') }; // observed 611-628 -> wnba, 500-600 -> nba
+      return { sport: 'Basketball' }; // observed 611-628 -> wnba, 500-600 -> nba
     }
     if (
       (rotationNumber >= 800 && rotationNumber < 900) ||
@@ -668,12 +659,12 @@ export function inferSportAndLeague(
     ) {
       const inferredSport = 'Baseball';
       if (!sport) sport = inferredSport;
-      return { sport: 'Baseball', sportSource: rangeSource('Baseball') }; // observed 872, 901-926 -> mlb.. todo observer college baseball
+      return { sport: 'Baseball' }; // observed 872, 901-926 -> mlb.. todo observer college baseball
     }
   }
 
   // Default
-  return { sport, league, sportSource };
+  return { sport, league };
 }
 
 // ==============================================================================

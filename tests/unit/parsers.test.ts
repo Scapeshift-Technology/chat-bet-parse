@@ -598,6 +598,8 @@ describe('Chat Bet Parsing', () => {
       ['IW NBA Lakers @ +120', 'Basketball', 'league'],
       ['YG Rays 1st Inning o0.5 +127 = 15.0', 'Baseball', 'grammar'],
       ['YG 913 Rays 1st Inning o0.5 +127 = 15.0', 'Baseball', 'grammar'],
+      ['YG 872 Rays 1st Inning o0.5 +127 = 15.0', 'Baseball', 'grammar'],
+      ['IW 872 LAA TT o3.5 runs', 'Baseball', 'grammar'],
       ['IW LAA TT o3.5 runs', 'Baseball', 'grammar'],
       ['IW 872 Athletics @ +145', 'Baseball', 'rotation'],
       ['IW 872 Baseball Athletics @ +145', 'Baseball', 'explicit'],
