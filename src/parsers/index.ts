@@ -1249,9 +1249,8 @@ function parseGameTotal(
   // Parse teams and extract game info
   const { period, match } = parseMatchInfo(withoutOU, rawInput, league, gameNumber, eventDate);
 
-  // A "runs" suffix or an inning period is baseball grammar
-  const grammarSport: Sport | undefined =
-    hasRunsSuffix || period.PeriodTypeCode === 'I' ? 'Baseball' : undefined;
+  // A "runs" suffix is baseball grammar
+  const grammarSport: Sport | undefined = hasRunsSuffix ? 'Baseball' : undefined;
 
   // For game totals, we can have either two teams (traditional game total) or one team (single team game total)
   // Single team game totals are still considered TotalPoints, not TotalPointsContestant
@@ -1839,9 +1838,9 @@ function parseContractByType(
 /**
  * Build a non-writein contract and stamp what the type parsers do not know:
  * the message's rotation number, the message-level sport, and where Sport
- * came from. Type parsers report only the sport their grammar implies
- * (innings, "runs"); a sport from the message or the rotation range
- * outranks it, as it always has.
+ * came from. Grammar sport (a "runs" suffix from the type parsers, an
+ * inning period here for every type) yields to a sport from the message or
+ * the rotation range, as it always has.
  */
 function parseRegularContract(tokens: ParsedTokens): {
   contractType: ContractType;
@@ -1859,7 +1858,11 @@ function parseRegularContract(tokens: ParsedTokens): {
     if (tokens.rotationNumber !== undefined) {
       contract.RotationNumber = tokens.rotationNumber;
     }
-    const grammarSport = contract.Sport;
+    // An inning period is baseball grammar on every contract type; a "runs"
+    // suffix is visible only to the type parsers, which report it as Sport.
+    const inningPeriod = 'Period' in contract && contract.Period.PeriodTypeCode === 'I';
+    const grammarSport: Sport | undefined =
+      contract.Sport ?? (inningPeriod ? 'Baseball' : undefined);
     const sport = messageSport ?? grammarSport;
     if (sport !== undefined) {
       contract.Sport = sport;
