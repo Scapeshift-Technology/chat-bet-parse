@@ -1571,7 +1571,13 @@ function parsePropYN(
   }
 
   // Use parseMatchInfo to extract team and game number
-  const { teams, match } = parseMatchInfo(teamAndGameInfo, rawInput, league, gameNumber, eventDate);
+  const { teams, period, match } = parseMatchInfo(
+    teamAndGameInfo,
+    rawInput,
+    league,
+    gameNumber,
+    eventDate
+  );
 
   // Detect contestant type - use keyword-based type first, fallback to pattern detection
   const contestantType = propInfo.contestantType || detectContestantType(teams.team1);
@@ -1609,7 +1615,7 @@ function parsePropYN(
   return {
     League: league,
     Match: finalMatch,
-    Period: { PeriodTypeCode: 'M', PeriodNumber: 0 },
+    Period: period,
     HasContestant: true,
     HasLine: false,
     ContractSportCompetitionMatchType: 'Prop',

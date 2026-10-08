@@ -606,6 +606,7 @@ describe('Chat Bet Parsing', () => {
       // An inning period is baseball grammar on every contract type
       ['IW LAA 1st Inning TT o0.5', 'Baseball', 'grammar'],
       ['IW Rays 1st Inning +0', 'Baseball', 'grammar'],
+      ['IW 457 CIN 1st inning first team to score', 'Baseball', 'grammar'],
       ['IW LAA TT o3.5 runs', 'Baseball', 'grammar'],
       ['IW 872 Athletics @ +145', 'Baseball', 'rotation'],
       ['IW 872 Baseball Athletics @ +145', 'Baseball', 'explicit'],
@@ -618,6 +619,12 @@ describe('Chat Bet Parsing', () => {
       const contract = straightContract(input);
       expect(contract.Sport).toBe(sport);
       expect(contract).toHaveProperty('SportSource', source);
+    });
+
+    test('a yes/no prop keeps its inning period', () => {
+      const contract = straightContract('IW CIN 1st inning first team to score');
+      if (!('Period' in contract)) throw new Error('expected a period');
+      expect(contract.Period).toEqual({ PeriodTypeCode: 'I', PeriodNumber: 1 });
     });
 
     test.each(['IW Athletics @ +145', 'YG 913 Rays ml +100 = 1'])(
