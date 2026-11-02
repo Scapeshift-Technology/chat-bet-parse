@@ -519,13 +519,19 @@ export function parseTeam(teamStr: string, rawInput: string): string {
     throw new InvalidTeamFormatError(rawInput, teamStr, 'Team name too long (max 50 characters)');
   }
 
-  // Inning text the period grammar did not read ("SD innings 2-7") is a
-  // period it cannot place, never part of a name
-  if (/\binn(?:ing)?s?\b/i.test(cleaned)) {
-    throw new InvalidPeriodFormatError(rawInput, cleaned);
-  }
+  assertNoInningText(cleaned, rawInput);
 
   return cleaned;
+}
+
+/**
+ * Inning text the period grammar did not read ("SD innings 2-7") is a period
+ * it cannot place, never part of a team or player name.
+ */
+export function assertNoInningText(name: string, rawInput: string): void {
+  if (/\binn(?:ing)?s?\b/i.test(name)) {
+    throw new InvalidPeriodFormatError(rawInput, name);
+  }
 }
 
 /**

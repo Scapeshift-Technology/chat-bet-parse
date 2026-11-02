@@ -139,6 +139,7 @@ describe('Inning text never lands in a team name', () => {
     'YG TEX/SD 7 inn u4.5 = 1',
     'YG TEX/SD inning u0.5 = 1',
     'YG SD innings @ +120 = 1',
+    'IW B. Falter innings 7 hits o0.5',
   ])('%s throws InvalidPeriodFormatError', input => {
     expect(() => parseChat(input)).toThrow(InvalidPeriodFormatError);
   });

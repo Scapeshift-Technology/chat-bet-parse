@@ -90,6 +90,7 @@ import {
   calculateParlayFairToWin,
   calculateRoundRobinFairToWin,
   PROP_PHRASES_WITH_AND,
+  assertNoInningText,
 } from './utils';
 
 // ==============================================================================
@@ -1503,6 +1504,7 @@ function parsePropOU(
   // A period phrase lands in the contestant text ("B. Falter 1st inning hits")
   const contestantPeriod = extractFirstPeriod(extracted.contestant, rawInput);
   let contestant = contestantPeriod?.rest ?? extracted.contestant;
+  assertNoInningText(contestant, rawInput);
   const period: Period = contestantPeriod?.period ?? { PeriodTypeCode: 'M', PeriodNumber: 0 };
   const propText = extracted.propText;
 
