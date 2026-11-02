@@ -304,13 +304,30 @@ teams            = team ("/" | " vs " | " vs. ") team           (* Both teams mu
 match            = (teams | team) [game_number]              (* Game number can also appear before match in message structure *)
 
 (* Period patterns - flexible combinations *)
-period           = (first (inning | half | quarter | hockey_period | "five" | "5")) |
-                   (second (inning | half | quarter | hockey_period)) |
+period           = single_inning | first_innings |
+                   (first (half | quarter | hockey_period)) |
+                   (second (half | quarter | hockey_period)) |
                    (third (quarter | hockey_period)) |
                    (fourth quarter) |
-                   "f5" | "f3" | "f7" | "h1" | "1h" | "h2" | "2h" |
+                   "h1" | "1h" | "h2" | "2h" |
                    "q1" | "1q" | "q2" | "2q" | "q3" | "3q" | "q4" | "4q" |
                    "p1" | "1p" | "p2" | "2p" | "p3" | "3p"
+
+(* Innings (owner rule 2026-11-02): an inning number is that inning alone; a
+   count of innings is the first N cumulatively. Inning text the grammar
+   cannot read is an InvalidPeriodFormatError, never part of a team name. *)
+inning_number    = digit [digit]                              (* 1-15 *)
+inning_count     = "2" | "3" | "4" | "5" | "6" | "7" | "8"
+inning_count_word = "two" | "three" | "four" | "five" | "six" | "seven" | "eight"
+single_inning    = inning_number [ordinal_suffix ["."]] "inning" |  (* "7th inning", "7 inning" → I7 *)
+                   inning_number "i" |                              (* "7i" *)
+                   inning_number ordinal_suffix "inn" |              (* "7th inn" *)
+                   ("inning" | "inn") inning_number |                 (* "inning 7", "inn 7" *)
+                   "first inning"                                   (* → I1 *)
+first_innings    = "f" inning_count ["innings" | "inning"] |          (* "F7", "F7 innings" *)
+                   ("first" | "1st") (inning_count | inning_count_word) ["innings" | "inning"] |  (* "first 7", "first seven innings" *)
+                   ("innings" | "inning" | "inn") "1" "-" inning_count     (* "innings 1-7" *)
+ordinal_suffix   = "st" | "nd" | "rd" | "th"
 
 (* Bet pricing - optional for both orders and fills, defaults to -110 *)
 bet_price        = "@" usa_price
@@ -611,10 +628,11 @@ Heat @ -105
   - **Description Length**: Must be 10-255 characters, no newlines allowed
   - **Case Insensitive**: "writein", "WRITEIN", "WriteIn" all accepted
 - **Period Mapping**:
-  - `first inning`, `1st inning`, `first i`, `1st i` → `I1`
+  - `first inning`, `1st inning`, `inning 1`, `1st inn` → `I1`; any single inning N the same way: `7th inning`, `7 inning`, `inning 7`, `inn 7`, `7th inn` → `I7` (that inning alone, never innings 1-7)
   - `first half`, `1st half`, `first h`, `1st h` → `H1`
   - `first five`, `1st five`, `first 5`, `1st 5`, `f5`, `h1`, `1h` → `H1`
-  - `first seven`, `f7` → `H17` (first seven innings)
+  - First N innings, cumulative, for N = 2-8: `fN`, `fN innings`, `first N`, `1st N`, `first N innings`, `innings 1-N` (N as a digit, or a word after first/1st: `first seven`) → `H1N`: `f3` → `H13`, `f7` → `H17`, `f2`/`f4`/`f6`/`f8` → `H12`/`H14`/`H16`/`H18`. N = 5 is `H1` (the first five, as above)
+  - Inning text the grammar cannot read (`innings 2-7`, `innings 7`, `7th innings`, a bare count like `7 innings` or `last 7 innings`, `7 inn`) throws InvalidPeriodFormatError
   - `second half`, `2nd half`, `second h`, `2nd h`, `2h` → `H2`
   - Default (no period) → `M0`
 

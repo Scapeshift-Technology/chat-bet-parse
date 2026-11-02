@@ -403,14 +403,11 @@ export function parsePeriod(periodStr: string, rawInput: string): Period {
     return { PeriodTypeCode: 'H', PeriodNumber: 1 };
   }
 
-  // First three innings pattern: f3
-  if (cleaned === 'f3') {
-    return { PeriodTypeCode: 'H', PeriodNumber: 13 };
-  }
-
-  // First seven innings pattern: f7
-  if (cleaned === 'f7') {
-    return { PeriodTypeCode: 'H', PeriodNumber: 17 };
+  // First N innings, cumulative: f<N> is H1<N> (f3 → H13, f7 → H17); f5 is
+  // the first half above
+  const firstInningsMatch = cleaned.match(/^f([2-46-8])$/);
+  if (firstInningsMatch) {
+    return { PeriodTypeCode: 'H', PeriodNumber: 10 + parseInt(firstInningsMatch[1]) };
   }
 
   // Second half patterns: h2, 2h, second half, 2nd half
