@@ -326,8 +326,7 @@ single_inning    = inning_number [ordinal_suffix ["."]] "inning" |  (* "7th inni
                    "first inning"                                   (* → I1 *)
 first_innings    = "f" inning_count ["innings" | "inning"] |          (* "F7", "F7 innings" *)
                    ("first" | "1st") (inning_count | inning_count_word) ["innings" | "inning"] |  (* "first 7", "first seven innings" *)
-                   ("innings" | "inning" | "inn") "1" "-" inning_count |   (* "innings 1-7" *)
-                   inning_count "innings"                          (* "7 innings" *)
+                   ("innings" | "inning" | "inn") "1" "-" inning_count     (* "innings 1-7" *)
 ordinal_suffix   = "st" | "nd" | "rd" | "th"
 
 (* Bet pricing - optional for both orders and fills, defaults to -110 *)
@@ -632,8 +631,8 @@ Heat @ -105
   - `first inning`, `1st inning`, `inning 1`, `1st inn` → `I1`; any single inning N the same way: `7th inning`, `7 inning`, `inning 7`, `inn 7`, `7th inn` → `I7` (that inning alone, never innings 1-7)
   - `first half`, `1st half`, `first h`, `1st h` → `H1`
   - `first five`, `1st five`, `first 5`, `1st 5`, `f5`, `h1`, `1h` → `H1`
-  - First N innings, cumulative, for N = 2-8: `fN`, `fN innings`, `first N`, `1st N`, `first N innings`, `innings 1-N`, `N innings` (N as a digit, or a word after first/1st: `first seven`) → `H1N`: `f3` → `H13`, `f7` → `H17`, `f2`/`f4`/`f6`/`f8` → `H12`/`H14`/`H16`/`H18`. N = 5 is `H1` (the first five, as above)
-  - Inning text the grammar cannot read (`innings 2-7`, `innings 7`, `7th innings`, `9 innings`, `7 inn`) throws InvalidPeriodFormatError
+  - First N innings, cumulative, for N = 2-8: `fN`, `fN innings`, `first N`, `1st N`, `first N innings`, `innings 1-N` (N as a digit, or a word after first/1st: `first seven`) → `H1N`: `f3` → `H13`, `f7` → `H17`, `f2`/`f4`/`f6`/`f8` → `H12`/`H14`/`H16`/`H18`. N = 5 is `H1` (the first five, as above)
+  - Inning text the grammar cannot read (`innings 2-7`, `innings 7`, `7th innings`, a bare count like `7 innings` or `last 7 innings`, `7 inn`) throws InvalidPeriodFormatError
   - `second half`, `2nd half`, `second h`, `2nd h`, `2h` → `H2`
   - Default (no period) → `M0`
 

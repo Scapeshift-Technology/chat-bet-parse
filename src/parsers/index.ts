@@ -276,11 +276,6 @@ const FIRST_N_INNINGS = new RegExp(
   'gi'
 );
 
-// "7 innings" is the first seven only when nothing qualifies the count: "last
-// 7 innings" is another market, left unread so it fails.
-const BARE_INNING_COUNT =
-  /(?<![\d.]|\b(?:last|final|next|middle|extra|remaining|other|late|back)\s+)\b([2-8])\s+innings\b(?!\s+pitched)/gi;
-
 function ordinal(n: number): string {
   const suffix = n % 100 >= 11 && n % 100 <= 13 ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] ?? 'th');
   return `${n}${suffix}`;
@@ -290,8 +285,9 @@ function ordinal(n: number): string {
  * Period phrasings become the spellings every later stage reads. Owner rule
  * (2026-11-02): an inning number is that inning alone ("inning 7", "inn 7",
  * "7th inn" → "7th inning"); a count of innings is cumulative ("first 7",
- * "1st 7 innings", "innings 1-7", "7 innings", "F7 innings" → F7). Anything
- * else with inning text stays as written and fails assertPeriodTextIsRead.
+ * "1st 7 innings", "innings 1-7", "F7 innings" → F7). A bare count ("7
+ * innings") is not read: any word before it can qualify it ("last 7
+ * innings"). Inning text left unread fails assertPeriodTextIsRead.
  */
 function normalizePeriodWordPhrases(text: string): string {
   return text
@@ -301,7 +297,6 @@ function normalizePeriodWordPhrases(text: string): string {
       (_, count: string) => `F${INNING_COUNT_WORDS[count.toLowerCase()] ?? count}`
     )
     .replace(/\bf([2-8])\s+innings?\b/gi, 'F$1')
-    .replace(BARE_INNING_COUNT, 'F$1')
     .replace(/\bfirst\s+inning\b/gi, '1st inning')
     .replace(
       /\binn(?:ing)?\s+(\d{1,2})\b(?![.\d]|-\d|\s+-\s+\d)/gi,

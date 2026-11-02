@@ -5,7 +5,12 @@
  * a team name: a phrase the grammar cannot read throws instead.
  */
 
-import { parseChat, InvalidPeriodFormatError, ParseResult } from '../../src/index';
+import {
+  parseChat,
+  InvalidContractTypeError,
+  InvalidPeriodFormatError,
+  ParseResult,
+} from '../../src/index';
 
 interface Summary {
   type?: string;
@@ -87,12 +92,9 @@ describe('First N innings, cumulative: F<N>', () => {
     ['YG TEX/SD innings 1-7 u4.5 = 1', 'H17'],
     ['YG TEX/SD inning 1-7 u4.5 = 1', 'H17'],
     ['YG TEX/SD innings 1 - 7 u4.5 = 1', 'H17'],
-    ['YG TEX/SD 7 innings u4.5 = 1', 'H17'],
     ['YG TEX/SD F7 innings u4.5 = 1', 'H17'],
     ['YG TEX/SD first 3 innings u2.5 = 1', 'H13'],
     ['YG TEX/SD innings 1-3 u2.5 = 1', 'H13'],
-    ['YG TEX/SD 3 innings u2.5 = 1', 'H13'],
-    ['YG TEX/SD 5 innings u4.5 = 1', 'H1'],
     ['YG TEX/SD innings 1-5 u4.5 = 1', 'H1'],
     ['YG TEX/SD F2 u1.5 = 1', 'H12'],
     ['YG TEX/SD F4 u3.5 = 1', 'H14'],
@@ -110,7 +112,6 @@ describe('First N innings, cumulative: F<N>', () => {
   test.each([
     ['YG KC F7 o6.5 @ -115 = 1', 'TotalPoints'],
     ['YG KC first 7 innings @ +125 = 1', 'HandicapContestantML'],
-    ['YG KC 7 innings ML @ +125 = 1', 'HandicapContestantML'],
     ['YG KC innings 1-7 TT o3.5 = 1', 'TotalPointsContestant'],
     ['YG KC first 7 -0.5 = 1', 'HandicapContestantLine'],
     ['YG F4 KC -0.5 = 1', 'HandicapContestantLine'],
@@ -129,13 +130,23 @@ describe('First N innings, cumulative: F<N>', () => {
   });
 });
 
+// A bare count ("7 innings") is not read: any word before it can qualify it
+// ("last 7 innings"), and the owner's rule names only "first 7", "F7" and
+// "innings 1-7" as the first seven.
 // A period phrase the contract does not carry fails: a player prop dropped one
 // written after the prop word and booked the full game (0.18.0 too).
 describe('Inning text never lands in a team name', () => {
+  test('a bare count with a moneyline marker fails contract-type detection, as in 0.18.0', () => {
+    expect(() => parseChat('YG KC 7 innings ML @ +125 = 1')).toThrow(InvalidContractTypeError);
+  });
+
   test.each([
     'YG TEX/SD innings 2-7 u4.5 = 1',
     'YG TEX/SD innings 7 u4.5 = 1',
     'YG TEX/SD 7th innings u4.5 = 1',
+    'YG TEX/SD 7 innings u4.5 = 1',
+    'YG TEX/SD 3 innings u2.5 = 1',
+    'YG TEX/SD past 7 innings u4.5 = 1',
     'YG TEX/SD 9 innings u8.5 = 1',
     'YG TEX/SD last 7 innings u4.5 = 1',
     'YG TEX/SD final 3 innings u2.5 = 1',
