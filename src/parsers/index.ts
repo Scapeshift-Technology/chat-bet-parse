@@ -276,6 +276,11 @@ const FIRST_N_INNINGS = new RegExp(
   'gi'
 );
 
+// "7 innings" is the first seven only when nothing qualifies the count: "last
+// 7 innings" is another market, left unread so it fails.
+const BARE_INNING_COUNT =
+  /(?<![\d.]|\b(?:last|final|next|middle|extra|remaining|other|late|back)\s+)\b([2-8])\s+innings\b(?!\s+pitched)/gi;
+
 function ordinal(n: number): string {
   const suffix = n % 100 >= 11 && n % 100 <= 13 ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] ?? 'th');
   return `${n}${suffix}`;
@@ -296,7 +301,7 @@ function normalizePeriodWordPhrases(text: string): string {
       (_, count: string) => `F${INNING_COUNT_WORDS[count.toLowerCase()] ?? count}`
     )
     .replace(/\bf([2-8])\s+innings?\b/gi, 'F$1')
-    .replace(/(?<![\d.])\b([2-8])\s+innings\b(?!\s+pitched)/gi, 'F$1')
+    .replace(BARE_INNING_COUNT, 'F$1')
     .replace(/\bfirst\s+inning\b/gi, '1st inning')
     .replace(
       /\binn(?:ing)?\s+(\d{1,2})\b(?![.\d]|-\d|\s+-\s+\d)/gi,
