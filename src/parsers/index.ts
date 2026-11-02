@@ -90,7 +90,6 @@ import {
   calculateParlayFairToWin,
   calculateRoundRobinFairToWin,
   PROP_PHRASES_WITH_AND,
-  assertNoInningText,
 } from './utils';
 
 // ==============================================================================
@@ -287,7 +286,7 @@ function ordinal(n: number): string {
  * (2026-11-02): an inning number is that inning alone ("inning 7", "inn 7",
  * "7th inn" → "7th inning"); a count of innings is cumulative ("first 7",
  * "1st 7 innings", "innings 1-7", "7 innings", "F7 innings" → F7). Anything
- * else with inning text stays as written and fails in parseTeam.
+ * else with inning text stays as written and fails assertInningTextIsRead.
  */
 function normalizePeriodWordPhrases(text: string): string {
   return text
@@ -306,6 +305,25 @@ function normalizePeriodWordPhrases(text: string): string {
     .replace(/\b(\d{1,2}(?:st|nd|rd|th))\.?\s*inn\b/gi, '$1 inning')
     .replace(/\b(?:first|1st)\s+(?:half|h)\b/gi, 'H1')
     .replace(/\b(?:second|2nd)\s+(?:half|h)\b/gi, 'H2');
+}
+
+// The one inning phrase a contract's period is read from (PERIOD_TEXT_PATTERNS
+// below; normalization has rewritten every other single-inning spelling to
+// it), and the one prop whose name says innings.
+const READ_INNING_PHRASE = /\b\d+(?:(?:st|nd|rd|th)\.?)?\s*inning\b/i;
+const INNINGS_PITCHED = /\binnings\s+pitched\b/gi;
+
+/**
+ * Inning text the period grammar did not read ("SD innings 2-7", "B. Falter
+ * hits innings 7") is a period it cannot place. It throws here, on the final
+ * contract text, rather than riding into a team or player name or being
+ * dropped with a prop's tail.
+ */
+function assertInningTextIsRead(contractText: string, rawInput: string): void {
+  const unread = contractText.replace(INNINGS_PITCHED, ' ').replace(READ_INNING_PHRASE, ' ');
+  if (/\binn(?:ing)?s?\b/i.test(unread)) {
+    throw new InvalidPeriodFormatError(rawInput, contractText);
+  }
 }
 
 const PERIOD_TEXT_PATTERNS = [
@@ -1101,6 +1119,7 @@ function tokenizeChat(
   // Extract period if at beginning AGAIN (after league/sport extraction)
   // This handles cases like "CFB 1Q Utah State u10.5" where league extraction reveals the period
   contractText = reorderPeriodFirst(contractText, rawInput);
+  assertInningTextIsRead(contractText, rawInput);
 
   if (diagnostics) {
     diagnostics.contractText = contractText;
@@ -1504,7 +1523,6 @@ function parsePropOU(
   // A period phrase lands in the contestant text ("B. Falter 1st inning hits")
   const contestantPeriod = extractFirstPeriod(extracted.contestant, rawInput);
   let contestant = contestantPeriod?.rest ?? extracted.contestant;
-  assertNoInningText(contestant, rawInput);
   const period: Period = contestantPeriod?.period ?? { PeriodTypeCode: 'M', PeriodNumber: 0 };
   const propText = extracted.propText;
 
