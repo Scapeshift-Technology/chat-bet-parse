@@ -286,7 +286,7 @@ function ordinal(n: number): string {
  * (2026-11-02): an inning number is that inning alone ("inning 7", "inn 7",
  * "7th inn" → "7th inning"); a count of innings is cumulative ("first 7",
  * "1st 7 innings", "innings 1-7", "7 innings", "F7 innings" → F7). Anything
- * else with inning text stays as written and fails assertInningTextIsRead.
+ * else with inning text stays as written and fails assertPeriodTextIsRead.
  */
 function normalizePeriodWordPhrases(text: string): string {
   return text
@@ -307,21 +307,25 @@ function normalizePeriodWordPhrases(text: string): string {
     .replace(/\b(?:second|2nd)\s+(?:half|h)\b/gi, 'H2');
 }
 
-// The one inning phrase a contract's period is read from (PERIOD_TEXT_PATTERNS
-// below; normalization has rewritten every other single-inning spelling to
-// it), and the one prop whose name says innings.
-const READ_INNING_PHRASE = /\b\d+(?:(?:st|nd|rd|th)\.?)?\s*inning\b/i;
+// The one prop whose name says innings.
 const INNINGS_PITCHED = /\binnings\s+pitched\b/gi;
 
 /**
- * Inning text the period grammar did not read ("SD innings 2-7", "B. Falter
- * hits innings 7") is a period it cannot place. It throws here, on the final
- * contract text, rather than riding into a team or player name or being
- * dropped with a prop's tail.
+ * The period text in a contract is the period the contract carries. A phrase
+ * the type parser dropped ("B. Falter hits inning 7" booked the full game), a
+ * second phrase, or inning text the period grammar cannot read ("SD innings
+ * 2-7") throws instead of becoming a full-game bet or part of a name.
  */
-function assertInningTextIsRead(contractText: string, rawInput: string): void {
-  const unread = contractText.replace(INNINGS_PITCHED, ' ').replace(READ_INNING_PHRASE, ' ');
-  if (/\binn(?:ing)?s?\b/i.test(unread)) {
+function assertPeriodTextIsRead(contractText: string, contract: Contract, rawInput: string): void {
+  const text = contractText.replace(INNINGS_PITCHED, ' ');
+  const found = extractFirstPeriod(text, rawInput);
+  const rest = found?.rest ?? text;
+  const carried = 'Period' in contract ? contract.Period : undefined;
+  if (
+    (found && !(carried && periodsMatch(found.period, carried))) ||
+    extractFirstPeriod(rest, rawInput) ||
+    /\binn(?:ing)?s?\b/i.test(rest)
+  ) {
     throw new InvalidPeriodFormatError(rawInput, contractText);
   }
 }
@@ -1119,7 +1123,6 @@ function tokenizeChat(
   // Extract period if at beginning AGAIN (after league/sport extraction)
   // This handles cases like "CFB 1Q Utah State u10.5" where league extraction reveals the period
   contractText = reorderPeriodFirst(contractText, rawInput);
-  assertInningTextIsRead(contractText, rawInput);
 
   if (diagnostics) {
     diagnostics.contractText = contractText;
@@ -1926,6 +1929,10 @@ function parseRegularContract(tokens: ParsedTokens): {
     tokens.explicitSport
   );
   const contract = parseContractByType(contractType, tokens, league);
+
+  if (!isWritein(contract)) {
+    assertPeriodTextIsRead(tokens.contractText, contract, tokens.rawInput);
+  }
 
   if (!isWritein(contract)) {
     if (tokens.rotationNumber !== undefined) {

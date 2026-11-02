@@ -129,6 +129,8 @@ describe('First N innings, cumulative: F<N>', () => {
   });
 });
 
+// A period phrase the contract does not carry fails: a player prop dropped one
+// written after the prop word and booked the full game (0.18.0 too).
 describe('Inning text never lands in a team name', () => {
   test.each([
     'YG TEX/SD innings 2-7 u4.5 = 1',
@@ -141,6 +143,10 @@ describe('Inning text never lands in a team name', () => {
     'YG SD innings @ +120 = 1',
     'IW B. Falter innings 7 hits o0.5',
     'IW B. Falter hits innings 7 o0.5',
+    'IW B. Falter hits inning 7 o0.5',
+    'IW B. Falter hits 1st inning o0.5',
+    'IW B. Falter hits F7 o0.5',
+    'IW B. Falter hits first 5 o0.5',
     'YG TEX/SD 1st inning 7th inning u0.5 = 1',
   ])('%s throws InvalidPeriodFormatError', input => {
     expect(() => parseChat(input)).toThrow(InvalidPeriodFormatError);
