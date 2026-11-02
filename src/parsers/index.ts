@@ -115,7 +115,7 @@ const PERIOD_FIRST_TOTAL = new RegExp(
 // Single-team match totals: "Pirates F5 u4.5" and the bare "Bucknell o55.5"
 // (with an optional price glued to the line).
 const SINGLE_TEAM_PERIOD_TOTAL = new RegExp(
-  `^${TEAM_NAME}\\s+(f5|f3|h1|1h|h2|2h|q1|q2|q3|q4|p1|p2|p3|\\d+(?:st|nd|rd|th)?\\s*(?:inning|i|quarter|q|period|p))\\s+(over|under|[ou])\\s*\\d+(?:\\.\\d+)?(?:[+-]\\d+(?:\\.\\d+)?)?`,
+  `^${TEAM_NAME}\\s+(f[2-8]|h1|1h|h2|2h|q1|q2|q3|q4|p1|p2|p3|\\d+(?:st|nd|rd|th)?\\s*(?:inning|i|quarter|q|period|p))\\s+(over|under|[ou])\\s*\\d+(?:\\.\\d+)?(?:[+-]\\d+(?:\\.\\d+)?)?`,
   'i'
 );
 const SINGLE_TEAM_TOTAL = new RegExp(
@@ -132,7 +132,7 @@ const TOTAL_GLUED_PRICE_WORD = new RegExp(
   'i'
 );
 
-const PERIOD_AT_START = /^(f5|f3|f7|h1|1h|h2|2h|q1|q2|q3|q4|1q|2q|3q|4q|p1|p2|p3)\s+(.+)$/i;
+const PERIOD_AT_START = /^(f[2-8]|h1|1h|h2|2h|q1|q2|q3|q4|1q|2q|3q|4q|p1|p2|p3)\s+(.+)$/i;
 
 /**
  * A period written first ("2h Vanderbilt +2.5", "h1 mil u4") moves to where
@@ -261,16 +261,55 @@ function normalizeOverUnderClippings(text: string): string {
   );
 }
 
+// Inning counts with a cumulative code: F2-F8 (F5 is the first half).
+const INNING_COUNT_WORDS: Record<string, number> = {
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+};
+const FIRST_N_INNINGS = new RegExp(
+  `\\b(?:first|1st)\\s+([2-8]|${Object.keys(INNING_COUNT_WORDS).join('|')})(?:\\s+innings?)?\\b`,
+  'gi'
+);
+
+function ordinal(n: number): string {
+  const suffix = n % 100 >= 11 && n % 100 <= 13 ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] ?? 'th');
+  return `${n}${suffix}`;
+}
+
+/**
+ * Period phrasings become the spellings every later stage reads. Owner rule
+ * (2026-11-02): an inning number is that inning alone ("inning 7", "inn 7",
+ * "7th inn" → "7th inning"); a count of innings is cumulative ("first 7",
+ * "1st 7 innings", "innings 1-7", "7 innings", "F7 innings" → F7). Anything
+ * else with inning text stays as written and fails in parseTeam.
+ */
 function normalizePeriodWordPhrases(text: string): string {
   return text
-    .replace(/\b(?:first|1st)\s+(?:five|5)(?:\s+innings?)?\b/gi, 'F5')
+    .replace(/\binn(?:ings?)?\s+1(?:-|\s+-\s+)([2-8])\b(?!\.)/gi, 'F$1')
+    .replace(
+      FIRST_N_INNINGS,
+      (_, count: string) => `F${INNING_COUNT_WORDS[count.toLowerCase()] ?? count}`
+    )
+    .replace(/\bf([2-8])\s+innings?\b/gi, 'F$1')
+    .replace(/(?<![\d.])\b([2-8])\s+innings\b(?!\s+pitched)/gi, 'F$1')
+    .replace(/\bfirst\s+inning\b/gi, '1st inning')
+    .replace(
+      /\binn(?:ing)?\s+(\d{1,2})\b(?![.\d]|-\d|\s+-\s+\d)/gi,
+      (_, inning: string) => `${ordinal(parseInt(inning))} inning`
+    )
+    .replace(/\b(\d{1,2}(?:st|nd|rd|th))\.?\s*inn\b/gi, '$1 inning')
     .replace(/\b(?:first|1st)\s+(?:half|h)\b/gi, 'H1')
     .replace(/\b(?:second|2nd)\s+(?:half|h)\b/gi, 'H2');
 }
 
 const PERIOD_TEXT_PATTERNS = [
   /\b(\d+(?:(?:st|nd|rd|th)\.?)?\s*(?:inning|i))\b/i,
-  /\b(f5|f3|f7|h1|1h|h2|2h|q1|q2|q3|q4|p1|p2|p3)\b/i,
+  /\b(f[2-8]|h1|1h|h2|2h|q1|q2|q3|q4|p1|p2|p3)\b/i,
   /\b(\d+(?:st|nd|rd|th)?\s*(?:quarter|q))\b/i,
   /\b(\d+(?:st|nd|rd|th)?\s*(?:period|p))\b/i,
   /\b(first\s*(?:half|five|5|inning|i))\b/i,
@@ -618,6 +657,14 @@ function tokenizeChat(
     return tokenizeWritein(parts, chatType, rawInput, options, diagnostics);
   }
 
+  // Normalize period word-phrases to the compact codes every later stage
+  // (attached-price extraction, contract-type detection, period-at-start
+  // reordering) already recognizes — "first 5 under 4" used to route to
+  // contestant-ML with the whole tail swallowed as a contestant name
+  // (live 🙈, 2026-08-28). It runs before keyword and date extraction, which
+  // would read the "1-7" of "innings 1-7" as January 7.
+  parts.splice(0, parts.length, ...normalizePeriodWordPhrases(parts.join(' ')).split(' '));
+
   let currentIndex = 1;
   let rotationNumber: number | undefined;
   let price: number | undefined;
@@ -883,14 +930,6 @@ function tokenizeChat(
     }
   }
 
-  // Normalize period word-phrases to the compact codes every later stage
-  // (attached-price extraction, contract-type detection, period-at-start
-  // reordering) already recognizes. parsePeriod accepts both spellings, so
-  // this only widens recognition — "first 5 under 4" used to route to
-  // contestant-ML with the whole tail swallowed as a contestant name
-  // (live 🙈, 2026-08-28). The optional "innings" suffix mirrors the
-  // side-first pattern's vocabulary.
-  contractText = normalizePeriodWordPhrases(contractText);
   contractText = normalizeOverUnderClippings(contractText);
 
   if (postPriceTailParts.length > 0) {
@@ -1166,7 +1205,7 @@ function detectContractType(contractText: string, rawInput: string): ContractTyp
   if (
     MATCHUP_SEPARATOR.test(contractText) &&
     (/(over|under|[ou])\s*\d*\.?\d+(?:[+-]\d+(?:\.\d+)?)?(\s+runs)?/i.test(contractText) ||
-      /(over|under|[ou])\s*\d*\.?\d+(?:[+-]\d+(?:\.\d+)?)?\s+(f5|f3|f7|h1|1h|h2|2h|q1|q2|q3|q4|p1|p2|p3)/i.test(
+      /(over|under|[ou])\s*\d*\.?\d+(?:[+-]\d+(?:\.\d+)?)?\s+(f[2-8]|h1|1h|h2|2h|q1|q2|q3|q4|p1|p2|p3)/i.test(
         contractText
       ))
   ) {
@@ -1198,7 +1237,7 @@ function detectContractType(contractText: string, rawInput: string): ContractTyp
     /[a-zA-Z]+\s*[+-]0(?:\s|$)/i.test(contractText) ||
     /\sml\s*$/i.test(contractText) ||
     /\sml\s+/i.test(contractText) ||
-    /^[a-zA-Z]+\s+(f5|f3|h1|1h|h2|2h|\d+(?:st|nd|rd|th)?\s*(?:inning|i|quarter|q|period|p))\s*$/i.test(
+    /^[a-zA-Z]+\s+(f[2-8]|h1|1h|h2|2h|\d+(?:st|nd|rd|th)?\s*(?:inning|i|quarter|q|period|p))\s*$/i.test(
       contractText
     )
   ) {

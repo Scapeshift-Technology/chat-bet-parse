@@ -403,14 +403,11 @@ export function parsePeriod(periodStr: string, rawInput: string): Period {
     return { PeriodTypeCode: 'H', PeriodNumber: 1 };
   }
 
-  // First three innings pattern: f3
-  if (cleaned === 'f3') {
-    return { PeriodTypeCode: 'H', PeriodNumber: 13 };
-  }
-
-  // First seven innings pattern: f7
-  if (cleaned === 'f7') {
-    return { PeriodTypeCode: 'H', PeriodNumber: 17 };
+  // First N innings, cumulative: f<N> is H1<N> (f3 → H13, f7 → H17); f5 is
+  // the first half above
+  const firstInningsMatch = cleaned.match(/^f([2-46-8])$/);
+  if (firstInningsMatch) {
+    return { PeriodTypeCode: 'H', PeriodNumber: 10 + parseInt(firstInningsMatch[1]) };
   }
 
   // Second half patterns: h2, 2h, second half, 2nd half
@@ -520,6 +517,12 @@ export function parseTeam(teamStr: string, rawInput: string): string {
 
   if (cleaned.length > 50) {
     throw new InvalidTeamFormatError(rawInput, teamStr, 'Team name too long (max 50 characters)');
+  }
+
+  // Inning text the period grammar did not read ("SD innings 2-7") is a
+  // period it cannot place, never part of a name
+  if (/\binn(?:ing)?s?\b/i.test(cleaned)) {
+    throw new InvalidPeriodFormatError(rawInput, cleaned);
   }
 
   return cleaned;
